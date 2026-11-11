@@ -145,16 +145,20 @@ object Net {
     }
 
     /** Traži omot albuma/knjige preko istog besplatnog kataloga. */
-    fun coverUrl(query: String): String? = try {
-        val q = URLEncoder.encode(query, "UTF-8")
-        val body = getText("https://itunes.apple.com/search?term=$q&limit=4")
-        val arr = JSONObject(body).optJSONArray("results") ?: return null
-        for (i in 0 until arr.length()) {
-            val u = arr.optJSONObject(i)?.optString("artworkUrl100") ?: ""
-            if (u.isNotBlank()) return u.replace("100x100", "600x600")
-        }
-        null
-    } catch (_: Exception) { null }
+    fun coverUrl(query: String): String? {
+        try {
+            val q = URLEncoder.encode(query, "UTF-8")
+            val body = getText("https://itunes.apple.com/search?term=$q&limit=4")
+            val arr = JSONObject(body).optJSONArray("results")
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val u = arr.optJSONObject(i)?.optString("artworkUrl100") ?: ""
+                    if (u.isNotBlank()) return u.replace("100x100", "600x600")
+                }
+            }
+        } catch (_: Exception) { }
+        return null
+    }
 
     /** Epizoda se prvo preuzme na telefon, pa se pušta kao lokalni fajl. */
     fun download(url: String, dest: File, progress: (Int) -> Unit): Boolean {

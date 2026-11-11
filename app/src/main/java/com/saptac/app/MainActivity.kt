@@ -16,7 +16,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -1023,7 +1022,7 @@ class MainActivity : android.app.Activity() {
         }
         val t = Bus.timer
         if (t != null && (t.phase == TPhase.FADE || t.phase == TPhase.GRACE)) {
-            body.addView(toastRow("#2A1A08", "Stišava se · protresi ili pritisni + produži", "PRODUŽI") { extendTimer() })
+            body.addView(toastRow("#2A1A08", "Stišava se · protresi ili pritisni + produži", "PRODUŽI") { extendTimer() }.first)
         }
         if (t != null) {
             val label = when (t.phase) { TPhase.GRACE -> "čeka potez"; TPhase.FADE -> "stišava se"; else -> "radi" }
@@ -1572,18 +1571,18 @@ class MainActivity : android.app.Activity() {
     private fun openAllFilesAccess() {
         try {
             if (Build.VERSION.SDK_INT >= 30) startActivity(
-                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                     Uri.parse("package:$packageName"))
             )
             else openAppSettings()
         } catch (_: Exception) { openAppSettings() }
     }
     private fun openAppSettings() {
-        try { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        try { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:$packageName"))) } catch (_: Exception) { }
     }
     private fun openBatterySettings() {
-        try { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+        try { startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
         catch (_: Exception) { openAppSettings() }
     }
 

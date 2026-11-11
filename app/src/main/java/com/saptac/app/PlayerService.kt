@@ -557,7 +557,7 @@ class PlayerService : Service(), SensorEventListener {
         override fun onRewind() { bump(-Store.settings.jump * 1000L) }
         override fun onFastForward() { bump(Store.settings.jump * 1000L) }
         override fun onSeekTo(pos: Long) { seek(pos) }
-        override fun onCustomAction(action: String?, extras: Bundle?) {
+        override fun onCustomAction(action: String, extras: Bundle?) {
             if (action == CUSTOM_EXTEND) extendTimer()
         }
     }
