@@ -83,8 +83,37 @@ OS:            Linux 7.0.0-1017-azure amd64
 /usr/local/lib/android/sdk/platforms/android-37.2-beta1: AndroidVersion.ApiLevel=37.1
 /usr/local/lib/android/sdk/platforms/android-37.2-beta2: AndroidVersion.ApiLevel=37.1
 /usr/local/lib/android/sdk/platforms/android-37.2-beta3: AndroidVersion.ApiLevel=37.1
-Loading package information...                                                  Loading local repository...                                                     [                                       ] 3% Loading local repository...        [                                       ] 3% Fetch remote repository...         [=                                      ] 3% Fetch remote repository...         [=                                      ] 4% Fetch remote repository...         [=                                      ] 5% Fetch remote repository...         [==                                     ] 5% Fetch remote repository...         [==                                     ] 6% Fetch remote repository...         [==                                     ] 7% Fetch remote repository...         [==                                     ] 7% Computing updates...               [===                                    ] 8% Computing updates...               [===                                    ] 10% Computing updates...                                                                                              Warning: Failed to find package 'platforms;android-37'
-[===                                    ] 10% Computing updates...              ===== SIGNING KEY =====
+--- android-37.2 source.properties ---
+Pkg.Desc=Android SDK Platform ${PLATFORM_VERSION}
+Pkg.UserSrc=false
+Platform.Version=${PLATFORM_VERSION}
+Platform.CodeName=
+Pkg.Revision=2
+AndroidVersion.ApiLevel=37.2
+AndroidVersion.CodeName=
+AndroidVersion.ExtensionLevel=24
+AndroidVersion.IsBaseSdk=true
+AndroidVersion.PreviewSdkInt=0
+AndroidVersion.BetaVersion=
+Layoutlib.Api=15
+Layoutlib.Revision=1
+Platform.MinToolsRev=22
+--- canonical android-37 source.properties ---
+Pkg.Desc=Android SDK Platform ${PLATFORM_VERSION}
+Pkg.UserSrc=false
+Platform.Version=${PLATFORM_VERSION}
+Platform.CodeName=
+Pkg.Revision=2
+AndroidVersion.ApiLevel=37
+AndroidVersion.CodeName=REL
+AndroidVersion.ExtensionLevel=24
+AndroidVersion.IsBaseSdk=true
+AndroidVersion.PreviewSdkInt=0
+AndroidVersion.BetaVersion=
+Layoutlib.Api=15
+Layoutlib.Revision=1
+Platform.MinToolsRev=22
+===== SIGNING KEY =====
 existing key reused
 ===== GRADLE WRAPPER =====
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
@@ -103,7 +132,7 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 1m 5s
+BUILD SUCCESSFUL in 1m 3s
 1 actionable task: 1 executed
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.2/userguide/configuration_cache_enabling.html
 ===== ASSEMBLE RELEASE =====
@@ -122,6 +151,9 @@ For more details see https://docs.gradle.org/8.9/release-notes.html
 
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
+Observed package id 'platforms;android-37.2' in inconsistent location '/usr/local/lib/android/sdk/platforms/android-37' (Expected '/usr/local/lib/android/sdk/platforms/android-37.2')
+Observed package id 'platforms;android-37.2' in inconsistent location '/usr/local/lib/android/sdk/platforms/android-37' (Expected '/usr/local/lib/android/sdk/platforms/android-37.2')
+Observed package id 'platforms;android-37.2' in inconsistent location '/usr/local/lib/android/sdk/platforms/android-37' (Expected '/usr/local/lib/android/sdk/platforms/android-37.2')
 
 FAILURE: Build failed with an exception.
 
@@ -311,53 +343,8 @@ Caused by: java.lang.IllegalStateException: Failed to find Platform SDK with pat
 	... 163 more
 
 
-BUILD FAILED in 58s
+BUILD FAILED in 53s
 ASSEMBLE_EXIT=1
 ===== done =====
 ===== APK VERIFICATION =====
-Verifies
-Verified using v1 scheme (JAR signing): false
-Verified using v2 scheme (APK Signature Scheme v2): true
-Verified using v3 scheme (APK Signature Scheme v3): false
-Verified using v3.1 scheme (APK Signature Scheme v3.1): false
-Verified using v4 scheme (APK Signature Scheme v4): false
-Verified for SourceStamp: false
-Number of signers: 1
-Signer #1 certificate DN: CN=Saptac, OU=Personal, O=Saptac, L=Krusevac, ST=Serbia, C=RS
-Signer #1 certificate SHA-256 digest: 1a776d596ef35d09dc091331e1a2adbca6da52a4f6441c9e3f9971971c1f3cdb
-Signer #1 certificate SHA-1 digest: b794ed533df61accc355aa94b7e3b86a0e544d47
-Signer #1 certificate MD5 digest: 64075cdd76ff2f3609c534f821b02121
-Signer #1 key algorithm: RSA
-Signer #1 key size (bits): 2048
-Signer #1 public key SHA-256 digest: 5f8d6bae70e6de0c709e55fbd0ffa1065e24438df0aa0803bd47846dfd63e3e8
-Signer #1 public key SHA-1 digest: b4b1ff008a2f4d714b91a77f1578f626561fda61
-Signer #1 public key MD5 digest: 738b8f79c159c9eaba5ac8e9f18867a0
---- aapt badging ---
-package: name='com.saptac.app' versionCode='1' versionName='1.0.0' platformBuildVersionName='15' platformBuildVersionCode='35' compileSdkVersion='35' compileSdkVersionCodename='15'
-sdkVersion:'30'
-targetSdkVersion:'35'
-uses-permission: name='android.permission.READ_MEDIA_AUDIO'
-uses-permission: name='android.permission.READ_EXTERNAL_STORAGE' maxSdkVersion='32'
-uses-permission: name='android.permission.MANAGE_EXTERNAL_STORAGE'
-uses-permission: name='android.permission.INTERNET'
-uses-permission: name='android.permission.ACCESS_NETWORK_STATE'
-uses-permission: name='android.permission.FOREGROUND_SERVICE'
-uses-permission: name='android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'
-uses-permission: name='android.permission.POST_NOTIFICATIONS'
-uses-permission: name='android.permission.VIBRATE'
-uses-permission: name='android.permission.WAKE_LOCK'
-application-label:'Šaptač'
-application-icon-160:'res/BW.xml'
-application-icon-240:'res/BW.xml'
-application-icon-320:'res/BW.xml'
-application-icon-480:'res/BW.xml'
-application-icon-640:'res/BW.xml'
-application-icon-65534:'res/BW.xml'
-application: label='Šaptač' icon='res/BW.xml'
-launchable-activity: name='com.saptac.app.MainActivity'  label='' icon=''
-feature-group: label=''
-  uses-feature-not-required: name='android.hardware.sensor.accelerometer'
---- sha256 ---
-bd76c9e991dcaaa68417feb57224b6c86bcbcd724d24ba722ab4f64d9e577fd1  dist/Saptac-v1.0.apk
---- size ---
-2420394 bytes
+NO APK PRODUCED
