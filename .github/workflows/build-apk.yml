@@ -70,6 +70,12 @@ jobs:
               cp -a "$ANDROID_HOME/platforms/android-37.2" "$ANDROID_HOME/platforms/android-37"
               sed -i 's/^AndroidVersion\.ApiLevel=.*/AndroidVersion.ApiLevel=37/' "$ANDROID_HOME/platforms/android-37/source.properties"
               sed -i 's/^AndroidVersion\.CodeName=.*/AndroidVersion.CodeName=REL/' "$ANDROID_HOME/platforms/android-37/source.properties"
+              if [ -f "$ANDROID_HOME/platforms/android-37/package.xml" ]; then
+                sed -i 's/platforms;android-37\.2/platforms;android-37/g' "$ANDROID_HOME/platforms/android-37/package.xml"
+                sed -i 's|<api-level>37\.2</api-level>|<api-level>37</api-level>|g' "$ANDROID_HOME/platforms/android-37/package.xml"
+                echo "--- canonical android-37 package.xml identity ---"
+                grep -E 'localPackage|api-level|display-name' "$ANDROID_HOME/platforms/android-37/package.xml" | head -12 || true
+              fi
               echo "--- canonical android-37 source.properties ---"
               cat "$ANDROID_HOME/platforms/android-37/source.properties"
             fi
