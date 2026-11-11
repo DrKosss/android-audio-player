@@ -55,6 +55,14 @@ jobs:
             if [ ! -d "$ANDROID_HOME/build-tools/35.0.0" ]; then
               "$SDKM" "build-tools;35.0.0" 2>&1 || true
             fi
+            echo "--- API 37 candidates ---"
+            for d in "$ANDROID_HOME/platforms"/android-37*; do
+              [ -d "$d" ] || continue
+              echo "$d: $(grep AndroidVersion.ApiLevel "$d/source.properties" 2>/dev/null || true)"
+            done
+            if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
+              "$SDKM" "platforms;android-37" 2>&1 || true
+            fi
             echo "===== SIGNING KEY ====="
             mkdir -p signing
             if [ ! -f signing/saptac.jks ]; then
@@ -89,6 +97,28 @@ jobs:
             ls -lh dist/Saptac-v1.0.apk
             sha256sum dist/Saptac-v1.0.apk > dist/Saptac-v1.0.apk.sha256
           fi
+
+      - name: Verify signed APK and print manifest
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          {
+            echo "===== APK VERIFICATION ====="
+            if [ -f dist/Saptac-v1.0.apk ]; then
+              BT="$ANDROID_HOME/build-tools/35.0.0"
+              "$BT/apksigner" verify --verbose --print-certs dist/Saptac-v1.0.apk 2>&1
+              echo "--- aapt badging ---"
+              "$BT/aapt" dump badging dist/Saptac-v1.0.apk 2>&1 | head -24
+              echo "--- sha256 ---"
+              sha256sum dist/Saptac-v1.0.apk
+              echo "--- size ---"
+              stat -c '%s bytes' dist/Saptac-v1.0.apk
+            else
+              echo "NO APK PRODUCED"
+            fi
+          } | tee -a build.log
+          exit 0
 
       - name: Publish APK and build log back to the branch
         if: always()
