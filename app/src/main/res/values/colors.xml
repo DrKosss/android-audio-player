@@ -1,0 +1,15 @@
+<resources>
+    <color name="bg">#FF000000</color>
+    <color name="s1">#FF131110</color>
+    <color name="s2">#FF1D1A17</color>
+    <color name="s3">#FF241F1B</color>
+    <color name="line">#FF2A2521</color>
+    <color name="t1">#FFECE5D9</color>
+    <color name="t2">#FF9B9286</color>
+    <color name="t3">#FF6E665C</color>
+    <color name="amber">#FFEFA13A</color>
+    <color name="amber_d">#FF2C2013</color>
+    <color name="night">#FF8A5620</color>
+    <color name="ink">#FF231503</color>
+    <color name="ic_launcher_background">#FF0B0A09</color>
+</resources>

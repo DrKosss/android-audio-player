@@ -1,0 +1,87 @@
+name: Build Šaptač APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ arena/df83641e-android-audio-player ]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: arena/df83641e-android-audio-player
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Create stable signing key
+        run: |
+          mkdir -p signing
+          if [ ! -f signing/saptac.jks ]; then
+            keytool -genkeypair -alias saptac -keyalg RSA -keysize 2048 -validity 10950 \
+              -keystore signing/saptac.jks -storepass saptac2026 -keypass saptac2026 \
+              -dname "CN=Saptac, OU=Personal, O=Saptac, L=Krusevac, ST=Serbia, C=RS"
+          fi
+
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 8.9 --distribution-type bin
+
+      - name: Build release APK
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log
+          echo "build_status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Collect APK
+        if: always()
+        run: |
+          mkdir -p dist
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1 || true)
+          if [ -n "$APK" ]; then cp "$APK" dist/Saptac-v1.0.apk; fi
+          if [ -f dist/Saptac-v1.0.apk ]; then
+            ls -lh dist/Saptac-v1.0.apk
+            sha256sum dist/Saptac-v1.0.apk > dist/Saptac-v1.0.apk.sha256
+          fi
+
+      - name: Publish APK and build log back to the branch
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "arena-ai-coding-agent[bot]"
+          git config user.email "298482267+arena-ai-coding-agent[bot]@users.noreply.github.com"
+          for f in build.log dist/Saptac-v1.0.apk dist/Saptac-v1.0.apk.sha256 signing/saptac.jks gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties; do
+            if [ -f "$f" ]; then git add -f "$f"; fi
+          done
+          git commit -m "CI: APK i log izgradnje [skip ci]" || echo "nothing new to commit"
+          git push origin HEAD:${{ github.ref_name }} || true
