@@ -22,6 +22,8 @@ import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -102,6 +104,8 @@ class MainActivity : android.app.Activity() {
     private var currentRoot: View? = null
     private var lastScrollKey: String = ""
     private var savedScrollY: Int = 0
+    private var bottomInsetPx = 0
+    private var baseRef: LinearLayout? = null
 
     private val uiTicker = object : Runnable {
         override fun run() {
@@ -118,6 +122,18 @@ class MainActivity : android.app.Activity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.statusBarColor = Color.BLACK
         window.navigationBarColor = Color.BLACK
+        // Na Androidu 15+ (edge-to-edge) sistemska navigaciona traka prekriva donji deo
+        // sadrzaja. Rezervisemo joj prostor da dugmici za reprodukciju ostanu vidljivi.
+        window.decorView.setOnApplyWindowInsetsListener { _, insets ->
+            val bars = insets.getInsets(WindowInsets.Type.systemBars()).bottom
+            val gestures = insets.getInsets(WindowInsets.Type.systemGestures()).bottom
+            val extra = maxOf(bars, gestures, dp(16))
+            if (extra != bottomInsetPx) {
+                bottomInsetPx = extra
+                baseRef?.setPadding(0, 0, 0, bottomInsetPx)
+            }
+            insets
+        }
         Store.init(this)
         requestNeededPermissions()
         if (Bus.library.items.isEmpty()) rescan()
@@ -356,6 +372,8 @@ class MainActivity : android.app.Activity() {
 
         val root = FrameLayout(c).apply { setBackgroundColor(C_BG) }
         val base = vertical(c)
+        base.setPadding(0, 0, 0, bottomInsetPx)
+        baseRef = base
         base.addView(statusBar())
         base.addView(screenRoot(), LinearLayout.LayoutParams(-1, 0, 1f))
         base.addView(homeIndicator())
@@ -366,7 +384,7 @@ class MainActivity : android.app.Activity() {
         if (Bus.lockPreview) root.addView(lockOverlay(), FrameLayout.LayoutParams(-1, -1))
         Bus.toast?.let {
             if (System.currentTimeMillis() < Bus.toastUntil) {
-                val bottom = if (Bus.player != null && !Bus.night && !Bus.lockPreview) c.dp(132) else c.dp(74)
+                val bottom = (if (Bus.player != null && !Bus.night && !Bus.lockPreview) c.dp(132) else c.dp(74)) + bottomInsetPx
                 root.addView(toastView(it), FrameLayout.LayoutParams(-1, -2,
                     Gravity.BOTTOM).apply { leftMargin = c.dp(16); rightMargin = c.dp(16); bottomMargin = bottom })
             } else Bus.toast = null
@@ -377,8 +395,20 @@ class MainActivity : android.app.Activity() {
         lastScrollKey = keyAfter
         setContentView(root, ViewGroup.LayoutParams(-1, -1))
         currentRoot = root
+        // Poziciju skrola vracamo PRE prvog crtanja, pa nema kratkog skoka na vrh.
         val restoreY = savedScrollY
-        root.post { findMainScroll(root)?.scrollTo(0, restoreY) }
+        if (restoreY != 0) {
+            val sv = findMainScroll(root)
+            sv?.scrollTo(0, restoreY)
+            sv?.viewTreeObserver?.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    val obs = sv?.viewTreeObserver
+                    if (obs != null && obs.isAlive) obs.removeOnPreDrawListener(this)
+                    sv?.scrollTo(0, restoreY)
+                    return true
+                }
+            })
+        }
         if (cur().v == "player") Bus.player?.let { maybeFetchCover(it) }
         lastSig = signature()
         updateDynamic()
@@ -591,6 +621,21 @@ class MainActivity : android.app.Activity() {
         setPadding(dp(18), dp(16), dp(18), dp(2))
         letterSpacing = 0.14f
     }
+
+    /** Azurira oznaku sekcije bez ponovnog crtanja celog ekrana (nema skoka skrola). */
+    private fun folderBadge(sec: Section?, badge: TextView) {
+        badge.text = sectionName(sec)
+        badge.setTextColor(if (sec == null) C_T3 else C_AMBER)
+        badge.background = if (sec == null) GradientDrawable().apply {
+            cornerRadius = dp(9).toFloat()
+            setColor(Color.TRANSPARENT)
+            setStroke(dp(1), Color.rgb(0x3B, 0x35, 0x30))
+        } else rounded(C_AMBER_D, 9f, this)
+        badge.setPadding(dp(11), dp(6), dp(11), dp(6))
+    }
+
+    /** Posle izmene u mestu: sprecava da uiTicker ponovo nacrta ekran. */
+    private fun settleUi() { lastSig = signature() }
 
     /* ------------------------------------------------------------ ekrani */
     private fun screenRoot(): View = when (cur().v) {
@@ -1317,19 +1362,17 @@ class MainActivity : android.app.Activity() {
         (importRow.getChildAt(0) as? TextView)?.setTextColor(C_AMBER)
         body.addView(importRow)
         Bus.library.folders.take(12).forEach { f ->
-            val sec = Store.folderSection(f.key) ?: f.suggested
             val row = settingRow(c, f.name, null) {}
-            val badge = text(c, sectionName(sec), 11.5f,
-                if (sec == null) C_T3 else C_AMBER, bold = true)
-            badge.background = if (sec == null)
-                GradientDrawable().apply {
-                    cornerRadius = c.dp(9).toFloat()
-                    setColor(Color.TRANSPARENT)
-                    setStroke(c.dp(1), Color.rgb(0x3B, 0x35, 0x30))
-                } else rounded(C_AMBER_D, 9f, c)
+            val sec0 = Store.folderSection(f.key) ?: f.suggested
+            val badge = text(c, sectionName(sec0), 11.5f, C_AMBER, bold = true)
+            folderBadge(sec0, badge)
             badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
             row.addView(badge)
-            row.click { cycleFolder(f.key); render() }
+            row.click {
+                cycleFolder(f.key, silent = true)
+                folderBadge(Store.folderSection(f.key) ?: f.suggested, badge)
+                settleUi()
+            }
             body.addView(row)
         }
         body.addView(settingRow(c, "Rasporedi fajlove", "$unassigned čekaju") { go("arrange") })
@@ -1394,12 +1437,12 @@ class MainActivity : android.app.Activity() {
         return page(header("Podešavanja", plus = false, gear = false, back = true), scroll(c, body))
     }
 
-    private fun cycleFolder(key: String) {
+    private fun cycleFolder(key: String, silent: Boolean = false) {
         val order = listOf<Section?>(null, Section.MUSIC, Section.BOOKS, Section.SERIES, Section.STANDUP)
         val cur = Store.folderSection(key)
         val i = order.indexOf(cur).let { if (it < 0) 0 else it }
         Store.setFolderSection(key, order[(i + 1) % order.size])
-        Bus.libraryVersion++
+        if (!silent) Bus.libraryVersion++
         Bus.log("Folder ${key.substringAfterLast('/')} → ${sectionName(Store.folderSection(key))}")
     }
 
@@ -1427,8 +1470,11 @@ class MainActivity : android.app.Activity() {
         val list = listHost()
         if (Bus.library.folders.isEmpty()) list.addView(emptyState("Nema foldera sa audio fajlovima."))
         Bus.library.folders.forEach { f ->
-            val sec = Store.folderSection(f.key) ?: f.suggested
-            val row = rowView(c, { cycleFolder(f.key); render() })
+            val sec0 = Store.folderSection(f.key) ?: f.suggested
+            val badge = text(c, sectionName(sec0), 11.5f, C_AMBER, bold = true)
+            folderBadge(sec0, badge)
+            badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
+            val row = rowView(c, { })
             row.addView(FrameLayout(c).apply {
                 layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
                 background = rounded(C_S2, 11f, c)
@@ -1440,12 +1486,13 @@ class MainActivity : android.app.Activity() {
                 addView(text(c, f.name, 14.5f, C_T1))
                 addView(text(c, "${f.count} fajlova", 12f, C_T2))
             })
-            val badge = text(c, sectionName(sec), 11.5f, if (sec == null) C_T3 else C_AMBER, bold = true)
-            badge.background = if (sec == null) GradientDrawable().apply {
-                cornerRadius = c.dp(9).toFloat(); setColor(Color.TRANSPARENT)
-                setStroke(c.dp(1), Color.rgb(0x3B, 0x35, 0x30))
-            } else rounded(C_AMBER_D, 9f, c)
-            badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
+            val change = {
+                cycleFolder(f.key, silent = true)
+                folderBadge(Store.folderSection(f.key) ?: f.suggested, badge)
+                settleUi()
+            }
+            row.click { change() }
+            badge.click { change() }
             row.addView(badge)
             list.addView(row)
         }
@@ -1503,35 +1550,35 @@ class MainActivity : android.app.Activity() {
             addView(text(c, "$totalFiles fajlova", 12f, C_T2))
         }
         val list = listHost()
+        var confirmText: TextView? = null
+        fun refreshConfirm() {
+            confirmText?.text = if (Nav.importSelection.isEmpty()) "Izaberi najmanje jedan folder"
+                else "Uvezi ${Nav.importSelection.size} foldera"
+            settleUi()
+        }
         if (folders.isEmpty()) list.addView(emptyState("Nema novih foldera.\nSve što je pronađeno je već uvezeno."))
         folders.forEach { f ->
             val included = Nav.importSelection.contains(f.key)
             if (!Nav.importSections.containsKey(f.key)) Nav.importSections[f.key] = f.suggested
             val sec = Nav.importSections[f.key]
-            val row = rowView(c, {
-                if (included) Nav.importSelection.remove(f.key) else Nav.importSelection.add(f.key)
-                render()
-            })
             val check = android.widget.CheckBox(c).apply {
                 isChecked = included
                 layoutParams = LinearLayout.LayoutParams(c.dp(24), c.dp(24))
                 buttonTintList = android.content.res.ColorStateList.valueOf(C_AMBER)
                 setOnClickListener {
                     if (isChecked) Nav.importSelection.add(f.key) else Nav.importSelection.remove(f.key)
-                    render()
+                    refreshConfirm()
                 }
             }
+            val row = rowView(c, { check.performClick() })
             row.addView(check)
             row.addView(vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(10) }
                 addView(text(c, f.name, 14.5f, C_T1))
                 addView(text(c, "${f.key} · ${f.count} fajlova", 11f, C_T3))
             })
-            val badge = text(c, sectionName(sec), 11.5f, if (sec == null) C_T3 else C_AMBER, bold = true)
-            badge.background = if (sec == null) GradientDrawable().apply {
-                cornerRadius = c.dp(9).toFloat(); setColor(Color.TRANSPARENT)
-                setStroke(c.dp(1), Color.rgb(0x3B, 0x35, 0x30))
-            } else rounded(C_AMBER_D, 9f, c)
+            val badge = text(c, sectionName(sec), 11.5f, C_AMBER, bold = true)
+            folderBadge(sec, badge)
             badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
             badge.click {
                 val order = listOf<Section?>(null, Section.BOOKS, Section.SERIES, Section.MUSIC, Section.STANDUP)
@@ -1539,7 +1586,9 @@ class MainActivity : android.app.Activity() {
                 val i = order.indexOf(cur).let { if (it < 0) 0 else it }
                 Nav.importSections[f.key] = order[(i + 1) % order.size]
                 Nav.importSelection.add(f.key)
-                render()
+                check.isChecked = true
+                folderBadge(Nav.importSections[f.key], badge)
+                refreshConfirm()
             }
             row.addView(badge)
             list.addView(row)
@@ -1553,13 +1602,15 @@ class MainActivity : android.app.Activity() {
                 setMargins(c.dp(16), 0, c.dp(16), c.dp(6))
             }
         })
-        list.addView(actionButton(c,
+        val confirm = actionButton(c,
             if (Nav.importSelection.isEmpty()) "Izaberi najmanje jedan folder"
             else "Uvezi ${Nav.importSelection.size} foldera", true) { doImport() }.apply {
             layoutParams = LinearLayout.LayoutParams(-1, c.dp(48)).apply {
                 setMargins(c.dp(16), 0, c.dp(16), c.dp(18))
             }
-        })
+        }
+        confirmText = confirm.getChildAt(0) as? TextView
+        list.addView(confirm)
         list.addView(text(c,
             "Fajlovi ostaju gde jesu. Uvoz samo pamti koji folder pripada kojoj sekciji, pa ništa ne može da se izgubi ili obriše.\nPrototip prikazuje izmišljene foldere; prava aplikacija čita tvoj telefon.",
             11.5f, C_T3).apply { setPadding(c.dp(22), 0, c.dp(22), c.dp(24)) })
@@ -1967,7 +2018,7 @@ class MainActivity : android.app.Activity() {
                 )
                 setStroke(c.dp(1), C_LINE)
             }
-            setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(26))
+            setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(26) + bottomInsetPx)
             click { }
             addView(View(c).apply { background = rounded(Color.rgb(0x3A, 0x36, 0x32), 2f, c) },
                 LinearLayout.LayoutParams(c.dp(36), c.dp(4)).apply {
@@ -2123,7 +2174,10 @@ class MainActivity : android.app.Activity() {
         val c = this
         val p = Bus.player
         val t = Bus.timer
-        val root = vertical(c).apply { setBackgroundColor(Color.rgb(0x05, 0x04, 0x03)) }
+        val root = vertical(c).apply {
+            setBackgroundColor(Color.rgb(0x05, 0x04, 0x03))
+            setPadding(0, 0, 0, bottomInsetPx)
+        }
         val top = horizontal(c).apply {
             layoutParams = LinearLayout.LayoutParams(-1, -2)
             gravity = Gravity.CENTER_VERTICAL
@@ -2187,7 +2241,7 @@ class MainActivity : android.app.Activity() {
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(Color.rgb(0x1D, 0x25, 0x37), Color.rgb(0x0A, 0x0C, 0x12), Color.rgb(0x05, 0x06, 0x08)))
         }
-        val body = vertical(c)
+        val body = vertical(c).apply { setPadding(0, 0, 0, bottomInsetPx) }
         body.addView(text(c, SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
             64f, Color.rgb(0xD5, 0xD9, 0xE2)).apply {
             gravity = Gravity.CENTER; setPadding(0, c.dp(54), 0, 0)

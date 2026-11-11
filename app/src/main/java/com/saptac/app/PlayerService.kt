@@ -77,6 +77,31 @@ class PlayerService : Service(), SensorEventListener {
     private var lastVolumeLevel = -1
     private var lastShakeAt = 0L
     private var focusRequest: AudioFocusRequest? = null
+    private var focusGranted = false
+    private var lastResumeAt = 0L
+    // Jedan isti zahtev za audio-fokus tokom celog rada servisa: novi zahtev pri svakom
+    // nastavku bi starom listeneru poslao AUDIOFOCUS_LOSS i odmah pauzirao zvuk.
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                focusGranted = false
+                // Ne reaguj na gubitak koji je stigao neposredno posle sopstvenog resume().
+                if (SystemClock.elapsedRealtime() - lastResumeAt > 1000L && isPlaying()) {
+                    pause(); Bus.log("Zvuk prekinut (audio focus $change)")
+                }
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                if (state?.kind == Kind.TRACK) {
+                    try { mp?.setVolume(0.25f, 0.25f) } catch (_: Exception) { }
+                    Bus.log("Muzika kratko stišana (obaveštenje)")
+                } else if (isPlaying()) { pause(); Bus.log("Pauza zbog drugog zvuka") }
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                focusGranted = true
+                try { mp?.setVolume(volume, volume) } catch (_: Exception) { }
+            }
+        }
+    }
     private var wakeLock: PowerManager.WakeLock? = null
     private lateinit var audioManager: AudioManager
     private lateinit var session: MediaSession
@@ -268,11 +293,16 @@ class PlayerService : Service(), SensorEventListener {
     }
 
     private fun resume() {
-        val p = state ?: return
+        val p = state ?: run {
+            // Servis je mozda ponovo pokrenut posle pauze: obnovi poslednji zahtev.
+            Bus.playRequest?.let { play(it) }
+            return
+        }
         if (mp == null || !prepared) { load(p.index, p.positionMs); return }
         if (timer?.phase == TPhase.GRACE) extendTimer()
         else {
             try {
+                lastResumeAt = SystemClock.elapsedRealtime()
                 requestFocus()
                 val t = timer
                 volume = if (t != null && t.phase == TPhase.FADE)
@@ -283,7 +313,11 @@ class PlayerService : Service(), SensorEventListener {
                 state = state?.copy(playing = true)
                 wakeLock?.let { if (!it.isHeld) it.acquire(6 * 60 * 60 * 1000L) }
                 Bus.log("Nastavak: ${p.current.title}")
-            } catch (e: Exception) { Bus.log("Greška pri nastavku: ${e.message}") }
+            } catch (e: Exception) {
+                Bus.log("Greška pri nastavku: ${e.message}")
+                load(p.index, p.positionMs)
+                return
+            }
         }
         publish()
     }
@@ -518,33 +552,21 @@ class PlayerService : Service(), SensorEventListener {
 
     /* ------------------------------------------------------------ audio focus */
     private fun requestFocus(): Boolean {
+        if (focusGranted) return true
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-        val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+        val req = focusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(attrs)
-            .setOnAudioFocusChangeListener { change ->
-                when (change) {
-                    AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                        if (isPlaying()) { pause(); Bus.log("Zvuk prekinut (audio focus $change)") }
-                    }
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                        if (state?.kind == Kind.TRACK) {
-                            try { mp?.setVolume(0.25f, 0.25f) } catch (_: Exception) { }
-                            Bus.log("Muzika kratko stišana (obaveštenje)")
-                        } else if (isPlaying()) { pause(); Bus.log("Pauza zbog drugog zvuka") }
-                    }
-                    AudioManager.AUDIOFOCUS_GAIN -> {
-                        try { mp?.setVolume(volume, volume) } catch (_: Exception) { }
-                    }
-                }
-            }.build()
-        focusRequest = req
-        return audioManager.requestAudioFocus(req) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            .setOnAudioFocusChangeListener(focusListener)
+            .build().also { focusRequest = it }
+        focusGranted = audioManager.requestAudioFocus(req) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        return focusGranted
     }
 
     private fun abandonFocus() {
         focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        focusGranted = false
     }
 
     /* ------------------------------------------------------------ MediaSession + obaveštenje */
@@ -620,7 +642,7 @@ class PlayerService : Service(), SensorEventListener {
             .setContentText(p?.groupTitle ?: "Ništa se ne pušta")
             .setSubText(if (t != null) "Tajmer · ${fmtTime(if (t.phase == TPhase.GRACE) t.graceMs else t.leftMs)}" else "Šaptač")
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setOngoing(playing)
+            .setOngoing(true)
             .setStyle(style)
             .setContentIntent(
                 PendingIntent.getActivity(this, 0,
