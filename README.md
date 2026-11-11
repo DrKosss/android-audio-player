@@ -1,24 +1,25 @@
-# Šaptač — Android v1.0.1
+# Šaptač — Android v1.0.2
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.427.866 bajtova  
-SHA-256: `c6382082d02bf0045ae1fcd012d2fb287ba9d8d3870e35634a546a757d55dc41`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.419.030 bajtova  
+SHA-256: `0814ee881081905ddbecabb42618c6a56518da2d3a8947722d99f209597cd3a2`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom, ikonom iz prototipa, svih 11 ekrana prototipa i novim ekranom četvrte sekcije „Stand up“.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodatak je četvrta sekcija „Stand up“.
 
-## Šta radi u v1.0.1
+## Šta je u v1.0.2
 
-- **Četiri sekcije sa različitim pravilima:** Knjige (pozicija po fajlu i sekundi, 0,5–2×, preostalo vreme, `PONIŠTI` posle ručnog traženja), Muzika (folderi/izvođači/albumi, bez pamćenja pozicije, uvek 1×, shuffle/repeat), Emisije (nove/započete/završene, `Nastavi`, `Nasumična`, automatski sledeća, brzina po seriji), Stand up (prikaz po folderima/komičarima, pozicija, brzina i „Delovi“).
-- **Detalji „Stand up“:** poseban tab u donjoj traci, prikaz po folderima ili komičarima, filteri `Sve / U toku / Nove / Završeni`, pamćenje pozicije, brzina 0,5–2×, „Delovi“ i `PONIŠTI`; folderi sa `stand up`, `standup`, `komedija`, `comedy` dobijaju automatski predlog. Koristi pravila knjige za duge snimke.
-- **Uvećane ikonice:** ikonice sekcija u donjoj traci su 30 dp, a folderi u uvozu, raspoređivanju, mešanim fajlovima i podešavanjima dobijaju 24–36 dp ikonicu sa simbolom i bojom dodeljene sekcije.
-- **Uvoz svih fajlova:** interna memorija i SD kartica, predlozi klasifikacije po imenu/obliku/tagovima, potvrda foldera, pojedinačni fajlovi i SAF folder, dug pritisak za prebacivanje sekcije, mešani fajlovi; fajlovi se ne pomeraju na disku.
+- **Vraćeno na prototip:** uklonjeni su dugme `?` i pomoć, ekrani za bateriju i dnevnik događaja, dodatne poruke, fusnota sa verzijom, uvećane ikonice i svi tekstovi kojih nema u `saptac-prototip.html`. Ikonice sekcija su vraćene na 21 dp, a redovi sa folderima na izgled iz prototipa.
+- **Jedina nova stvar — „Stand up“:** četvrti tab u donjoj traci i četvrta sekcija pri uvozu, raspoređivanju, mešanim fajlovima i prebacivanju. Koristi isti prikaz kao „Knjige“ (omot, `Sve / U toku / Nove / Završene`, pozicija, preostalo vreme, `PONIŠTI`) — bez novih tabova, filtera ili naziva. Folderi sa `stand up`, `standup`, `komedija`, `comedy` dobijaju automatski predlog sekcije.
+- **Potvrda izbora:** na ekranu „Uvoz“ uvek je vidljivo primarno dugme `Uvezi N foldera` (odnosno `Izaberi najmanje jedan folder`) koje potvrđuje izabrane foldere; za pojedinačne fajlove se posle izbora otvara listić sa sekcijama i tek tu se potvrđuje smeštanje.
+- **Skrol ostaje na mestu:** pri svakom izboru sekcije za folder lista se više ne vraća na vrh — `ScrollView` zadržava prethodnu poziciju pri ponovnom crtanju istog ekrana.
+- **Tri sekcije iz prototipa:** Knjige (pozicija po fajlu, 0,5–2×, preostalo vreme, `PONIŠTI`), Muzika (folderi/izvođači/albumi, uvek 1×, shuffle/repeat), Emisije (nove/započete/završene, `Nastavi`, `Nasumična`, automatski sledeća, brzina po seriji).
+- **Uvoz:** interna memorija i SD kartica, predlozi klasifikacije po imenu/obliku/tagovima, pojedinačni fajlovi, dug pritisak za prebacivanje sekcije, mešani fajlovi; fajlovi se ne pomeraju na disku.
 - **Lokalna reprodukcija:** MP3/M4A/M4B/OGG/Opus/FLAC/WAV preko sistemskog plejera u `PlayerService` foreground servisu; `MediaSession`, stalno obaveštenje i kontrole na zaključanom ekranu; audio-focus, wake-lock, čuvanje pozicije svakih 5 s i pri pauzi/seeku.
 - **Plejer:** ±30 s, prethodno/sledeće, liste/poglavlja, brzina, napredak, omot iz fajla ili opcioni internet-omot po albumu/knjizi.
 - **Tajmer za spavanje:** 15/30/45/60 min, utišavanje 30/60/90 s, 60 s „grace“ perioda, produžetak pomeranjem telefona, dugmetom za jačinu ili paljenjem ekrana, noćni ekran sa tri zone i `+15 min`, kratka vibracija.
 - **Podkasti:** ručno dodavanje i osvežavanje RSS feedova, preuzimanje epizode pre puštanja, broj novih, Apple iTunes Search katalog sa offline rezervom, samo HTTPS.
-- **Ostalo:** podešavanja, dnevnik događaja, vodič za bateriju/„nikad ne uspavljuj“, pomoć `?`, mini-plejer, skica noćnog i zaključanog ekrana.
-- Podaci ostaju na telefonu; nema naloga, reklama, praćenja, streaminga bez preuzimanja, cloud sinhronizacije, Android Auto-a, EQ-a ni svetle teme — u skladu sa „nije planirano“ u dizajnu. Pretraga, bekap, prepoznavanje preimenovanih fajlova, M4B poglavlja i markeri ostaju za v1.1.
+- **Ostalo:** podešavanja, mini-plejer, skica noćnog i zaključanog ekrana. Podaci ostaju na telefonu; nema naloga, reklama, praćenja, streaminga bez preuzimanja, cloud sinhronizacije, Android Auto-a, EQ-a ni svetle teme. Pretraga, bekap, prepoznavanje preimenovanih fajlova, M4B poglavlja i markeri ostaju za v1.1.
 
 ## Instalacija na Samsung Galaxy S25 / One UI 9
 
@@ -28,14 +29,14 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
    adb install -r dist/Saptac-v1.0.apk
    ```
 3. Na prvom uvozu dozvoli pristup audio fajlovima, odnosno „Pristup svim fajlovima“ za SD karticu i foldere van standardnih medija; dozvoli i obaveštenja.
-4. Za rad sa ugašenim ekranom jednom podesi `Baterija → Neograničeno` i „Nikad ne uspavljuj“ po vodiču u aplikaciji.
+4. Za rad sa ugašenim ekranom u sistemskim podešavanjima jednom postavi `Baterija → Neograničeno` i „Nikad ne uspavljuj“.
 
 ## Tehnički podaci
 
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.1` (`versionCode 2`) |
+| Verzija | `1.0.2` (`versionCode 3`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
@@ -56,6 +57,6 @@ Dizajn-dokument predlaže Jetpack Compose, Media3/ExoPlayer i Room. Ova v1 koris
 ./gradlew assembleRelease
 ```
 
-Ili pokreni **Build Šaptač APK** workflow u GitHub Actions. `.github/workflows/build-apk.yml` koristi stabilan Gradle 8.9 wrapper, JDK 17, Android platformu 37, generiše/zadržava isti ključ, gradi `assembleRelease`, proverava potpis i vraća `dist/Saptac-v1.0.apk` na granu. Runner isporučuje API 37 kao `android-37.2`, pa workflow pravi kanonsku `platforms/android-37` kopiju sa usklađenim `source.properties`/`package.xml` pre nego što AGP konfiguriše projekat.
+Ili pokreni **Build Šaptač APK** workflow u GitHub Actions. `.github/workflows/build-apk.yml` koristi stabilan Gradle 8.9 wrapper, JDK 17, Android platformu 37, generiše/zadržava isti ključ, gradi `assembleRelease`, proverava potpis i vraća `dist/Saptac-v1.0.apk` na granu. Ako `assembleRelease` ne uspe, workflow ipak objavljuje `build.log`, ali završava kao neuspešan. Runner isporučuje API 37 kao `android-37.2`, pa workflow pravi kanonsku `platforms/android-37` kopiju sa usklađenim `source.properties`/`package.xml` pre nego što AGP konfiguriše projekat.
 
 Prototip HTML-ovi ostaju netaknuti kao izvor istine za dizajn.
