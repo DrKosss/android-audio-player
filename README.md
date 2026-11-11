@@ -1,14 +1,15 @@
-# Šaptač — Android v1.0.2
+# Šaptač — Android v1.0.3
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.419.030 bajtova  
-SHA-256: `0814ee881081905ddbecabb42618c6a56518da2d3a8947722d99f209597cd3a2`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.422.846 bajtova  
+SHA-256: `044000f92a1cab54c2c96c9be40239ea2474403c447b5e6f0faad83c54152130`
 
 Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodatak je četvrta sekcija „Stand up“.
 
-## Šta je u v1.0.2
+## Šta je u v1.0.3
 
+- **Ispravke u v1.0.3:** sistemski dugmići na dnu više ne prekrivaju dugmiće za reprodukciju (rezervisan je prostor za `WindowInsets` navigacione trake, uključujući i listiće, noćni ekran i skicu zaključanog ekrana); posle pauze reprodukcija se pouzdano nastavlja (jedan stalni `AudioFocusRequest` umesto novog pri svakom `resume()`, koji je slao `AUDIOFOCUS_LOSS` i odmah pauzirao, plus obnova stanja ako je servis ponovo pokrenut); izbor foldera više ne flickeruje na vrh — oznaka sekcije i dugme za potvrdu ažuriraju se u mestu, a kada se ekran ipak ponovo nacrta, skrol se vraća pre prvog crtanja (`OnPreDrawListener`).
 - **Vraćeno na prototip:** uklonjeni su dugme `?` i pomoć, ekrani za bateriju i dnevnik događaja, dodatne poruke, fusnota sa verzijom, uvećane ikonice i svi tekstovi kojih nema u `saptac-prototip.html`. Ikonice sekcija su vraćene na 21 dp, a redovi sa folderima na izgled iz prototipa.
 - **Jedina nova stvar — „Stand up“:** četvrti tab u donjoj traci i četvrta sekcija pri uvozu, raspoređivanju, mešanim fajlovima i prebacivanju. Koristi isti prikaz kao „Knjige“ (omot, `Sve / U toku / Nove / Završene`, pozicija, preostalo vreme, `PONIŠTI`) — bez novih tabova, filtera ili naziva. Folderi sa `stand up`, `standup`, `komedija`, `comedy` dobijaju automatski predlog sekcije.
 - **Potvrda izbora:** na ekranu „Uvoz“ uvek je vidljivo primarno dugme `Uvezi N foldera` (odnosno `Izaberi najmanje jedan folder`) koje potvrđuje izabrane foldere; za pojedinačne fajlove se posle izbora otvara listić sa sekcijama i tek tu se potvrđuje smeštanje.
@@ -36,7 +37,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.2` (`versionCode 3`) |
+| Verzija | `1.0.3` (`versionCode 4`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
