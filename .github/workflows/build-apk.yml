@@ -30,44 +30,60 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android platform 35
-        run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Create stable signing key
-        run: |
-          mkdir -p signing
-          if [ ! -f signing/saptac.jks ]; then
-            keytool -genkeypair -alias saptac -keyalg RSA -keysize 2048 -validity 10950 \
-              -keystore signing/saptac.jks -storepass saptac2026 -keypass saptac2026 \
-              -dname "CN=Saptac, OU=Personal, O=Saptac, L=Krusevac, ST=Serbia, C=RS"
-          fi
-
-      - name: Generate Gradle wrapper
-        run: gradle wrapper --gradle-version 8.9 --distribution-type bin
-
-      - name: Build release APK
+      - name: Environment, wrapper, key and build
         id: build
         shell: bash
         run: |
-          set -o pipefail
-          gradle assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log
-          echo "build_status=$?" >> "$GITHUB_OUTPUT"
+          set +e
+          {
+            echo "===== ENVIRONMENT ====="
+            java -version 2>&1
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+            ls -la "$ANDROID_HOME" || true
+            ls -la "$ANDROID_HOME/platforms" || true
+            ls -la "$ANDROID_HOME/build-tools" || true
+            echo "sdkmanager: $(command -v sdkmanager || true)"
+            echo "gradle: $(command -v gradle || true)"
+            gradle --version 2>&1 || true
+            echo "===== SDK COMPONENTS ====="
+            SDKM=$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")
+            yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+            if [ ! -d "$ANDROID_HOME/platforms/android-35" ]; then
+              "$SDKM" "platforms;android-35" 2>&1 || true
+            fi
+            if [ ! -d "$ANDROID_HOME/build-tools/35.0.0" ]; then
+              "$SDKM" "build-tools;35.0.0" 2>&1 || true
+            fi
+            echo "===== SIGNING KEY ====="
+            mkdir -p signing
+            if [ ! -f signing/saptac.jks ]; then
+              keytool -genkeypair -alias saptac -keyalg RSA -keysize 2048 -validity 10950 \
+                -keystore signing/saptac.jks -storepass saptac2026 -keypass saptac2026 \
+                -dname "CN=Saptac, OU=Personal, O=Saptac, L=Krusevac, ST=Serbia, C=RS" 2>&1
+            else
+              echo "existing key reused"
+            fi
+            echo "===== GRADLE WRAPPER ====="
+            GRADLE=gradle
+            if ! command -v gradle >/dev/null 2>&1; then
+              wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O /tmp/gradle.zip || true
+              unzip -q -o /tmp/gradle.zip -d /tmp/gradle-dist || true
+              GRADLE=/tmp/gradle-dist/gradle-8.9/bin/gradle
+            fi
+            "$GRADLE" wrapper --gradle-version 8.9 --distribution-type bin --no-daemon 2>&1
+            echo "===== ASSEMBLE RELEASE ====="
+            ./gradlew assembleRelease --stacktrace --no-daemon 2>&1
+            echo "ASSEMBLE_EXIT=$?"
+          } | tee build.log
+          echo "===== done =====" >> build.log
+          exit 0
 
       - name: Collect APK
         if: always()
         run: |
           mkdir -p dist
-          APK=$(find app/build/outputs/apk -name '*.apk' | head -1 || true)
+          APK=$(find app/build/outputs/apk -type f -name '*.apk' ! -name '*unsigned*' | head -1 || true)
           if [ -n "$APK" ]; then cp "$APK" dist/Saptac-v1.0.apk; fi
           if [ -f dist/Saptac-v1.0.apk ]; then
             ls -lh dist/Saptac-v1.0.apk
@@ -80,7 +96,7 @@ jobs:
         run: |
           git config user.name "arena-ai-coding-agent[bot]"
           git config user.email "298482267+arena-ai-coding-agent[bot]@users.noreply.github.com"
-          for f in build.log dist/Saptac-v1.0.apk dist/Saptac-v1.0.apk.sha256 signing/saptac.jks gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties; do
+          for f in build.log dist/Saptac-v1.0.apk dist/Saptac-v1.0.apk.sha256 signing/saptac.jks .gitignore gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties; do
             if [ -f "$f" ]; then git add -f "$f"; fi
           done
           git commit -m "CI: APK i log izgradnje [skip ci]" || echo "nothing new to commit"
