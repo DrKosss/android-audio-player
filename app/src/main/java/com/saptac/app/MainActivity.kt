@@ -940,8 +940,7 @@ class MainActivity : android.app.Activity() {
             setPadding(c.dp(16), 0, c.dp(16), c.dp(10))
             addView(actionButton(c, "Nasumično sve", false, R.drawable.ic_shuffle) {
                 val all = LibraryManager.groups(Section.MUSIC).flatMap { it.items }.shuffled()
-                if (all.isEmpty()) return
-                else playItems(Kind.TRACK, "sve", "Sve numere", "Nasumično", all, 0,
+                if (all.isNotEmpty()) playItems(Kind.TRACK, "sve", "Sve numere", "Nasumično", all, 0,
                     shuffle = true, repeat = Store.settings.repeat)
             }, LinearLayout.LayoutParams(0, c.dp(42), 1f))
         }

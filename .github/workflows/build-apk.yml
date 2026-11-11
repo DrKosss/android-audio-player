@@ -149,3 +149,10 @@ jobs:
           done
           git commit -m "CI: APK i log izgradnje [skip ci]" || echo "nothing new to commit"
           git push origin HEAD:${{ github.ref_name }} || true
+
+      - name: Fail when the build produced no APK
+        if: always()
+        shell: bash
+        run: |
+          grep -q 'ASSEMBLE_EXIT=0' build.log
+          test -f dist/Saptac-v1.0.apk
