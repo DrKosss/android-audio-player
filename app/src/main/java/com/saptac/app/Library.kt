@@ -227,7 +227,6 @@ object LibraryManager {
         when {
             sec == Section.MUSIC && view == "izvodjaci" -> items.firstOrNull()?.artist?.takeIf { it.isNotBlank() } ?: "Nepoznat izvođač"
             sec == Section.MUSIC && view == "albumi" -> items.firstOrNull()?.album?.takeIf { it.isNotBlank() } ?: "Nepoznat album"
-            sec == Section.STANDUP && view == "komičari" -> items.firstOrNull()?.artist?.takeIf { it.isNotBlank() } ?: "Nepoznat komičar"
             else -> key.substringAfterLast('/').ifEmpty { "Telefon" }
         }
 
@@ -238,7 +237,6 @@ object LibraryManager {
             val key = when {
                 sec == Section.MUSIC && view == "izvodjaci" -> "artist:" + item.artist.ifBlank { "?" }
                 sec == Section.MUSIC && view == "albumi" -> "album:" + item.album.ifBlank { "?" }
-                sec == Section.STANDUP && view == "komičari" -> "artist:" + item.artist.ifBlank { "?" }
                 else -> item.folderKey
             }
             buckets.getOrPut(key) { ArrayList() }.add(item)
@@ -248,7 +246,6 @@ object LibraryManager {
             val artists = list.map { it.artist }.filter { it.isNotBlank() }
             val subtitle = when {
                 sec == Section.MUSIC -> "${list.size} numera"
-                sec == Section.STANDUP -> "${list.size} snimaka"
                 else -> artists.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "Nepoznat autor"
             }
             Group(key, title, subtitle, list, coverIndex(key), title.take(1).uppercase(Locale.ROOT))

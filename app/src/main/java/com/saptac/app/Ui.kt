@@ -116,29 +116,6 @@ fun rowView(ctx: Context, action: (View) -> Unit, longAction: ((View) -> Boolean
         if (longAction != null) longClick(longAction)
     }
 
-/** Uvećana ikonica foldera/sekcije: boja i simbol prate dodeljenu sekciju. */
-fun folderIconView(ctx: Context, sec: Section?, sizeDp: Int = 28, tileDp: Int = 52): FrameLayout =
-    FrameLayout(ctx).apply {
-        layoutParams = LinearLayout.LayoutParams(ctx.dp(tileDp), ctx.dp(tileDp))
-        background = rounded(C_S2, 12f, ctx)
-        val color = if (sec == null || sec == Section.NONE) C_T2 else C_AMBER
-        val iv = icon(ctx, sectionIcon(sec), color, sizeDp)
-        addView(iv, FrameLayout.LayoutParams(ctx.dp(sizeDp), ctx.dp(sizeDp), Gravity.CENTER))
-    }
-
-/** Ćelija za izbor sekcije sa uvećanom ikonicom, koristi se u listićima. */
-fun sectionIconCell(ctx: Context, sec: Section, action: (View) -> Unit): LinearLayout =
-    vertical(ctx).apply {
-        layoutParams = LinearLayout.LayoutParams(0, ctx.dp(78), 1f).apply { marginEnd = ctx.dp(8) }
-        gravity = Gravity.CENTER
-        background = rounded(C_S2, 16f, ctx)
-        addView(icon(ctx, sectionIcon(sec), C_AMBER, 30))
-        addView(text(ctx, sectionName(sec), 13f, C_T1, bold = true).apply {
-            setPadding(0, ctx.dp(6), 0, 0)
-        })
-        click(action)
-    }
-
 private val C_TRANSPARENT = Color.TRANSPARENT
 
 fun pill(ctx: Context, label: String, active: Boolean): TextView =
@@ -219,6 +196,7 @@ fun seek(ctx: Context, maxMs: Long, posMs: Long, listener: SeekBar.OnSeekBarChan
 
 fun scroll(ctx: Context, child: View): ScrollView =
     ScrollView(ctx).apply {
+        tag = "mainScroll"
         layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
         isVerticalScrollBarEnabled = false
         overScrollMode = View.OVER_SCROLL_NEVER

@@ -64,9 +64,6 @@ fun sectionIcon(s: Section?): Int = when (s) {
     else -> R.drawable.ic_folder
 }
 
-/** Stand up koristi ista pravila kao knjiga: pozicija, brzina, poglavlja i PONIŠTI. */
-fun isBookLike(k: Kind): Boolean = k == Kind.BOOK || k == Kind.STANDUP
-
 data class AudioItem(
     val id: String,
     val uri: String,

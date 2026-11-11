@@ -232,7 +232,7 @@ class PlayerService : Service(), SensorEventListener {
             player.setOnCompletionListener { onCompleted() }
             player.setOnErrorListener { _, what, extra ->
                 Bus.log("Greška plejera ($what/$extra): ${item.title}")
-                Bus.showToast("Ne mogu da pustim ovaj fajl.")
+                
                 state = state?.copy(playing = false)
                 publish()
                 true
@@ -240,7 +240,7 @@ class PlayerService : Service(), SensorEventListener {
             player.prepareAsync()
         } catch (e: Exception) {
             Bus.log("Ne mogu da otvorim fajl: ${e.javaClass.simpleName} · ${item.title}")
-            Bus.showToast("Ne mogu da otvorim: ${item.title}")
+            
             state = state?.copy(playing = false)
         }
         publish()
@@ -313,7 +313,7 @@ class PlayerService : Service(), SensorEventListener {
             else -> -1
         }
         if (nextIndex < 0) {
-            Bus.showToast("Kraj reda")
+            Bus.showToast("Kraj fajla")
             pause()
             return
         }
@@ -356,7 +356,7 @@ class PlayerService : Service(), SensorEventListener {
         Bus.log("Kraj fajla: ${p.current.title}")
         if (p.kind == Kind.EPISODE && !Store.settings.nextAuto) {
             state = p.copy(playing = false, positionMs = 0)
-            Bus.showToast("Kraj epizode")
+            Bus.showToast("Kraj fajla")
             publish()
         } else next()
     }
@@ -388,7 +388,7 @@ class PlayerService : Service(), SensorEventListener {
         try { mp?.setVolume(1f, 1f) } catch (_: Exception) { }
         if (!isPlaying()) resume()
         Bus.log("Tajmer pokrenut: $minutes min")
-        Bus.showToast("Tajmer: $minutes min")
+        
         publish()
     }
 
@@ -412,7 +412,7 @@ class PlayerService : Service(), SensorEventListener {
         if (!isPlaying()) resume() else publish()
         vibrate()
         Bus.log("Tajmer produžen za ${t.extendMin} min")
-        Bus.showToast("+${t.extendMin} min")
+        
     }
 
     private fun maybeExtend(source: String) {

@@ -49,7 +49,6 @@ object Nav {
     var chips: String = "sve"
     var musicTab: String = "folderi"
     var seriesTab: String = "folderi"
-    var standupTab: String = "folderi"
     var standupChips: String = "sve"
     var query: String = ""
     var sheet: String? = null
@@ -100,6 +99,9 @@ class MainActivity : android.app.Activity() {
     private var searchRef: EditText? = null
     private var searchJob: Runnable? = null
     private var seekStart = 0L
+    private var currentRoot: View? = null
+    private var lastScrollKey: String = ""
+    private var savedScrollY: Int = 0
 
     private val uiTicker = object : Runnable {
         override fun run() {
@@ -241,7 +243,7 @@ class MainActivity : android.app.Activity() {
     private fun playQueue(kind: Kind, group: Group, index: Int, startMs: Long = 0L,
                          rate: Float = 1f, shuffle: Boolean = false, repeat: Boolean = false,
                          openPlayer: Boolean = true) {
-        if (group.items.isEmpty()) { toast("Nema audio fajlova u ovoj stavci"); return }
+        if (group.items.isEmpty()) return
         Bus.playRequest = PlayRequest(kind, group.key, group.title, group.subtitle,
             group.items, index.coerceIn(0, group.items.lastIndex), startMs, rate, shuffle, repeat)
         cmd(PlayerService.ACTION_PLAY)
@@ -283,7 +285,7 @@ class MainActivity : android.app.Activity() {
 
     private fun cycleRate() {
         val p = Bus.player ?: return
-        if (p.kind == Kind.TRACK) { toast("Muzika uvek ide 1×"); return }
+        if (p.kind == Kind.TRACK) return
         val opts = floatArrayOf(1f, 1.25f, 1.5f, 1.75f, 2f, 0.75f)
         val i = opts.indexOfFirst { kotlin.math.abs(it - p.rate) < 0.01f }.let { if (it < 0) 0 else it }
         val r = opts[(i + 1) % opts.size]
@@ -313,7 +315,7 @@ class MainActivity : android.app.Activity() {
         val st = Store.settings
         return listOf(
             s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab, Nav.seriesTab,
-            Nav.standupTab, Nav.standupChips,
+            Nav.standupChips,
             Nav.sheet ?: "", Nav.feedId, Nav.catalog.size, Nav.catalogItem?.title ?: "",
             Nav.importSelection.size, Nav.scanning, Nav.moveName, Nav.moveFrom.name,
             Bus.night, Bus.lockPreview, Bus.libraryVersion, Bus.toast ?: "",
@@ -325,11 +327,32 @@ class MainActivity : android.app.Activity() {
         ).joinToString("|")
     }
 
+    private fun scrollKey(): String {
+        val s = cur()
+        return listOf(s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab,
+            Nav.seriesTab, Nav.standupChips).joinToString("|")
+    }
+
+    private fun findMainScroll(v: View?): ScrollView? {
+        if (v == null) return null
+        if (v is ScrollView && v.tag == "mainScroll") return v
+        if (v is ViewGroup) {
+            for (i in 0 until v.childCount) {
+                val r = findMainScroll(v.getChildAt(i))
+                if (r != null) return r
+            }
+        }
+        return null
+    }
+
     private fun render() {
         val c = this
         seekRef = null; timeLeftRef = null; timeRightRef = null; wholeRef = null
         titleRef = null; miniProgressRef = null; lockProgressRef = null
         timerToolRef = null; timerToastRef = null; nightTimeRef = null; searchRef = null
+
+        val keyBefore = scrollKey()
+        val oldScroll = findMainScroll(currentRoot)?.scrollY ?: 0
 
         val root = FrameLayout(c).apply { setBackgroundColor(C_BG) }
         val base = vertical(c)
@@ -338,13 +361,6 @@ class MainActivity : android.app.Activity() {
         base.addView(homeIndicator())
         root.addView(base, FrameLayout.LayoutParams(-1, -1))
 
-        val homeScreens = setOf("books", "series", "music", "standup", "folder", "seriesdetail", "feed", "feeds", "catitem", "import", "arrange", "mixed", "settings", "log", "battery")
-        if (Nav.sheet == null && !Bus.night && !Bus.lockPreview && cur().v in homeScreens) {
-            root.addView(helpFab(), FrameLayout.LayoutParams(c.dp(40), c.dp(40),
-                Gravity.BOTTOM or Gravity.END).apply {
-                bottomMargin = c.dp(74); rightMargin = c.dp(14)
-            })
-        }
         if (Nav.sheet != null) root.addView(sheetOverlay(), FrameLayout.LayoutParams(-1, -1))
         if (Bus.night) root.addView(nightOverlay(), FrameLayout.LayoutParams(-1, -1))
         if (Bus.lockPreview) root.addView(lockOverlay(), FrameLayout.LayoutParams(-1, -1))
@@ -355,7 +371,14 @@ class MainActivity : android.app.Activity() {
                     Gravity.BOTTOM).apply { leftMargin = c.dp(16); rightMargin = c.dp(16); bottomMargin = bottom })
             } else Bus.toast = null
         }
+
+        val keyAfter = scrollKey()
+        savedScrollY = if (lastScrollKey == keyBefore && keyBefore == keyAfter) oldScroll else 0
+        lastScrollKey = keyAfter
         setContentView(root, ViewGroup.LayoutParams(-1, -1))
+        currentRoot = root
+        val restoreY = savedScrollY
+        root.post { findMainScroll(root)?.scrollTo(0, restoreY) }
         if (cur().v == "player") Bus.player?.let { maybeFetchCover(it) }
         lastSig = signature()
         updateDynamic()
@@ -373,11 +396,9 @@ class MainActivity : android.app.Activity() {
         if (!Bus.seeking) seekRef?.let { it.progress = (p.positionMs / 1000).toInt().coerceIn(0, it.max) }
         timeLeftRef?.text = fmtTime(p.positionMs)
         timeRightRef?.text = "−" + fmtTime(dur - p.positionMs)
-        wholeRef?.text = when (p.kind) {
-            Kind.BOOK -> "Cela knjiga: ${(f * 100).roundToInt()}% · preostalo ${fmtShort(dur - p.positionMs)}"
-            Kind.STANDUP -> "Ceo snimak: ${(f * 100).roundToInt()}% · preostalo ${fmtShort(dur - p.positionMs)}"
-            else -> "ukupno ${fmtShort(dur)}"
-        }
+        wholeRef?.text = if (p.kind == Kind.BOOK)
+            "Cela knjiga: ${(f * 100).roundToInt()}% · preostalo ${fmtShort(dur - p.positionMs)}"
+        else "ukupno ${fmtShort(dur)}"
         titleRef?.text = p.current.title
         miniProgressRef?.set(f)
         lockProgressRef?.set(f)
@@ -538,7 +559,7 @@ class MainActivity : android.app.Activity() {
         val wrap = vertical(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
         wrap.addView(View(c).apply { background = rounded(C_LINE, 0f, c) },
             LinearLayout.LayoutParams(-1, c.dp(1)))
-        val row = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, c.dp(66)) }
+        val row = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, c.dp(58)) }
         val items = listOf(
             Triple(Section.MUSIC, "Muzika", R.drawable.ic_music),
             Triple(Section.BOOKS, "Knjige", R.drawable.ic_book),
@@ -551,7 +572,7 @@ class MainActivity : android.app.Activity() {
             val cell = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
                 gravity = Gravity.CENTER
-                addView(icon(c, res, color, 30))
+                addView(icon(c, res, color, 21))
                 addView(text(c, label, 10.5f, color).apply { gravity = Gravity.CENTER })
                 click { tabHome(sec) }
             }
@@ -588,8 +609,6 @@ class MainActivity : android.app.Activity() {
         "feeds" -> feedsScreen()
         "feed" -> feedScreen(cur().id)
         "catitem" -> catalogItemScreen()
-        "log" -> logScreen()
-        "battery" -> batteryScreen()
         else -> booksScreen()
     }
 
@@ -742,11 +761,9 @@ class MainActivity : android.app.Activity() {
     private fun standupScreen(): View {
         val c = this
         Nav.tab = Section.STANDUP
-        val tabs = tabsBar(listOf("folderi" to "Folderi", "komičari" to "Komičari"),
-            Nav.standupTab) { Nav.standupTab = it }
-        val chips = chipsBar(listOf("sve" to "Sve", "tok" to "U toku", "nove" to "Nove", "zav" to "Završeni"),
+        val chips = chipsBar(listOf("sve" to "Sve", "tok" to "U toku", "nove" to "Nove", "zav" to "Završene"),
             Nav.standupChips) { Nav.standupChips = it }
-        val groups = LibraryManager.groups(Section.STANDUP, Nav.standupTab)
+        val groups = LibraryManager.groups(Section.STANDUP)
         val filtered = groups.filter { g ->
             val pos = LibraryManager.bookPosition(g)
             val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
@@ -758,21 +775,18 @@ class MainActivity : android.app.Activity() {
             }
         }
         val list = listHost()
-        if (filtered.isEmpty()) list.addView(emptyState(
-            "Nema stand up snimaka u ovoj grupi.\nUvezi foldere sa nastupima.",
-            "Uvezi foldere") { go("import") })
         filtered.forEach { g ->
             val pos = LibraryManager.bookPosition(g)
             val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
             val sub = when {
-                done -> "${g.subtitle} · odgledano"
+                done -> "${g.subtitle} · završena"
                 pos > 0 -> "${g.subtitle} · preostalo ${fmtShort(g.durationMs - pos)}"
-                else -> "${g.subtitle} · ${fmtShort(g.durationMs)} · novo"
+                else -> "${g.subtitle} · ${fmtShort(g.durationMs)} · nova"
             }
             val row = rowView(c, { openStandup(g) }, {
                 moveDialog(g.title, Section.STANDUP, g.items); true
             })
-            row.addView(cover(c, g.cover, g.initial, 56, 12f))
+            row.addView(cover(c, g.cover, g.initial, 48, 11f))
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
                 addView(text(c, g.title, 14.5f, C_T1))
@@ -781,19 +795,11 @@ class MainActivity : android.app.Activity() {
                     addView(progressLine(c, pos.toFloat() / g.durationMs))
             }
             row.addView(tx)
-            if (done) row.addView(icon(c, R.drawable.ic_check, C_T2, 18))
+            if (done) row.addView(icon(c, R.drawable.ic_check, C_T2, 16))
             if (done) row.alpha = 0.42f
             list.addView(row)
         }
-        val importRow = rowView(c, { go("import") })
-        importRow.addView(folderIconView(c, Section.STANDUP, 30, 56))
-        importRow.addView(vertical(c).apply {
-            layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-            addView(text(c, "Uvezi stand up foldere", 14.5f, C_T1))
-            addView(text(c, "interna memorija, SD kartica", 12f, C_T2))
-        })
-        list.addView(importRow)
-        return page(header("Stand up"), tabs, chips, scroll(c, list), miniPlayer(), navBar())
+        return page(header("Stand up"), chips, scroll(c, list), miniPlayer(), navBar())
     }
 
     private fun feedActions(feeds: List<Feed>): View {
@@ -934,7 +940,7 @@ class MainActivity : android.app.Activity() {
             setPadding(c.dp(16), 0, c.dp(16), c.dp(10))
             addView(actionButton(c, "Nasumično sve", false, R.drawable.ic_shuffle) {
                 val all = LibraryManager.groups(Section.MUSIC).flatMap { it.items }.shuffled()
-                if (all.isEmpty()) toast("Nema muzike. Uvezi foldere.")
+                if (all.isEmpty()) return
                 else playItems(Kind.TRACK, "sve", "Sve numere", "Nasumično", all, 0,
                     shuffle = true, repeat = Store.settings.repeat)
             }, LinearLayout.LayoutParams(0, c.dp(42), 1f))
@@ -1054,7 +1060,7 @@ class MainActivity : android.app.Activity() {
         val times = horizontal(c).apply {
             layoutParams = LinearLayout.LayoutParams(-1, -2)
             val l = text(c, fmtTime(p.positionMs), 11.5f, C_T2)
-            l.click { gotoDialog() }
+            l.click { toast("Idi na vreme: u pravoj aplikaciji otvara unos HH:MM:SS") }
             timeLeftRef = l
             addView(l, LinearLayout.LayoutParams(0, -2, 1f))
             val r = text(c, "−" + fmtTime(p.durationMs - p.positionMs), 11.5f, C_T2)
@@ -1076,7 +1082,7 @@ class MainActivity : android.app.Activity() {
             addView(toolButton(c, 0, fmtRate(p.rate), false) { cycleRate() }.first,
                 LinearLayout.LayoutParams(0, c.dp(52), 1f).apply { marginEnd = c.dp(8) })
             addView(toolButton(c, R.drawable.ic_list,
-                when (p.kind) { Kind.BOOK -> "Poglavlja"; Kind.STANDUP -> "Delovi"; else -> "Lista" },
+                if (p.kind == Kind.BOOK) "Poglavlja" else "Lista",
                 false) { go("chapters") }.first,
                 LinearLayout.LayoutParams(0, c.dp(52), 1f))
         }
@@ -1221,41 +1227,12 @@ class MainActivity : android.app.Activity() {
         if (p.index + 1 < p.queue.size) "Sledeće: ${p.queue[p.index + 1].title} · ${(p.queue[p.index + 1].durationMs / 60000)} min"
         else "Poslednje u redu"
 
-    private fun gotoDialog() {
-        val p = Bus.player ?: return
-        val c = this
-        val input = EditText(c).apply {
-            hint = "HH:MM:SS ili MM:SS"
-            setText(fmtTime(p.positionMs))
-            inputType = InputType.TYPE_CLASS_TEXT
-            setTextColor(C_T1)
-        }
-        val pad = FrameLayout(c).apply {
-            setPadding(c.dp(20), c.dp(12), c.dp(20), 0)
-            addView(input, FrameLayout.LayoutParams(-1, -2))
-        }
-        AlertDialog.Builder(c)
-            .setTitle("Idi na vreme")
-            .setView(pad)
-            .setPositiveButton("Idi") { _, _ ->
-                val parts = input.text.toString().split(':').map { it.trim().toLongOrNull() ?: 0L }
-                val ms = when (parts.size) {
-                    3 -> (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000L
-                    2 -> (parts[0] * 60 + parts[1]) * 1000L
-                    else -> 0L
-                }
-                seekTo(ms); Bus.undo = p.positionMs to System.currentTimeMillis(); render()
-            }
-            .setNegativeButton("Otkaži", null)
-            .show()
-    }
-
     /* ------------------------------------------------------------ poglavlja / lista */
     private fun chaptersScreen(): View {
         val c = this
         val p = Bus.player ?: return page(header("Poglavlja", back = true), emptyState("Ništa se ne pušta."))
         val list = listHost()
-        if (isBookLike(p.kind) && p.queue.size == 1) {
+        if (p.kind == Kind.BOOK && p.queue.size == 1) {
             val n = 10
             val step = p.durationMs / n
             val here = (p.positionMs / step.coerceAtLeast(1)).toInt()
@@ -1292,7 +1269,7 @@ class MainActivity : android.app.Activity() {
                 list.addView(row)
             }
         }
-        val title = when (p.kind) { Kind.BOOK -> "Poglavlja"; Kind.STANDUP -> "Delovi"; else -> "Lista" }
+        val title = if (p.kind == Kind.BOOK) "Poglavlja" else "Lista"
         return page(header(title, plus = false, gear = false, back = true),
             scroll(c, list), miniPlayer())
     }
@@ -1342,13 +1319,7 @@ class MainActivity : android.app.Activity() {
         body.addView(importRow)
         Bus.library.folders.take(12).forEach { f ->
             val sec = Store.folderSection(f.key) ?: f.suggested
-            val row = rowView(c, { cycleFolder(f.key); render() })
-            row.addView(folderIconView(c, sec, 26, 48))
-            row.addView(vertical(c).apply {
-                layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                addView(text(c, f.name, 14.5f, C_T1))
-                addView(text(c, "${f.count} fajlova", 12f, C_T2))
-            })
+            val row = settingRow(c, f.name, null) {}
             val badge = text(c, sectionName(sec), 11.5f,
                 if (sec == null) C_T3 else C_AMBER, bold = true)
             badge.background = if (sec == null)
@@ -1359,6 +1330,7 @@ class MainActivity : android.app.Activity() {
                 } else rounded(C_AMBER_D, 9f, c)
             badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
             row.addView(badge)
+            row.click { cycleFolder(f.key); render() }
             body.addView(row)
         }
         body.addView(settingRow(c, "Rasporedi fajlove", "$unassigned čekaju") { go("arrange") })
@@ -1408,11 +1380,17 @@ class MainActivity : android.app.Activity() {
         })
 
         body.addView(sectionLabelView("RAD U POZADINI"))
-        body.addView(settingRow(c, "Baterija bez ograničenja", ok = true) { go("battery") })
-        body.addView(settingRow(c, "Izuzeta od uspavljivanja", ok = true) { go("battery") })
-        body.addView(settingRow(c, "Dnevnik događaja", "—") { go("log") })
+        body.addView(settingRow(c, "Baterija bez ograničenja", ok = true) {
+            toast("Vodič kroz Samsung podešavanja baterije")
+        })
+        body.addView(settingRow(c, "Izuzeta od uspavljivanja", ok = true) {
+            toast("Vodič kroz Samsung podešavanja baterije")
+        })
+        body.addView(settingRow(c, "Dnevnik događaja", "—") {
+            toast("Dnevnik u pravoj aplikaciji beleži puštanja, pauze i greške")
+        })
         body.addView(text(c,
-            "Šaptač v1.0.1 · podaci ostaju na telefonu. Za pouzdan rad sa ugašenim ekranom podesi bateriju po vodiču.",
+            "Prototip. Postavke se pamte u pregledaču; u pravoj aplikaciji ove prečice vode u sistemske ekrane.",
             11.5f, C_T3).apply { setPadding(0, c.dp(18), c.dp(4), c.dp(6)) })
         return page(header("Podešavanja", plus = false, gear = false, back = true), scroll(c, body))
     }
@@ -1433,7 +1411,7 @@ class MainActivity : android.app.Activity() {
             layoutParams = LinearLayout.LayoutParams(-1, -2)
             setPadding(c.dp(16), 0, c.dp(16), c.dp(10))
             addView(actionButton(c, "Prihvati predloge", true) {
-                LibraryManager.acceptSuggestions(); toast("Predlozi prihvaćeni")
+                LibraryManager.acceptSuggestions(); toast("Raspoređeno: ${Bus.library.folders.count { Store.folderSection(it.key) != null }} foldera")
             }, LinearLayout.LayoutParams(0, c.dp(42), 1f))
             addView(actionButton(c, "Poništi", false) {
                 Bus.library.folders.forEach { Store.setFolderSection(it.key, null) }
@@ -1452,7 +1430,12 @@ class MainActivity : android.app.Activity() {
         Bus.library.folders.forEach { f ->
             val sec = Store.folderSection(f.key) ?: f.suggested
             val row = rowView(c, { cycleFolder(f.key); render() })
-            row.addView(folderIconView(c, sec, 30, 56))
+            row.addView(FrameLayout(c).apply {
+                layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
+                background = rounded(C_S2, 11f, c)
+                addView(icon(c, R.drawable.ic_folder, C_T2, 19),
+                    FrameLayout.LayoutParams(c.dp(19), c.dp(19), Gravity.CENTER))
+            })
             row.addView(vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
                 addView(text(c, f.name, 14.5f, C_T1))
@@ -1484,33 +1467,44 @@ class MainActivity : android.app.Activity() {
             val body = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(-1, -2)
                 setPadding(c.dp(22), c.dp(10), c.dp(22), c.dp(24))
-                addView(folderIconView(c, null, 36, 64).apply {
-                    (layoutParams as LinearLayout.LayoutParams).bottomMargin = c.dp(16)
+                addView(FrameLayout(c).apply {
+                    layoutParams = LinearLayout.LayoutParams(c.dp(54), c.dp(54)).apply { bottomMargin = c.dp(16) }
+                    background = rounded(C_S2, 11f, c)
+                    addView(icon(c, R.drawable.ic_folder, C_T2, 26),
+                        FrameLayout.LayoutParams(c.dp(26), c.dp(26), Gravity.CENTER))
                 })
                 addView(text(c, "Šaptač traži pristup fajlovima", 19f, C_T1, bold = true))
                 addView(text(c,
                     "Da bi čitao muziku, knjige i emisije sa telefona i SD kartice, potrebna je dozvola „Pristup svim fajlovima“. Aplikacija ništa ne menja i ništa ne briše; samo čita ono što joj ti pokažeš.",
                     13.5f, C_T2).apply { setPadding(0, c.dp(8), 0, c.dp(14)) })
                 addView(text(c,
-                    "Aplikacija nije iz prodavnice, pa ne može da traži dozvolu pojedinačno po folderu. Možeš i samo da dozvoliš pristup audio fajlovima.",
+                    "Aplikacija nije iz prodavnice, pa ne može da traži dozvolu pojedinačno po folderu. Zato traži ovu jednu.",
                     12f, C_T3).apply { setPadding(0, 0, 0, c.dp(22)) })
-                addView(actionButton(c, "Dozvoli pristup svim fajlovima", true) { openAllFilesAccess() })
-                addView(actionButton(c, "Dozvoli pristup audio fajlovima", false) { requestNeededPermissions() }.apply {
-                    layoutParams = LinearLayout.LayoutParams(-1, c.dp(44)).apply { topMargin = c.dp(8) }
+                addView(actionButton(c, "Dozvoli pristup svim fajlovima", true) { openAllFilesAccess() }.apply {
+                    layoutParams = LinearLayout.LayoutParams(-1, c.dp(48))
                 })
                 addView(actionButton(c, "Ne sad", false) { onBack() }.apply {
                     layoutParams = LinearLayout.LayoutParams(-1, c.dp(44)).apply { topMargin = c.dp(8) }
                 })
+                addView(text(c, "U prototipu je ovo simulacija: ništa se stvarno ne čita sa uređaja.",
+                    11.5f, C_T3).apply { setPadding(0, c.dp(16), 0, 0) })
             }
             return page(header("Uvoz", plus = false, gear = false, back = true), scroll(c, body))
         }
         if (Nav.scanning) {
             return page(header("Uvoz", plus = false, gear = false, back = true),
-                emptyState("Pregledam telefon…\nInterna memorija i SD kartica."))
+                emptyState("Pregledam telefon…\nInterna memorija i SD kartica\nTražim audio fajlove i preskačem zvukove obaveštenja."))
         }
         val folders = Bus.library.folders
+        val totalFiles = folders.sumOf { it.count }
+        val note = horizontal(c).apply {
+            setPadding(c.dp(18), c.dp(4), c.dp(18), c.dp(8))
+            addView(text(c, "${folders.size} foldera sa zvukom", 12f, C_T2),
+                LinearLayout.LayoutParams(0, -2, 1f))
+            addView(text(c, "$totalFiles fajlova", 12f, C_T2))
+        }
         val list = listHost()
-        if (folders.isEmpty()) list.addView(emptyState("Nije pronađen nijedan folder sa audio fajlovima.\nMožeš izabrati folder ručno."))
+        if (folders.isEmpty()) list.addView(emptyState("Nema novih foldera.\nSve što je pronađeno je već uvezeno."))
         folders.forEach { f ->
             val included = Nav.importSelection.contains(f.key)
             if (!Nav.importSections.containsKey(f.key)) Nav.importSections[f.key] = f.suggested
@@ -1529,11 +1523,10 @@ class MainActivity : android.app.Activity() {
                 }
             }
             row.addView(check)
-            row.addView(folderIconView(c, sec, 24, 44))
             row.addView(vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(10) }
                 addView(text(c, f.name, 14.5f, C_T1))
-                addView(text(c, "${f.count} fajlova · ${f.key}", 11f, C_T3))
+                addView(text(c, "${f.key} · ${f.count} fajlova", 11f, C_T3))
             })
             val badge = text(c, sectionName(sec), 11.5f, if (sec == null) C_T3 else C_AMBER, bold = true)
             badge.background = if (sec == null) GradientDrawable().apply {
@@ -1552,23 +1545,26 @@ class MainActivity : android.app.Activity() {
             row.addView(badge)
             list.addView(row)
         }
-        val bottom = vertical(c).apply {
-            setPadding(c.dp(16), c.dp(8), c.dp(16), c.dp(10))
-            addView(actionButton(c,
-                if (Nav.importSelection.isEmpty()) "Izaberi najmanje jedan folder"
-                else "Uvezi ${Nav.importSelection.size} foldera", true) { doImport() })
-            addView(horizontal(c).apply {
-                layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = c.dp(8) }
-                addView(actionButton(c, "Pojedinačni fajlovi", false) { importFiles() },
-                    LinearLayout.LayoutParams(0, c.dp(42), 1f))
-                addView(actionButton(c, "Folder sa SD kartice", false) { importTree() },
-                    LinearLayout.LayoutParams(0, c.dp(42), 1f).apply { marginStart = c.dp(8) })
-            })
-            addView(text(c,
-                "Fajlovi ostaju gde jesu. Uvoz samo pamti koji folder pripada kojoj sekciji, pa ništa ne može da se izgubi ili obriše.",
-                11.5f, C_T3).apply { setPadding(0, c.dp(12), 0, 0) })
-        }
-        return page(header("Uvoz", plus = false, gear = false, back = true), scroll(c, list), bottom)
+        list.addView(text(c, "Dodir na red uključuje folder, dodir na oznaku menja sekciju",
+            12f, C_T2).apply { setPadding(c.dp(18), c.dp(4), c.dp(18), c.dp(10)) })
+        list.addView(actionButton(c, "Uvezi pojedinačne fajlove", false) {
+            importFiles()
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(-1, c.dp(44)).apply {
+                setMargins(c.dp(16), 0, c.dp(16), c.dp(6))
+            }
+        })
+        list.addView(actionButton(c,
+            if (Nav.importSelection.isEmpty()) "Izaberi najmanje jedan folder"
+            else "Uvezi ${Nav.importSelection.size} foldera", true) { doImport() }.apply {
+            layoutParams = LinearLayout.LayoutParams(-1, c.dp(48)).apply {
+                setMargins(c.dp(16), 0, c.dp(16), c.dp(18))
+            }
+        })
+        list.addView(text(c,
+            "Fajlovi ostaju gde jesu. Uvoz samo pamti koji folder pripada kojoj sekciji, pa ništa ne može da se izgubi ili obriše.\nPrototip prikazuje izmišljene foldere; prava aplikacija čita tvoj telefon.",
+            11.5f, C_T3).apply { setPadding(c.dp(22), 0, c.dp(22), c.dp(24)) })
+        return page(header("Uvoz", plus = false, gear = false, back = true), note, scroll(c, list))
     }
 
     private fun doImport() {
@@ -1576,11 +1572,13 @@ class MainActivity : android.app.Activity() {
         Nav.importSelection.forEach { key -> Store.setFolderSection(key, Nav.importSections[key]) }
         Store.importedOnce = true
         Bus.libraryVersion++
+        val count = Nav.importSelection.size
         val wait = Nav.importSelection.count { Nav.importSections[it] == null }
         Nav.importSelection.clear()
         Bus.log("Uvezeno foldera: ${Bus.library.folders.size}")
+        toast("Uvezeno: $count foldera" + if (wait > 0) " · $wait čeka raspoređivanje" else "")
         if (wait > 0) { go("arrange"); toast("$wait foldera čeka raspoređivanje", 2600) }
-        else { onBack(); toast("Uvoz završen") }
+        else onBack()
     }
 
     private fun importTree() {
@@ -1642,7 +1640,6 @@ class MainActivity : android.app.Activity() {
         }
         Nav.sheet = null
         rescan()
-        toast("Dodato u ${sectionName(sec)}")
     }
 
     private fun openAllFilesAccess() {
@@ -1658,11 +1655,6 @@ class MainActivity : android.app.Activity() {
         try { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:$packageName"))) } catch (_: Exception) { }
     }
-    private fun openBatterySettings() {
-        try { startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
-        catch (_: Exception) { openAppSettings() }
-    }
-
     /* ------------------------------------------------------------ mešani fajlovi */
     private fun mixedScreen(): View {
         val c = this
@@ -1676,7 +1668,12 @@ class MainActivity : android.app.Activity() {
                 Bus.log("Mešani fajl premešten: ${item.title} → ${sectionName(looks)}")
                 toast("Premešteno u ${sectionName(looks)}: ${item.title}")
             })
-            row.addView(folderIconView(c, looks, 30, 56))
+            row.addView(FrameLayout(c).apply {
+                layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
+                background = rounded(C_S2, 11f, c)
+                addView(icon(c, R.drawable.ic_folder, C_T2, 19),
+                    FrameLayout.LayoutParams(c.dp(19), c.dp(19), Gravity.CENTER))
+            })
             row.addView(vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
                 addView(text(c, item.title, 14.5f, C_T1))
@@ -1764,15 +1761,15 @@ class MainActivity : android.app.Activity() {
         val ep = f.episodes.getOrNull(index) ?: return
         if (ep.local.isNotBlank() && File(ep.local).exists()) { playLocalEpisode(f, ep); return }
         if (Store.settings.wifiOnly && !Net.onWifi(this)) {
-            toast("Preuzimanja su podešena samo na Wi-Fi"); return
+            toast("Preuzimanja samo na Wi-Fi"); return
         }
-        toast("Preuzimam epizodu…", 4000)
+        toast("Osvežavanje traje samo na telefona; u prototipu ništa ne dolazi sa mreže")
         thread {
             val safeId = f.id.replace(Regex("[^A-Za-z0-9_-]"), "_")
             val file = File(filesDir, "podcasts/${safeId}_${index}.mp3")
             val ok = Net.download(ep.url, file) { }
             runOnUiThread {
-                if (!ok) { toast("Preuzimanje nije uspelo"); return@runOnUiThread }
+                if (!ok) { toast("Osvežavanje traje samo na telefona; u prototipu ništa ne dolazi sa mreže"); return@runOnUiThread }
                 val feeds = Store.feeds().toMutableList()
                 val fi = feeds.indexOfFirst { it.id == f.id }
                 if (fi >= 0) {
@@ -1814,8 +1811,8 @@ class MainActivity : android.app.Activity() {
         AlertDialog.Builder(c).setTitle("Adresa RSS feeda").setView(pad)
             .setPositiveButton("Dodaj") { _, _ ->
                 val url = input.text.toString().trim()
-                if (!url.startsWith("http")) { toast("Unesi punu https adresu"); return@setPositiveButton }
-                toast("Čitam feed…", 4000)
+                if (!url.startsWith("http")) return@setPositiveButton
+                
                 thread {
                     try {
                         val (title, eps) = Net.fetchFeed(url)
@@ -1826,10 +1823,10 @@ class MainActivity : android.app.Activity() {
                                 eps.size, System.currentTimeMillis(), eps))
                             Store.saveFeeds(feeds)
                             Bus.log("Feed dodat: $title (${eps.size} epizoda)")
-                            toast("Feed dodat: $title")
+                            toast("Feed dodat. U pravoj aplikaciji ovde se čita RSS i slika.")
                         }
                     } catch (e: Exception) {
-                        runOnUiThread { toast("Ne mogu da pročitam feed: ${e.message}") }
+                        runOnUiThread { toast("Osvežavanje traje samo na telefona; u prototipu ništa ne dolazi sa mreže") }
                     }
                 }
             }.setNegativeButton("Otkaži", null).show()
@@ -1838,7 +1835,7 @@ class MainActivity : android.app.Activity() {
     private fun refreshOneFeed(id: String) = refreshFeeds(listOf(id))
 
     private fun refreshFeeds(only: List<String>? = null) {
-        toast("Osvežavam feedove…", 4000)
+        toast("Osvežavanje traje samo na telefona; u prototipu ništa ne dolazi sa mreže")
         thread {
             val feeds = Store.feeds().toMutableList()
             feeds.forEachIndexed { i, f ->
@@ -1856,7 +1853,7 @@ class MainActivity : android.app.Activity() {
                 } catch (_: Exception) { }
             }
             Store.saveFeeds(feeds)
-            runOnUiThread { Bus.log("Feedovi osveženi"); render(); toast("Feedovi osveženi") }
+            runOnUiThread { Bus.log("Feedovi osveženi"); render() }
         }
     }
 
@@ -1878,10 +1875,10 @@ class MainActivity : android.app.Activity() {
 
     private fun followFeed(item: CatalogItem) {
         if (item.feedUrl.isBlank()) {
-            toast("Demo katalog nema RSS adresu. Potraži emisiju na mreži.")
+            toast("Pregled epizoda stiže sa feeda; u prototipu nije dostupan")
             return
         }
-        toast("Zapraćujem…", 4000)
+        
         thread {
             try {
                 val (title, eps) = Net.fetchFeed(item.feedUrl)
@@ -1897,7 +1894,7 @@ class MainActivity : android.app.Activity() {
                     toast("Zapraćeno: ${item.title}")
                 }
             } catch (e: Exception) {
-                runOnUiThread { toast("Ne mogu da pročitam feed: ${e.message}") }
+                runOnUiThread { toast("Osvežavanje traje samo na telefona; u prototipu ništa ne dolazi sa mreže") }
             }
         }
     }
@@ -1913,7 +1910,7 @@ class MainActivity : android.app.Activity() {
         }
     }
 
-    /* ------------------------------------------------------------ katalog / dnevnik / baterija */
+    /* ------------------------------------------------------------ katalog */
     private fun catalogItemScreen(): View {
         val c = this
         val item = Nav.catalogItem ?: return page(header("Katalog", back = true), emptyState("Nema podataka."))
@@ -1930,7 +1927,7 @@ class MainActivity : android.app.Activity() {
             addView(actionButton(c, if (followed) "Zapraćeno" else "Zaprati", true) { followFeed(item) },
                 LinearLayout.LayoutParams(0, c.dp(42), 1f))
             addView(actionButton(c, "Pregled epizoda", false) {
-                if (item.feedUrl.isBlank()) toast("Demo katalog nema RSS adresu")
+                if (item.feedUrl.isBlank()) toast("Pregled epizoda stiže sa feeda; u prototipu nije dostupan")
                 else {
                     val id = item.feedUrl.hashCode().toString()
                     if (Store.feeds().none { it.id == id }) followFeed(item)
@@ -1953,58 +1950,6 @@ class MainActivity : android.app.Activity() {
             body.addView(row)
         }
         return page(header(item.title, back = true), scroll(c, body))
-    }
-
-    private fun logScreen(): View {
-        val c = this
-        val body = vertical(c).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
-            setPadding(c.dp(18), 0, c.dp(18), c.dp(16))
-        }
-        val logs = Store.logs()
-        if (logs.isEmpty()) body.addView(emptyState("Dnevnik je prazan."))
-        logs.forEach { l ->
-            body.addView(text(c, l, 12f, C_T2).apply {
-                setPadding(0, c.dp(7), 0, c.dp(7))
-                typeface = Typeface.MONOSPACE
-            })
-            body.addView(View(c).apply { background = rounded(C_S2, 0f, c) },
-                LinearLayout.LayoutParams(-1, c.dp(1)))
-        }
-        return page(header("Dnevnik događaja", back = true),
-            actionButton(c, "Obriši dnevnik", false) { Store.clearLog(); render() }.apply {
-                layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply {
-                    setMargins(c.dp(16), 0, c.dp(16), c.dp(10))
-                }
-            }, scroll(c, body))
-    }
-
-    private fun batteryScreen(): View {
-        val c = this
-        val body = vertical(c).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
-            setPadding(c.dp(20), c.dp(6), c.dp(20), c.dp(20))
-        }
-        body.addView(text(c, "Da zvuk ne stane kad se ekran ugasi, podesi tri stvari na telefonu jednom.",
-            14f, C_T1))
-        val steps = listOf(
-            "Podešavanja → Aplikacije → Šaptač → Baterija → Neograničeno",
-            "Podešavanja → Baterija → Ograničenja rada u pozadini → dodaj Šaptač u „Nikad ne uspavljuj“",
-            "Dozvoli obaveštenja kada aplikacija pita."
-        )
-        steps.forEachIndexed { i, st ->
-            body.addView(text(c, "${i + 1}.  $st", 13.5f, C_T2).apply {
-                setPadding(0, c.dp(16), 0, 0)
-            })
-        }
-        body.addView(text(c,
-            "Reprodukcija radi u sistemskom servisu za medije sa stalnim obaveštenjem. Gašenje ekrana, zaključavanje i uklanjanje iz liste nedavnih ne prekidaju zvuk.",
-            12.5f, C_T3).apply { setPadding(0, c.dp(22), 0, c.dp(18)) })
-        body.addView(actionButton(c, "Otvori podešavanja aplikacije", true) { openAppSettings() })
-        body.addView(actionButton(c, "Podešavanja baterije", false) { openBatterySettings() }.apply {
-            layoutParams = LinearLayout.LayoutParams(-1, c.dp(44)).apply { topMargin = c.dp(8) }
-        })
-        return page(header("Rad u pozadini", back = true), scroll(c, body))
     }
 
     /* ------------------------------------------------------------ listići (sheet) */
@@ -2032,7 +1977,6 @@ class MainActivity : android.app.Activity() {
         }
         when (Nav.sheet) {
             "timer" -> timerSheet(sheet)
-            "help" -> helpSheet(sheet)
             "files" -> filesSheet(sheet)
             "move" -> moveSheet(sheet)
         }
@@ -2109,39 +2053,20 @@ class MainActivity : android.app.Activity() {
             12f, C_T2).apply { setPadding(0, c.dp(16), 0, 0) })
     }
 
-    private fun helpSheet(sheet: LinearLayout) {
-        val c = this
-        sheet.addView(text(c, "Kako da probaš", 17f, C_T1, bold = true).apply {
-            setPadding(0, 0, 0, c.dp(14))
-        })
-        listOf(
-            "Knjige, Muzika, Emisije i Stand up — donja traka menja sekciju.",
-            "Dodir na knjigu otvara plejer; na dnu liste je mini-plejer.",
-            "Na plejeru su alati (Tajmer, Brzina, Lista) ispod trake, a transport (−30, pusti, +30) na dnu.",
-            "Prethodno prvo vraća na početak dela; drugi dodir prebacuje na prethodni fajl.",
-            "Tajmer na plejeru vodi na noćni ekran. Poslednjih 60 s zvuk se stišava.",
-            "Uvoz: dugme + gore desno u svakoj sekciji, ili prvi red u Podešavanjima.",
-            "Pogrešna sekcija: dug pritisak na stavku otvara „Prebaci u…“.",
-            "Emisije → Katalog: traži podkaste po imenu (Apple katalog)."
-        ).forEach { line ->
-            sheet.addView(text(c, "•  $line", 13f, C_T2).apply {
-                setPadding(0, 0, 0, c.dp(8))
-            })
-        }
-        sheet.addView(text(c, "Zvuk ide u sistemskom servisu, pa radi i kad je ekran ugašen.",
-            12f, C_T3).apply { setPadding(0, c.dp(10), 0, 0) })
-    }
-
     private fun filesSheet(sheet: LinearLayout) {
         val c = this
-        val title = if (Nav.filesTarget == "tree") "Izabrani folder" else "Pojedinačni fajlovi"
-        sheet.addView(text(c, title, 17f, C_T1, bold = true))
-        sheet.addView(text(c, "Gde da ih smestim? Fajlovi ostaju na disku gde jesu.", 12.5f, C_T2).apply {
-            setPadding(0, c.dp(8), 0, c.dp(16))
-        })
+        sheet.addView(text(c, "Pojedinačni fajlovi", 17f, C_T1, bold = true))
+        sheet.addView(text(c,
+            "U pravoj aplikaciji otvara se izbor fajlova, pa biraš jedan ili više njih. Gde da ih smestim?",
+            12.5f, C_T2).apply { setPadding(0, c.dp(8), 0, c.dp(16)) })
         val row = horizontal(c)
         listOf(Section.BOOKS, Section.SERIES, Section.MUSIC, Section.STANDUP).forEach { sec ->
-            row.addView(sectionIconCell(c, sec) { applyFilesSection(sec) })
+            val cell = text(c, sectionName(sec), 15f, C_T1, bold = true).apply {
+                gravity = Gravity.CENTER
+                background = rounded(C_S2, 16f, c)
+                click { applyFilesSection(sec) }
+            }
+            row.addView(cell, LinearLayout.LayoutParams(0, c.dp(60), 1f).apply { marginEnd = c.dp(8) })
         }
         sheet.addView(row)
     }
@@ -2154,13 +2079,18 @@ class MainActivity : android.app.Activity() {
         val row = horizontal(c)
         val options = listOf(Section.BOOKS, Section.SERIES, Section.MUSIC, Section.STANDUP).filter { it != Nav.moveFrom }
         options.forEach { sec ->
-            row.addView(sectionIconCell(c, sec) { applyMove(sec) })
+            val cell = text(c, sectionName(sec), 15f, C_T1, bold = true).apply {
+                gravity = Gravity.CENTER
+                background = rounded(C_S2, 16f, c)
+                click { applyMove(sec) }
+            }
+            row.addView(cell, LinearLayout.LayoutParams(0, c.dp(58), 1f).apply { marginEnd = c.dp(8) })
         }
         sheet.addView(row)
         sheet.addView(actionButton(c, "Premesti i na disku…", false) {
-            toast("Na Androidu 11+ fajlove premesti kroz „Moji fajlovi“")
+            toast("U pravoj aplikaciji bira se odredišni folder; fajl se tada stvarno premešta.")
         }.apply { layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply { topMargin = c.dp(10) } })
-        sheet.addView(text(c, "Premeštanje menja samo pripadnost sekciji. Pozicija i status ostaju sačuvani.",
+        sheet.addView(text(c, "Premeštanje menja samo pripadnost sekciji, pa je bezbedno. Pozicija i status ostaju sačuvani.",
             12f, C_T2).apply { setPadding(0, c.dp(16), 0, 0) })
     }
 
@@ -2324,17 +2254,4 @@ class MainActivity : android.app.Activity() {
         }
     }
 
-    private fun helpFab(): View {
-        val c = this
-        return FrameLayout(c).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.rgb(0x22, 0x1D, 0x19))
-                setStroke(c.dp(1), C_LINE)
-            }
-            addView(text(c, "?", 16f, C_T2, bold = true).apply { gravity = Gravity.CENTER },
-                FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
-            click { Nav.sheet = "help"; render() }
-        }
     }
-}
