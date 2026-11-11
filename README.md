@@ -1,15 +1,17 @@
-# Šaptač — Android v1.0
+# Šaptač — Android v1.0.1
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
 **[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.420.458 bajtova  
 SHA-256: `9a51af95f0d035c83a599084ef8426681681e4c1e14da0fa9ab7d4dbbd582d66`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom, ikonom iz prototipa i svih 11 ekrana.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom, ikonom iz prototipa, svih 11 ekrana prototipa i novim ekranom četvrte sekcije „Stand up“.
 
-## Šta radi u v1.0
+## Šta radi u v1.0.1
 
-- **Tri sekcije sa različitim pravilima:** Knjige (pozicija po fajlu i sekundi, 0,5–2×, preostalo vreme, `PONIŠTI` posle ručnog traženja), Muzika (folderi/izvođači/albumi, bez pamćenja pozicije, uvek 1×, shuffle/repeat), Emisije (nove/započete/završene, `Nastavi`, `Nasumična`, automatski sledeća, brzina po seriji).
+- **Četiri sekcije sa različitim pravilima:** Knjige (pozicija po fajlu i sekundi, 0,5–2×, preostalo vreme, `PONIŠTI` posle ručnog traženja), Muzika (folderi/izvođači/albumi, bez pamćenja pozicije, uvek 1×, shuffle/repeat), Emisije (nove/započete/završene, `Nastavi`, `Nasumična`, automatski sledeća, brzina po seriji), Stand up (prikaz po folderima/komičarima, pozicija, brzina i „Delovi“).
+- **Detalji „Stand up“:** poseban tab u donjoj traci, prikaz po folderima ili komičarima, filteri `Sve / U toku / Nove / Završeni`, pamćenje pozicije, brzina 0,5–2×, „Delovi“ i `PONIŠTI`; folderi sa `stand up`, `standup`, `komedija`, `comedy` dobijaju automatski predlog. Koristi pravila knjige za duge snimke.
+- **Uvećane ikonice:** ikonice sekcija u donjoj traci su 30 dp, a folderi u uvozu, raspoređivanju, mešanim fajlovima i podešavanjima dobijaju 24–36 dp ikonicu sa simbolom i bojom dodeljene sekcije.
 - **Uvoz svih fajlova:** interna memorija i SD kartica, predlozi klasifikacije po imenu/obliku/tagovima, potvrda foldera, pojedinačni fajlovi i SAF folder, dug pritisak za prebacivanje sekcije, mešani fajlovi; fajlovi se ne pomeraju na disku.
 - **Lokalna reprodukcija:** MP3/M4A/M4B/OGG/Opus/FLAC/WAV preko sistemskog plejera u `PlayerService` foreground servisu; `MediaSession`, stalno obaveštenje i kontrole na zaključanom ekranu; audio-focus, wake-lock, čuvanje pozicije svakih 5 s i pri pauzi/seeku.
 - **Plejer:** ±30 s, prethodno/sledeće, liste/poglavlja, brzina, napredak, omot iz fajla ili opcioni internet-omot po albumu/knjizi.
@@ -33,7 +35,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.0` (`versionCode 1`) |
+| Verzija | `1.0.1` (`versionCode 2`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
@@ -46,7 +48,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 
 ## Tehnička napomena o odstupanju od dizajn-dokumenta
 
-Dizajn-dokument predlaže Jetpack Compose, Media3/ExoPlayer i Room. Ova v1 koristi nativne programske Android `View`-ove, sistemski `MediaPlayer` + `MediaSession` u foreground servisu i lokalnu `SharedPreferences`/JSON pohranu. To su funkcionalni ekvivalenti za iste ekrane, osobine i potpisani APK, izabrani zbog potpune kontrole nad gustim, tačno nacrtanim prototipom i zbog malog APK-a bez dodatnih mrežnih biblioteka. Spoljašnje ponašanje, v1.0 obim, API 30–37, HTTPS-only, jedan ključ i dizajn su po specifikaciji; Compose/Media3/Room nisu ugrađeni.
+Dizajn-dokument predlaže Jetpack Compose, Media3/ExoPlayer i Room. Ova v1 koristi nativne programske Android `View`-ove, sistemski `MediaPlayer` + `MediaSession` u foreground servisu i lokalnu `SharedPreferences`/JSON pohranu. To su funkcionalni ekvivalenti za iste ekrane, osobine i potpisani APK, izabrani zbog potpune kontrole nad gustim, tačno nacrtanim prototipom i zbog malog APK-a bez dodatnih mrežnih biblioteka. Spoljašnje ponašanje, v1 obim, API 30–37, HTTPS-only, jedan ključ i dizajn su po specifikaciji; Compose/Media3/Room nisu ugrađeni.
 
 ## Ponovna izgradnja
 

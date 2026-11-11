@@ -43,16 +43,29 @@ fun coverIndex(key: String): Int {
 /* ------------------------------------------------------------------ *
  * Model
  * ------------------------------------------------------------------ */
-enum class Section { BOOKS, SERIES, MUSIC, NONE }
-enum class Kind { BOOK, EPISODE, TRACK }
+enum class Section { BOOKS, SERIES, MUSIC, STANDUP, NONE }
+enum class Kind { BOOK, EPISODE, TRACK, STANDUP }
 enum class TPhase { RUN, FADE, GRACE }
 
 fun sectionName(s: Section?): String = when (s) {
     Section.BOOKS -> "Knjige"
     Section.SERIES -> "Emisije"
     Section.MUSIC -> "Muzika"
+    Section.STANDUP -> "Stand up"
     else -> "?"
 }
+
+/** Ikonica sekcije; za neraspoređene foldere ostaje generički folder. */
+fun sectionIcon(s: Section?): Int = when (s) {
+    Section.BOOKS -> R.drawable.ic_book
+    Section.SERIES -> R.drawable.ic_radio
+    Section.MUSIC -> R.drawable.ic_music
+    Section.STANDUP -> R.drawable.ic_standup
+    else -> R.drawable.ic_folder
+}
+
+/** Stand up koristi ista pravila kao knjiga: pozicija, brzina, poglavlja i PONIŠTI. */
+fun isBookLike(k: Kind): Boolean = k == Kind.BOOK || k == Kind.STANDUP
 
 data class AudioItem(
     val id: String,
@@ -138,6 +151,7 @@ data class PlayerState(
         Kind.BOOK -> "KNJIGE"
         Kind.EPISODE -> "EMISIJE"
         Kind.TRACK -> "MUZIKA"
+        Kind.STANDUP -> "STAND UP"
     }
 }
 
@@ -211,6 +225,7 @@ fun sectionOf(name: String?): Section = when (name) {
     "Knjige" -> Section.BOOKS
     "Emisije" -> Section.SERIES
     "Muzika" -> Section.MUSIC
+    "Stand up", "stand up" -> Section.STANDUP
     else -> Section.NONE
 }
 
