@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Šaptač — ikona, finalni komplet</title>
+<style>
+:root{
+  --paper:#F4F1EA; --card:#FBF9F5; --ink:#1E1B17; --muted:#6A6257; --faint:#8E8679; --rule:#DAD3C5;
+  --accent:#B05F17; --accent-soft:#F1E2CE;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Noto Serif",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif;
+  --app:#0B0A09; --amber:#EFA13A; --cream:#ECE5D9; --mono:#2F4BB0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+@media (max-width:560px){.wrap{padding:0 18px}}
+header.hero{padding:52px 0 36px;border-bottom:1px solid var(--rule);display:flex;gap:34px;align-items:center;flex-wrap:wrap}
+.hero .mark{width:132px;height:132px;border-radius:24%;background:var(--app);flex:none;display:grid;place-items:center;box-shadow:0 10px 24px rgba(30,27,23,.18)}
+.hero .mark svg{width:74%;height:74%}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+h1{font:400 clamp(34px,5vw,52px)/1 var(--serif);letter-spacing:-.02em;margin:0}
+.lede{font:400 18px/1.5 var(--serif);max-width:30em;margin:12px 0 0}
+section{padding:46px 0;border-bottom:1px solid var(--rule)}
+h2{font:400 clamp(24px,3vw,30px)/1.2 var(--serif);margin:0 0 6px}
+.intro{color:var(--muted);max-width:48em;margin:0 0 28px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(216px,1fr));gap:26px}
+.stage{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:20px;text-align:center}
+.stage .box{background:var(--app);display:grid;place-items:center;margin:0 auto 12px;overflow:hidden}
+.stage p{margin:0;font-size:13px;color:var(--muted)}
+.stage b{display:block;font-size:14px;color:var(--ink);margin-bottom:2px}
+.r108{width:108px;height:108px;border-radius:50%}
+.s96{width:96px;height:96px;border-radius:50%;background:var(--mono)!important}
+.s72{width:72px;height:72px;border-radius:50%}
+.s48{width:48px;height:48px;border-radius:50%}
+.q56{width:56px;height:56px;border-radius:24%}
+.plain{width:100%;aspect-ratio:1;border-radius:20px}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;min-width:560px;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{background:#F0EBE0;font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#EFE9DC;padding:1px 5px;border-radius:5px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:26px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:20px 22px}
+.card h3{font:600 15.5px/1.3 var(--sans);margin:0 0 10px}
+.card ul,.card ol{margin:0;padding-left:1.15em}
+.card li{margin:0 0 8px;font-size:14.5px}
+.swatches{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap}
+.sw{text-align:center;font-size:11.5px;color:var(--muted)}
+.sw i{display:block;width:64px;height:44px;border-radius:10px;border:1px solid rgba(0,0,0,.12);margin-bottom:5px}
+note,.note{display:block;margin:24px 0 0;padding:16px 18px;border-left:3px solid var(--accent);background:#fff;border-radius:0 10px 10px 0;font-size:14.5px;max-width:56em}
+footer{padding:30px 0 54px;font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="g" viewBox="0 0 108 108">
+    <path d="M66 26c-16 0-28 12-28 28 0 11 6 17 10 24 3 5 2 12-4 14" fill="none" stroke="#ECE5D9" stroke-width="5" stroke-linecap="round"/>
+    <path d="M62 42c-8 0-14 6-14 14 0 7 5 10 10 10" fill="none" stroke="#EFA13A" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="66" cy="70" r="6" fill="#EFA13A"/>
+  </symbol>
+  <symbol id="gm" viewBox="0 0 108 108">
+    <path d="M66 26c-16 0-28 12-28 28 0 11 6 17 10 24 3 5 2 12-4 14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <path d="M62 42c-8 0-14 6-14 14 0 7 5 10 10 10" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="66" cy="70" r="6" fill="#fff"/>
+  </symbol>
+</defs></svg>
+
+<header class="hero"><div class="wrap" style="display:flex;gap:34px;align-items:center;flex-wrap:wrap;padding:0">
+  <div class="mark"><svg viewBox="0 0 108 108"><use href="#g"/></svg></div>
+  <div>
+    <p class="kicker">Ikona izabrana · predlog 4, „uvo i šapat"</p>
+    <h1>Šaptač</h1>
+    <p class="lede">Uvo u prigušenoj krem liniji, unutra glas u amber boji koji se stišava. Sve veličine su izvezene i spremne za Android.</p>
+  </div>
+</div></header>
+
+<main>
+
+<section><div class="wrap">
+  <h2>Kako izgleda</h2>
+  <p class="intro">Isti crtež u pet situacija. Najvažnije je da se oblik prepozna i na 48 piksela, gde se linije najviše stanjuju.</p>
+  <div class="row" style="grid-template-columns:repeat(auto-fit,minmax(168px,1fr))">
+    <div class="stage"><div class="box r108"><svg viewBox="0 0 108 108" style="width:74%;height:74%"><use href="#g"/></svg></div><b>108 px, krug</b><p>Adaptivna ikona na One UI</p></div>
+    <div class="stage"><div class="box s72"><svg viewBox="0 0 108 108" style="width:74%;height:74%"><use href="#g"/></svg></div><b>72 px, krug</b><p>Uobičajena veličina na ekranu</p></div>
+    <div class="stage"><div class="box q56"><svg viewBox="0 0 108 108" style="width:68%;height:68%"><use href="#g"/></svg></div><b>56 px</b><p>Pored drugih ikona</p></div>
+    <div class="stage"><div class="box s48"><svg viewBox="0 0 108 108" style="width:74%;height:74%"><use href="#g"/></svg></div><b>48 px</b><p>Najmanja upotreba, u listama</p></div>
+    <div class="stage"><div class="box s96"><svg viewBox="0 0 108 108" style="width:62%;height:62%"><use href="#gm"/></svg></div><b>Monohromna</b><p>Tema u boji sistema</p></div>
+  </div>
+  <div class="row" style="margin-top:26px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+    <div class="stage"><div class="box plain"><svg viewBox="0 0 108 108" style="width:80%;height:80%"><use href="#g"/></svg></div><p>Puna slika, 512 px</p></div>
+    <div class="stage"><div class="box plain" style="background:#1E1B17"><svg viewBox="0 0 108 108" style="width:80%;height:80%"><use href="#g"/></svg></div><p>Na svetlijoj crnoj</p></div>
+    <div class="stage"><div class="box plain" style="background:#F4F1EA"><svg viewBox="0 0 108 108" style="width:80%;height:80%"><use href="#g"/></svg></div><p>Na svetloj podlozi se ne koristi</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Fajlovi</h2>
+  <p class="intro">Sve je u <code>/home/user/ikone/final/</code>. Crtež je vektorski, pa se može uvećati bez gubitka; PNG-ovi su izvezeni tačno u veličinama koje Android traži.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Šta</th><th>Fajl</th><th>Gde ide u projekat</th></tr></thead>
+    <tbody>
+      <tr><td>Glavni crtež</td><td><code>saptac-ikona.svg</code></td><td>izvor, za sve buduće izmene</td></tr>
+      <tr><td>Okrugla verzija</td><td><code>saptac-ikona-okrugla.svg</code></td><td>izvor</td></tr>
+      <tr><td>Adaptivni: prednji sloj</td><td><code>ic_launcher_foreground.svg</code> + <code>png/mipmap-*_ic_launcher_foreground.png</code></td><td><code>res/mipmap-{m,h,xh,xxh,xxxh}dpi/</code></td></tr>
+      <tr><td>Adaptivni: podloga</td><td><code>ic_launcher_background.svg</code></td><td>boja <code>#0B0A09</code>, ili slika</td></tr>
+      <tr><td>Monohromna</td><td><code>ic_launcher_monochrome.svg</code> + PNG</td><td>isti mipmap folderi</td></tr>
+      <tr><td>Stare ikone</td><td><code>png/mipmap-*_ic_launcher.png</code> i <code>..._round.png</code></td><td><code>res/mipmap-*dpi/</code></td></tr>
+      <tr><td>Velika slika</td><td><code>saptac-512-store.png</code>, <code>saptac-512-okrugla.png</code></td><td>za pregled i deljenje</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Boje i mere</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Paleta</h3>
+      <div class="swatches">
+        <div class="sw"><i style="background:#0B0A09"></i>#0B0A09<br>podloga</div>
+        <div class="sw"><i style="background:#EFA13A"></i>#EFA13A<br>glas</div>
+        <div class="sw"><i style="background:#ECE5D9"></i>#ECE5D9<br>uvo</div>
+      </div>
+      <ul style="margin-top:14px">
+        <li>Iste boje kao plejer, pa ikona i aplikacija izgledaju kao jedna celina.</li>
+        <li>Bez gradijenta i bez senke, da se na malom ne stvori mrlja.</li>
+        <li>Monohromna verzija je jedna boja, jer je sistem oboji po temi.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Mere</h3>
+      <ul>
+        <li>Platno 108 jedinica, crtež u srednjih 74%.</li>
+        <li>Time sve bitno ostaje u bezbednoj zoni od 66% koju One UI traži kada iseče oblik.</li>
+        <li>Debljina linije 5 jedinica, što je oko 2,2 piksela na 48 px; ispod toga linija počinje da nestaje.</li>
+        <li>Tačka „glasa" je prečnika 12 jedinica, da ostane vidljiva i najmanja.</li>
+      </ul>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <h3>Kako se uklapa u Android projekat</h3>
+      <ol>
+        <li>U <code>res/mipmap-anydpi-v26/ic_launcher.xml</code> stoji adaptivna ikona: podloga, prednji sloj i monohromni sloj.</li>
+        <li>Podloga može da bude boja, ne mora slika: <code>&lt;color&gt;#0B0A09&lt;/color&gt;</code>.</li>
+        <li>One UI sam zaobljava u krug ili kvadrat, pa se ne pravi posebna ikona za svaki oblik.</li>
+        <li>Isti crtež se koristi i za malu sliku u obaveštenju o reprodukciji, jer je krupnog oblika.</li>
+      </ol>
+    </div>
+  </div>
+  <span class="note">Ako kasnije poželiš izmenu, na primer deblje linije ili veće uvo, menjam samo vektorski izvor i ponovo izvozim sve veličine. Ništa se ručno ne crta.</span>
+</div></section>
+
+</main>
+<footer><div class="wrap">Šaptač · ikona · verzija 1 · izabran predlog 4</div></footer>
+</body>
+</html>

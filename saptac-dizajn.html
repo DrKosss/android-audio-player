@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Šaptač — predlog dizajna</title>
+<style>
+:root{
+  --paper:#F4F1EA; --card:#FBF9F5; --ink:#1E1B17; --muted:#6A6257; --faint:#8E8679; --rule:#DAD3C5;
+  --accent:#B05F17; --accent-soft:#F1E2CE;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Noto Serif",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans",Arial,sans-serif;
+  /* boje aplikacije */
+  --a-bg:#000; --a-s1:#131110; --a-s2:#1D1A17; --a-line:#272320;
+  --a-t1:#ECE5D9; --a-t2:#9B9286; --a-t3:#625B52;
+  --a-amber:#EFA13A; --a-night:#8A5620;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 28px}
+@media (max-width:560px){.wrap{padding:0 18px}}
+
+/* ---------- zaglavlje ---------- */
+.hero{padding:64px 0 52px;border-bottom:1px solid var(--rule)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:64px;align-items:end}
+@media (max-width:860px){.hero{padding:40px 0 36px}.hero-grid{grid-template-columns:1fr;gap:36px}}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 24px}
+h1{font:400 clamp(54px,9vw,98px)/.95 var(--serif);letter-spacing:-.025em;margin:0}
+.wn{font-size:13px;color:var(--faint);margin:12px 0 0;letter-spacing:.04em}
+.lede{font:400 clamp(18px,2.2vw,22px)/1.45 var(--serif);margin:26px 0 0;max-width:30em}
+.device{margin:16px 0 0;font-size:14px;color:var(--muted)}
+.status{display:inline-flex;align-items:center;gap:10px;margin:26px 0 0;padding:8px 15px;border:1px solid var(--accent);border-radius:99px;color:var(--accent);font-size:13.5px;font-weight:600}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+.tenets{list-style:none;margin:0;padding:0;counter-reset:t}
+.tenets li{counter-increment:t;display:grid;grid-template-columns:34px 1fr;padding:14px 0;border-top:1px solid var(--rule);font-size:15px;line-height:1.5;color:var(--muted)}
+.tenets li:last-child{border-bottom:1px solid var(--rule)}
+.tenets li::before{content:counter(t);font:400 20px/1.25 var(--serif);color:var(--accent)}
+.tenets b{color:var(--ink);font-weight:650}
+
+/* ---------- odeljci ---------- */
+section{padding:64px 0;border-bottom:1px solid var(--rule)}
+@media (max-width:560px){section{padding:44px 0}}
+.sh{display:flex;align-items:baseline;gap:16px;margin:0 0 10px}
+.sh .no{font:400 22px/1 var(--serif);color:var(--accent)}
+h2{font:400 clamp(30px,4.4vw,42px)/1.1 var(--serif);letter-spacing:-.015em;margin:0}
+.intro{max-width:44em;color:var(--muted);margin:0 0 38px;font-size:16.5px}
+h3{font:650 16px/1.3 var(--sans);margin:0 0 8px}
+.small{font-size:14px;color:var(--muted)}
+
+/* ---------- galerija ekrana ---------- */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:60px 28px;justify-items:center}
+.shot{margin:0;width:300px}
+.shot figcaption{margin-top:20px}
+.shot h3 .n{font:400 15px/1 var(--serif);color:var(--accent);margin-right:8px}
+.shot ul{margin:0;padding:0 0 0 1.1em;color:var(--muted);font-size:14px;line-height:1.5}
+.shot li{margin:0 0 5px}
+
+.phone{width:300px;height:640px;border-radius:42px;background:#0b0b0c;padding:7px;box-shadow:0 0 0 1px #2c2c2f inset,0 30px 60px -28px rgba(40,25,5,.55),0 8px 18px -10px rgba(40,25,5,.4)}
+.scr{position:relative;width:100%;height:100%;border-radius:35px;background:var(--a-bg);overflow:hidden;display:flex;flex-direction:column;color:var(--a-t1);font:14px/1.3 Roboto,"One UI Sans","Noto Sans",system-ui,sans-serif}
+.sb{flex:none;height:30px;display:flex;align-items:center;justify-content:space-between;padding:4px 22px 0;font-size:11px;font-weight:600;color:var(--a-t2);position:relative}
+.sb::after{content:"";position:absolute;left:50%;top:10px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#19191b}
+.bat{display:inline-block;width:19px;height:9px;border:1.2px solid currentColor;border-radius:3px;position:relative}
+.bat::before{content:"";position:absolute;top:1.2px;bottom:1.2px;left:1.2px;right:5px;background:currentColor;border-radius:1px}
+.home{flex:none;height:16px;display:grid;place-items:center}
+.home::before{content:"";width:92px;height:3.5px;border-radius:2px;background:#3a3632}
+
+.ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ic.f{fill:currentColor;stroke:none}
+.bar{flex:none;display:flex;align-items:center;justify-content:space-between;padding:8px 18px 10px}
+.bar h4{margin:0;font-size:25px;font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.bar .ic{color:var(--a-t2);stroke-width:1.6}
+.bar.sub{justify-content:flex-start;gap:12px;padding-left:14px}
+.bar.sub h4{font-size:19px}
+.chips{flex:none;display:flex;gap:6px;padding:0 16px 10px}
+.chip{font-size:11.5px;padding:5px 11px;border-radius:99px;background:var(--a-s2);color:var(--a-t2);white-space:nowrap}
+.chip.on{background:var(--a-amber);color:#231503;font-weight:700}
+.pick{font-size:11px;font-weight:600;padding:5px 10px;border-radius:9px;background:var(--a-s2);color:var(--a-t2);flex:none}
+.pick.done{background:#2c2013;color:var(--a-amber)}
+.pick.none{border:1px dashed #3b3530;background:transparent;color:var(--a-t3)}
+.list{flex:1;min-height:0;overflow:hidden;padding:0 8px}
+.row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:14px}
+.tx{flex:1;min-width:0}
+.t{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{font-size:11.5px;color:var(--a-t2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s .new{color:var(--a-amber);font-weight:600}
+.field{flex:none;margin:0 16px 10px;height:38px;border-radius:12px;background:var(--a-s2);display:flex;align-items:center;gap:9px;padding:0 12px;font-size:13px;color:var(--a-t3)}
+.field svg{width:16px;height:16px;flex:none}
+.field .q{color:var(--a-t1)}
+.pg{height:3px;border-radius:2px;background:var(--a-line);margin-top:6px;overflow:hidden}
+.pg i{display:block;height:100%;background:var(--a-amber);border-radius:2px}
+.cv{width:46px;height:46px;border-radius:10px;flex:none;display:grid;place-items:center;font:600 16px/1 Georgia,"Noto Serif",serif;color:rgba(255,255,255,.7)}
+.c1{background:linear-gradient(140deg,#6a4320,#2e1e10)}
+.c2{background:linear-gradient(140deg,#2b4a45,#162724)}
+.c3{background:linear-gradient(140deg,#463a66,#231d36)}
+.c4{background:linear-gradient(140deg,#5c2c35,#2c151a)}
+.c5{background:linear-gradient(140deg,#3c4a2a,#1d2414)}
+.c6{background:linear-gradient(140deg,#30455c,#17212d)}
+.dim{opacity:.45}
+.tiny{width:16px;height:16px}
+
+.mini{flex:none;margin:4px 8px 6px;height:54px;border-radius:16px;background:var(--a-s2);display:flex;align-items:center;gap:10px;padding:0 9px;position:relative;overflow:hidden}
+.mini .cv{width:36px;height:36px;border-radius:8px;font-size:13px}
+.mini .pb{width:36px;height:36px;border-radius:50%;background:var(--a-amber);color:#231503;display:grid;place-items:center;flex:none}
+.mini .pb .ic{width:16px;height:16px;margin-left:2px}
+.mini::before{content:"";position:absolute;left:14px;right:14px;bottom:0;height:2px;background:var(--a-line)}
+.mini::after{content:"";position:absolute;left:14px;bottom:0;height:2px;width:calc((100% - 28px)*.42);background:var(--a-amber)}
+.nav{flex:none;height:56px;display:flex;border-top:1px solid var(--a-line)}
+.nv{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;color:var(--a-t3)}
+.nv.on{color:var(--a-amber)}
+.nv .ic{width:21px;height:21px}
+
+.acts{flex:none;display:flex;gap:8px;padding:0 16px 8px}
+.btn{flex:1;height:40px;border-radius:14px;background:var(--a-s2);color:var(--a-t1);display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:600}
+.btn.pri{background:var(--a-amber);color:#231503}
+.btn .ic{width:15px;height:15px}
+.note{flex:none;display:flex;justify-content:space-between;align-items:center;padding:2px 18px 8px;font-size:11.5px;color:var(--a-t2)}
+.note span{display:flex;align-items:center;gap:8px}
+.st{width:22px;height:22px;flex:none;display:grid;place-items:center;color:var(--a-t2)}
+.st .dot{width:8px;height:8px;border-radius:50%;background:var(--a-amber)}
+.st .ring{width:11px;height:11px;border-radius:50%;border:2px solid var(--a-amber)}
+.st .ic{width:16px;height:16px}
+.dur{font-size:11.5px;color:var(--a-t2);flex:none}
+.sw{width:30px;height:18px;border-radius:9px;background:var(--a-line);position:relative;flex:none;display:inline-block}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--a-t2)}
+.sw.on{background:var(--a-amber)}
+.sw.on::after{left:14px;background:#231503}
+
+.tabs{flex:none;display:flex;gap:22px;padding:0 18px;border-bottom:1px solid var(--a-line);margin-bottom:10px}
+.tab{padding:6px 0 9px;font-size:13.5px;color:var(--a-t2);position:relative}
+.tab.on{color:var(--a-t1);font-weight:600}
+.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--a-amber);border-radius:2px}
+.fi{width:40px;height:40px;border-radius:10px;background:var(--a-s2);display:grid;place-items:center;color:var(--a-t2);flex:none}
+.fi .ic{width:19px;height:19px}
+.go{width:16px;height:16px;color:var(--a-t3)}
+
+.pl{flex:1;display:flex;flex-direction:column;padding:0 22px;min-height:0}
+.pl-top{display:flex;align-items:center;justify-content:space-between;height:36px;color:var(--a-t2);font-size:10.5px;letter-spacing:.16em;font-weight:600;margin:0 -6px}
+.art{width:min(46vh,190px);height:min(46vh,190px);flex:none;margin:6px auto 14px;border-radius:18px;display:flex;flex-direction:column;justify-content:flex-end;padding:16px;background:linear-gradient(150deg,#6a4320,#2a1b0e 70%);color:rgba(255,255,255,.82)}
+.art b{font:400 21px/1.08 Georgia,"Noto Serif",serif}
+.art span{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.65;margin-top:7px}
+.pl h5{margin:0;font-size:18px;font-weight:600;line-height:1.2}
+.who{font-size:12.5px;color:var(--a-t2);margin:3px 0 14px}
+.seek{height:4px;border-radius:2px;background:var(--a-line);position:relative;flex:none}
+.seek i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--a-amber)}
+.seek i::after{content:"";position:absolute;right:-7px;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--a-amber)}
+.times{display:flex;justify-content:space-between;font-size:11.5px;color:var(--a-t2);margin-top:9px;font-variant-numeric:tabular-nums}
+.times u{text-decoration:underline dotted;text-underline-offset:3px}
+.whole{font-size:11.5px;color:#7d756a;text-align:center;margin-top:4px}
+.nextup{font-size:10.5px;color:#7d756a;text-align:center;margin-top:min(4vh,26px)}
+.nextup b{color:var(--a-t2);font-weight:600}
+.ctl{display:flex;align-items:center;justify-content:space-between;margin:12px -8px 0}
+.cb{display:grid;place-items:center;color:var(--a-t1);border-radius:50%;flex:none}
+.cb.sm{width:32px;height:32px;color:var(--a-t3)} .cb.sm .ic{width:19px;height:19px}
+.cb.md{width:54px;height:54px} .cb.md .ic{width:40px;height:40px;stroke-width:1.4}
+.cb.lg{width:74px;height:74px;background:var(--a-amber);color:#231503} .cb.lg .ic{width:30px;height:30px}
+.toast{margin:12px 0 0;height:32px;border-radius:10px;background:var(--a-s2);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:11.5px;color:var(--a-t2);flex:none}
+.toast b{color:var(--a-amber);letter-spacing:.06em;font-size:11px}
+.tools{margin-top:14px;display:flex;gap:8px;padding-bottom:0}
+.tool{flex:1;height:50px;border-radius:14px;background:var(--a-s1);border:1px solid var(--a-line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;color:var(--a-t2)}
+.tool .ic{width:18px;height:18px;color:var(--a-t1)}
+.tool .v{font-size:14px;font-weight:700;color:var(--a-t1);line-height:18px}
+
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.74)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--a-s1);border-radius:26px 26px 0 0;padding:10px 18px 30px;border-top:1px solid var(--a-line)}
+.sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:#3a3632;margin:0 auto 16px}
+.sheet h5{margin:0 0 14px;font-size:17px;font-weight:600;line-height:1.2}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ps{height:64px;border-radius:16px;background:var(--a-s2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px;font-weight:600}
+.ps small{font-size:10px;font-weight:500;color:var(--a-t2);margin-top:1px}
+.ps.on{box-shadow:0 0 0 1.5px var(--a-amber) inset;color:var(--a-amber)}
+.ps.on small{color:var(--a-amber)}
+.hint{margin:16px 0 0;font-size:11.5px;line-height:1.5;color:var(--a-t2)}
+.hint b{color:var(--a-t1);font-weight:600}
+
+.night{flex:1;display:flex;flex-direction:column;color:var(--a-night);min-height:0}
+.n-top{display:flex;justify-content:space-between;align-items:center;padding:6px 20px 10px;font-size:11.5px}
+.n-top .ic{width:18px;height:18px}
+.zones{flex:1;display:grid;grid-template-columns:1fr 1.3fr 1fr;min-height:0;border-top:1px dashed #23160b}
+.z{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:12px;border-right:1px dashed #23160b}
+.z:last-child{border-right:0}
+.z .ic{width:46px;height:46px;stroke-width:1.3}
+.z.mid .ic{width:92px;height:92px}
+.n-bot{border-top:1px dashed #23160b;padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between}
+.n-time{display:flex;align-items:center;gap:10px;font-size:30px;font-weight:300;letter-spacing:-.01em}
+.n-time .ic{width:22px;height:22px}
+.n-plus{height:52px;padding:0 20px;border-radius:26px;border:1.5px solid var(--a-night);display:grid;place-items:center;font-size:17px;font-weight:600}
+
+.scr.lk{background:radial-gradient(120% 70% at 50% 0%,#1d2537 0%,#0a0c12 62%,#050608 100%);color:#d5d9e2}
+.scr.lk .sb{color:#9aa1b0}
+.lock{flex:1;display:flex;flex-direction:column;min-height:0}
+.clock{text-align:center;margin-top:40px;font-size:66px;font-weight:300;letter-spacing:-.02em;line-height:1}
+.date{text-align:center;font-size:13px;color:#9aa1b0;margin-top:8px}
+.media{margin:38px 12px 0;border-radius:24px;background:rgba(255,255,255,.09);padding:14px 14px 13px}
+.media .hd{display:flex;gap:11px;align-items:center}
+.media .cv{width:40px;height:40px;border-radius:9px;font-size:14px}
+.media .app{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#9aa1b0;margin-bottom:2px}
+.media .s{color:#9aa1b0}
+.media .seek{margin-top:15px;background:rgba(255,255,255,.16)}
+.media .seek i{background:#d5d9e2}
+.media .seek i::after{display:none}
+.mc{display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding:0 6px}
+.mc .ic{width:30px;height:30px;stroke-width:1.5}
+.mc .ic.f{width:24px;height:24px}
+.plus15{display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700}
+.plus15 .ic{width:15px;height:15px;stroke-width:1.8}
+.unlock{margin-top:auto;font-size:11px;color:#6f7686;padding:0 0 8px;display:flex;justify-content:center;align-items:center;gap:6px}
+.unlock .ic{width:12px;height:12px}
+
+.set{flex:1;min-height:0;overflow:hidden;padding:0 18px;font-size:12.8px}
+.set .gh{margin:9px 0 1px}
+.set .sr{min-height:30px}
+.gh{font-size:10.5px;letter-spacing:.14em;font-weight:700;color:var(--a-amber);margin:12px 0 2px}
+.gh:first-child{margin-top:2px}
+.sr{display:flex;justify-content:space-between;align-items:center;min-height:32px;font-size:13px;border-bottom:1px solid var(--a-s2)}
+.sr .v{color:var(--a-t2);font-size:12px}
+.sr .ok{color:var(--a-amber);display:flex;align-items:center;gap:4px;font-size:12px}
+.sr .ok .ic{width:14px;height:14px}
+
+/* ---------- tabela pravila ---------- */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:14.5px;line-height:1.45}
+th,td{text-align:left;vertical-align:top;padding:12px 18px 12px 0;border-top:1px solid var(--rule)}
+thead th{border-top:0;font:400 21px/1.2 var(--serif);padding-bottom:14px}
+tbody th{font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:17%;padding-top:15px}
+tbody td{width:27.6%}
+@media (max-width:700px){
+  .tablewrap{overflow:visible}
+  table{min-width:0;font-size:15px}
+  thead{display:none}
+  tbody tr{display:block;padding:14px 0 10px;border-top:1px solid var(--rule)}
+  tbody th,tbody td{display:block;width:auto;border:0;padding:0}
+  tbody th{margin-bottom:8px}
+  tbody td{display:grid;grid-template-columns:70px 1fr;gap:12px;padding:4px 0}
+  tbody td::before{font-family:var(--serif);color:var(--accent)}
+  tbody td:nth-child(2)::before{content:"Muzika"}
+  tbody td:nth-child(3)::before{content:"Knjige"}
+  tbody td:nth-child(4)::before{content:"Emisije"}
+}
+
+/* ---------- tajmer ---------- */
+.diagram{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:18px 14px 8px}
+.diagram svg{display:block;width:100%;height:auto;font-family:var(--sans)}
+.diagram .n{display:none;max-width:540px;margin:0 auto}
+@media (max-width:720px){.diagram{padding:14px 8px 8px}.diagram .w{display:none}.diagram .n{display:block}}
+.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:32px 56px;margin-top:38px}
+.cols2 ol,.cols2 ul{margin:0;padding-left:1.2em}
+.cols2 li{margin:0 0 8px}
+.cols2 p{margin:0 0 10px}
+.limits{margin-top:34px;padding-top:20px;border-top:1px solid var(--rule);max-width:50em}
+.limits ul{margin:0;padding-left:1.2em}
+.limits li{margin:0 0 6px}
+
+/* ---------- kartice ---------- */
+.cards2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:24px 26px 20px}
+.card h3{margin-bottom:14px}
+.card ul,.card ol{margin:0;padding-left:1.15em}
+.card li{margin:0 0 10px}
+.card p{margin:12px 0 0}
+.path{font:13px/1.5 ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;background:var(--accent-soft);border-radius:6px;padding:2px 7px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+
+/* ---------- obim ---------- */
+.scope{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px}
+.sc{border-top:3px solid var(--rule);padding-top:14px}
+.sc.now{border-top-color:var(--accent)}
+.sc h3{font:400 22px/1.2 var(--serif);margin:0}
+.sc p{margin:3px 0 12px;font-size:13px;color:var(--muted)}
+.sc ul{margin:0;padding:0;list-style:none;font-size:14.5px}
+.sc li{padding:7px 0;border-top:1px solid var(--rule);line-height:1.4}
+.sc.no li{color:var(--faint)}
+
+/* ---------- tehnika ---------- */
+.spec{display:grid;grid-template-columns:200px 1fr;margin:0;max-width:880px}
+.spec dt,.spec dd{padding:14px 0;border-top:1px solid var(--rule);margin:0}
+.spec dt{font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:17px;padding-right:16px}
+@media (max-width:640px){.spec{grid-template-columns:1fr}.spec dd{border-top:0;padding-top:0}.spec dt{padding-bottom:4px}}
+
+/* ---------- odluke ---------- */
+.dec{list-style:none;margin:0;padding:0;counter-reset:d;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.dec li{counter-increment:d;background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:20px 22px}
+.dec li::before{content:counter(d);font:400 22px/1 var(--serif);color:var(--accent);display:block;margin-bottom:8px}
+.dec h3{margin:0 0 6px}
+.dec p{margin:0;font-size:14.5px;color:var(--muted)}
+.dec .def{margin-top:10px;color:var(--ink)}
+.dec .def b{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-right:6px}
+.basis{margin-top:44px;max-width:50em}
+.basis ul{margin:0;padding-left:1.2em;color:var(--muted);font-size:15px}
+.basis li{margin:0 0 4px}
+
+footer{padding:40px 0 64px;font-size:13px;color:var(--muted)}
+footer a{color:inherit;word-break:break-word}
+footer ul{margin:8px 0 0;padding-left:1.1em}
+footer li{margin:0 0 4px}
+</style>
+</head>
+<body>
+
+<!-- ikone -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+    <symbol id="i-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></symbol>
+    <symbol id="i-set" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="7 4 20 12 7 20"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5.5" y="4" width="4.5" height="16" rx="1.2"/><rect x="14" y="4" width="4.5" height="16" rx="1.2"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4"/><rect x="4.5" y="4.5" width="2.2" height="15" rx="1.1"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20"/><rect x="17.3" y="4.5" width="2.2" height="15" rx="1.1"/></symbol>
+    <symbol id="i-b30" viewBox="0 0 24 24"><path d="M12 5.5A7.5 7.5 0 1 1 4.95 10.43"/><polygon points="12.4 2.4 8.3 5.5 12.4 8.6" style="fill:currentColor;stroke-width:1"/><text x="12" y="15.7" text-anchor="middle" style="fill:currentColor;stroke:none;font-size:7px;font-weight:700">30</text></symbol>
+    <symbol id="i-f30" viewBox="0 0 24 24"><path d="M12 5.5A7.5 7.5 0 1 0 19.05 10.43"/><polygon points="11.6 2.4 15.7 5.5 11.6 8.6" style="fill:currentColor;stroke-width:1"/><text x="12" y="15.7" text-anchor="middle" style="fill:currentColor;stroke:none;font-size:7px;font-weight:700">30</text></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  </defs>
+</svg>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="kicker">Predlog dizajna · verzija 0.7 · 11. novembar 2026.</p>
+      <h1>Šaptač</h1>
+      <p class="wn">radni naziv</p>
+      <p class="lede">Jednostavan Android plejer za duge audio fajlove: muziku, audio-knjige, radio emisije i podkaste. Pravljen za slušanje u pozadini, sa ugašenim ekranom, pred spavanje.</p>
+      <p class="device">Samsung Galaxy S25 · One UI 9 (Android 17) · lična upotreba, instalacija mimo prodavnice</p>
+      <p class="status"><i></i>Ništa nije kodirano. Ovo je predlog za dogovor.</p>
+    </div>
+    <ol class="tenets">
+      <li><span><b>Pozicija se ne gubi.</b> Mesto u knjizi ili epizodi upisuje se na svakih pet sekundi i pri svakoj pauzi.</span></li>
+      <li><span><b>Zvuk ne staje.</b> Reprodukcija radi u sistemskom servisu, nezavisno od ekrana i od toga koja je aplikacija otvorena.</span></li>
+      <li><span><b>Radi u mraku.</b> Crna pozadina, prigušene tople boje, velika dugmad. Tajmer se produžava bez gledanja.</span></li>
+      <li><span><b>Ništa suvišno.</b> Tri sekcije, jedan plejer, jedan tajmer. Bez naloga, reklama i praćenja.</span></li>
+    </ol>
+  </div>
+</header>
+
+<main>
+
+<!-- 1 EKRANI -->
+<section id="ekrani">
+  <div class="wrap">
+    <div class="sh"><span class="no">1</span><h2>Ekrani</h2></div>
+    <p class="intro">Jedanaest ekrana čini celu aplikaciju. Skice pokazuju raspored i sadržaj; naslovi knjiga, emisija i podkasta su primeri.</p>
+
+    <div class="gallery">
+
+      <!-- Knjige -->
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="bar"><h4>Knjige</h4><svg class="ic"><use href="#i-set"/></svg></div>
+          <div class="chips"><span class="chip on">Sve</span><span class="chip">U toku</span><span class="chip">Nove</span><span class="chip">Završene</span></div>
+          <div class="list">
+            <div class="row"><div class="cv c1">N</div><div class="tx"><div class="t">Na Drini ćuprija</div><div class="s">Ivo Andrić · preostalo 6 h 10 min</div><div class="pg"><i style="width:42%"></i></div></div></div>
+            <div class="row"><div class="cv c2">S</div><div class="tx"><div class="t">Sapiens</div><div class="s">Y. N. Harari · preostalo 11 h 02 min</div><div class="pg"><i style="width:14%"></i></div></div></div>
+            <div class="row"><div class="cv c3">D</div><div class="tx"><div class="t">Derviš i smrt</div><div class="s">Meša Selimović · 14 h 30 min · nova</div></div></div>
+            <div class="row"><div class="cv c4">P</div><div class="tx"><div class="t">Prokleta avlija</div><div class="s">Ivo Andrić · 3 h 48 min · nova</div></div></div>
+            <div class="row"><div class="cv c6">S</div><div class="tx"><div class="t">Seobe</div><div class="s">Miloš Crnjanski · 9 h 20 min · nova</div></div></div>
+            <div class="row dim"><div class="cv c5">A</div><div class="tx"><div class="t">Autostoperski vodič kroz galaksiju</div><div class="s">Douglas Adams · završena</div></div><svg class="ic tiny"><use href="#i-check"/></svg></div>
+          </div>
+          <div class="mini"><div class="cv c1">N</div><div class="tx"><div class="t">Na Drini ćuprija</div><div class="s">Glava VII · 23:41</div></div><span class="pb"><svg class="ic f"><use href="#i-play"/></svg></span></div>
+          <div class="nav">
+            <div class="nv"><svg class="ic"><use href="#i-music"/></svg>Muzika</div>
+            <div class="nv on"><svg class="ic"><use href="#i-book"/></svg>Knjige</div>
+            <div class="nv"><svg class="ic"><use href="#i-radio"/></svg>Emisije</div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">1</span>Knjige</h3>
+          <ul>
+            <li>Knjiga je folder sa audio fajlovima ili jedan samostalan fajl.</li>
+            <li>Poslednja slušana je na vrhu. Dodir nastavlja od zapamćenog mesta.</li>
+            <li>Mini-plejer na dnu postoji u sve tri sekcije i drži poslednje slušano.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- Emisije -->
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="bar sub"><svg class="ic"><use href="#i-back"/></svg><h4>Just a Minute</h4></div>
+          <div class="acts">
+            <div class="btn pri"><svg class="ic f"><use href="#i-play"/></svg>Nastavi</div>
+            <div class="btn"><svg class="ic"><use href="#i-shuffle"/></svg>Nasumična</div>
+          </div>
+          <div class="note"><span>6 nepreslušanih od 8</span><span>Sakrij preslušane <i class="sw"></i></span></div>
+          <div class="list">
+            <div class="row dim"><span class="st"><svg class="ic"><use href="#i-check"/></svg></span><div class="tx"><div class="t">S31E01 · 7. avgust</div></div><span class="dur">28 min</span></div>
+            <div class="row dim"><span class="st"><svg class="ic"><use href="#i-check"/></svg></span><div class="tx"><div class="t">S31E02 · 14. avgust</div></div><span class="dur">28 min</span></div>
+            <div class="row"><span class="st"><i class="ring"></i></span><div class="tx"><div class="t">S31E03 · 21. avgust</div><div class="pg"><i style="width:57%"></i></div></div><span class="dur">još 12 min</span></div>
+            <div class="row"><span class="st"><i class="dot"></i></span><div class="tx"><div class="t">S31E04 · 28. avgust</div></div><span class="dur">28 min</span></div>
+            <div class="row"><span class="st"><i class="dot"></i></span><div class="tx"><div class="t">S31E05 · 4. septembar</div></div><span class="dur">27 min</span></div>
+            <div class="row"><span class="st"><i class="dot"></i></span><div class="tx"><div class="t">S31E06 · 11. septembar</div></div><span class="dur">28 min</span></div>
+            <div class="row"><span class="st"><i class="dot"></i></span><div class="tx"><div class="t">S31E07 · 18. septembar</div></div><span class="dur">28 min</span></div>
+            <div class="row"><span class="st"><i class="dot"></i></span><div class="tx"><div class="t">S31E08 · 25. septembar</div></div><span class="dur">27 min</span></div>
+          </div>
+          <div class="mini"><div class="cv c1">N</div><div class="tx"><div class="t">Na Drini ćuprija</div><div class="s">Glava VII · 23:41</div></div><span class="pb"><svg class="ic f"><use href="#i-play"/></svg></span></div>
+          <div class="nav">
+            <div class="nv"><svg class="ic"><use href="#i-music"/></svg>Muzika</div>
+            <div class="nv"><svg class="ic"><use href="#i-book"/></svg>Knjige</div>
+            <div class="nv on"><svg class="ic"><use href="#i-radio"/></svg>Emisije</div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">2</span>Emisije: jedna serija</h3>
+          <ul>
+            <li>Serija je folder, epizoda je fajl. Tačka označava novu, prsten započetu, kvačica preslušanu epizodu.</li>
+            <li>„Nastavi“ pušta započetu ili sledeću nepreslušanu epizodu.</li>
+            <li>„Nasumična“ bira jednu nepreslušanu.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- Muzika -->
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="bar"><h4>Muzika</h4><svg class="ic"><use href="#i-set"/></svg></div>
+          <div class="tabs"><span class="tab on">Folderi</span><span class="tab">Izvođači</span><span class="tab">Albumi</span></div>
+          <div class="acts"><div class="btn"><svg class="ic"><use href="#i-shuffle"/></svg>Nasumično sve</div></div>
+          <div class="list">
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Domaće</div><div class="s">214 numera</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Džez</div><div class="s">86 numera</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Klasika</div><div class="s">132 numere</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Rok</div><div class="s">407 numera</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Filmska muzika</div><div class="s">58 numera</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+          </div>
+          <div class="mini"><div class="cv c1">N</div><div class="tx"><div class="t">Na Drini ćuprija</div><div class="s">Glava VII · 23:41</div></div><span class="pb"><svg class="ic f"><use href="#i-play"/></svg></span></div>
+          <div class="nav">
+            <div class="nv on"><svg class="ic"><use href="#i-music"/></svg>Muzika</div>
+            <div class="nv"><svg class="ic"><use href="#i-book"/></svg>Knjige</div>
+            <div class="nv"><svg class="ic"><use href="#i-radio"/></svg>Emisije</div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">3</span>Muzika</h3>
+          <ul>
+            <li>Tri pogleda na iste fajlove: folderi, izvođači, albumi.</li>
+            <li>Dodir na numeru pušta ceo folder ili album od te numere.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- Plejer -->
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="pl">
+            <div class="pl-top"><svg class="ic"><use href="#i-down"/></svg><span>KNJIGE</span><span style="width:22px"></span></div>
+            <div class="art"><b>Na Drini ćuprija</b><span>Ivo Andrić</span></div>
+            <h5>Glava VII</h5>
+            <div class="who">Na Drini ćuprija · fajl 7 od 24</div>
+            <div class="seek"><i style="width:57%"></i></div>
+            <div class="times"><u>23:41</u><span>−18:05</span></div>
+            <div class="whole">Cela knjiga: 42% · preostalo 6 h 10 min</div>
+            <div class="tools">
+              <div class="tool"><svg class="ic"><use href="#i-moon"/></svg>Tajmer</div>
+              <div class="tool"><span class="v">1,0×</span>Brzina</div>
+              <div class="tool"><svg class="ic"><use href="#i-list"/></svg>Poglavlja</div>
+            </div>
+            <div class="nextup">Sledeće: <b>Glava VIII</b> · za 17 min</div>
+            <div class="ctl">
+              <span class="cb sm"><svg class="ic f"><use href="#i-prev"/></svg></span>
+              <span class="cb md"><svg class="ic"><use href="#i-b30"/></svg></span>
+              <span class="cb lg"><svg class="ic f"><use href="#i-pause"/></svg></span>
+              <span class="cb md"><svg class="ic"><use href="#i-f30"/></svg></span>
+              <span class="cb sm"><svg class="ic f"><use href="#i-next"/></svg></span>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">4</span>Plejer</h3>
+          <ul>
+            <li>Alati (Tajmer, Brzina, Poglavlja) su odmah ispod trake; transport −30, pusti, +30 je na dnu, uz palac.</li>
+            <li><b>Prethodno:</b> prvi dodir vraća na početak poglavlja, epizode ili numere; drugi dodir, dok si na početku, prebacuje na prethodnu stavku.</li>
+            <li><b>Sledeće:</b> prelazi na sledeće poglavlje, epizodu ili numeru i kreće odmah.</li>
+            <li>Red „Sledeće“ pokazuje šta dolazi i za koliko, pa se zna kad tajmer treba produžiti.</li>
+            <li>Velika dugmad skaču 30 s. Nema poruka iznad sadržaja; povratna informacija je sam zvuk i pomerena traka.</li>
+            <li>„Poništi“ se pojavljuje samo kad mesto tražiš ručno, povlačenjem po skali. Skok od 30 s ga ne prikazuje, a u Muzici ga nema nikad.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- Tajmer -->
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="pl">
+            <div class="pl-top"><svg class="ic"><use href="#i-down"/></svg><span>KNJIGE</span><span style="width:22px"></span></div>
+            <div class="art"><b>Na Drini ćuprija</b><span>Ivo Andrić</span></div>
+            <h5>Glava VII</h5>
+            <div class="who">Na Drini ćuprija · fajl 7 od 24</div>
+          </div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <h5>Tajmer za spavanje</h5>
+            <div class="presets">
+              <div class="ps">15<small>min</small></div>
+              <div class="ps on">30<small>min</small></div>
+              <div class="ps">45<small>min</small></div>
+              <div class="ps">60<small>min</small></div>
+            </div>
+            <p class="hint">Kad zvuk počne da se utišava: <b>pomeri telefon</b>, <b>pritisni dugme za jačinu</b> ili <b>upali ekran</b>. Tajmer dobija još 15 min.</p>
+          </div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">5</span>Tajmer</h3>
+          <ul>
+            <li>Jedan dodir na trajanje pokreće tajmer. Poslednji izbor je obeležen.</li>
+            <li>Dok tajmer radi, ovde stoje preostalo vreme i dugme „Isključi“.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- Noćni ekran -->
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb" style="color:#4a3219"><span>23:14</span><span class="bat"></span></div>
+          <div class="night">
+            <div class="n-top"><span>Na Drini ćuprija · Glava VII</span><svg class="ic"><use href="#i-x"/></svg></div>
+            <div class="zones">
+              <div class="z"><svg class="ic"><use href="#i-b30"/></svg>−30 s</div>
+              <div class="z mid"><svg class="ic f"><use href="#i-pause"/></svg></div>
+              <div class="z"><svg class="ic"><use href="#i-f30"/></svg>+30 s</div>
+            </div>
+            <div class="n-bot"><div class="n-time"><svg class="ic"><use href="#i-moon"/></svg>23 min</div><div class="n-plus">+15 min</div></div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">6</span>Noćni ekran</h3>
+          <ul>
+            <li>Otvara se kad se pokrene tajmer. Leva trećina vraća 30 s, sredina pauzira, desna preskače 30 s.</li>
+            <li>Osvetljenje je na minimumu. Ekran se gasi kao i obično, a zvuk ide dalje.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- Zaključan ekran -->
+      <figure class="shot">
+        <div class="phone"><div class="scr lk">
+          <div class="sb"><span></span><span class="bat"></span></div>
+          <div class="lock">
+            <div class="clock">23:14</div>
+            <div class="date">sreda, 11. novembar</div>
+            <div class="media">
+              <div class="hd"><div class="cv c1">N</div><div class="tx"><div class="app">Šaptač</div><div class="t">Glava VII</div><div class="s">Na Drini ćuprija</div></div></div>
+              <div class="seek"><i style="width:57%"></i></div>
+              <div class="mc">
+                <svg class="ic"><use href="#i-b30"/></svg>
+                <svg class="ic f"><use href="#i-pause"/></svg>
+                <svg class="ic"><use href="#i-f30"/></svg>
+                <span class="plus15"><svg class="ic"><use href="#i-moon"/></svg>+15</span>
+              </div>
+            </div>
+            <div class="unlock"><svg class="ic"><use href="#i-lock"/></svg>Prevuci za otključavanje</div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">7</span>Zaključan ekran</h3>
+          <ul>
+            <li>Sistemske kontrole rade bez otključavanja: −30 s, pauza, +30 s i tajmer.</li>
+            <li>Dugme tajmera dodaje 15 min. Ako tajmer ne radi, pokreće ga sa poslednjim trajanjem.</li>
+            <li>Izgled određuje One UI; skica je približna.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- Podešavanja -->
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="bar sub"><svg class="ic"><use href="#i-back"/></svg><h4>Podešavanja</h4></div>
+          <div class="set">
+            <div class="gh">FOLDERI</div>
+            <div class="sr"><span>Muzika</span><span class="v">Music</span></div>
+            <div class="sr"><span>Knjige</span><span class="v">Audiobooks</span></div>
+            <div class="sr"><span>Emisije</span><span class="v">Podcasts, Radio</span></div>
+            <div class="sr"><span>Rasporedi fajlove</span><span class="ok">2 čekaju</span></div>
+            <div class="sr"><span>Podkast feedovi</span><span class="v">3 · samo Wi-Fi</span></div>
+            <div class="gh">REPRODUKCIJA</div>
+            <div class="sr"><span>Skok</span><span class="v">30 s</span></div>
+            <div class="sr"><span>Sledeća epizoda automatski</span><i class="sw on"></i></div>
+            <div class="gh">TAJMER</div>
+            <div class="sr"><span>Utišavanje</span><span class="v">60 s</span></div>
+            <div class="sr"><span>Produžetak</span><span class="v">15 min</span></div>
+            <div class="sr"><span>Potez: pomeranje telefona</span><i class="sw on"></i></div>
+            <div class="sr"><span>Potez: dugme za jačinu</span><i class="sw on"></i></div>
+            <div class="sr"><span>Potez: paljenje ekrana</span><i class="sw on"></i></div>
+            <div class="gh" style="margin-top:9px">OMOTI</div>
+            <div class="sr"><span>Preuzimaj omote sa interneta</span><i class="sw"></i></div>
+            <div class="gh">RAD U POZADINI</div>
+            <div class="sr"><span>Baterija bez ograničenja</span><span class="ok"><svg class="ic"><use href="#i-check"/></svg>urađeno</span></div>
+            <div class="sr"><span>Izuzeta od uspavljivanja</span><span class="ok"><svg class="ic"><use href="#i-check"/></svg>urađeno</span></div>
+            <div class="sr"><span>Dnevnik događaja</span><svg class="ic go"><use href="#i-right"/></svg></div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">8</span>Podešavanja</h3>
+          <ul>
+            <li>Folderi se dodeljuju sekcijama; jedna sekcija može imati više foldera.</li>
+            <li>Sve o tajmeru i radu u pozadini je na jednom ekranu.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="bar sub"><svg class="ic"><use href="#i-back"/></svg><h4>Rasporedi fajlove</h4></div>
+          <div class="acts"><div class="btn pri">Prihvati predloge</div><div class="btn">Poništi</div></div>
+          <div class="note"><span>6 foldera, 2 bez predloga</span><span>1 284 fajla</span></div>
+          <div class="list">
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Audiobooks</div><div class="s">24 fajla · 6 knjiga</div></div><span class="pick done">Knjige</span></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Music</div><div class="s">908 fajlova</div></div><span class="pick done">Muzika</span></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Podcasts</div><div class="s">37 fajlova</div></div><span class="pick done">Emisije</span></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Radio 2025</div><div class="s">112 fajlova</div></div><span class="pick done">Emisije</span></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Download</div><div class="s">41 fajl</div></div><span class="pick none">?</span></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span><div class="tx"><div class="t">Snimci</div><div class="s">162 fajla</div></div><span class="pick none">?</span></div>
+          </div>
+          <div class="toast" style="margin:8px 12px 10px"><span>Dodir na oznaku menja sekciju</span><b>POMOĆ</b></div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">9</span>Raspoređivanje pri uvozu</h3>
+          <ul>
+            <li>Aplikacija predlaže sekciju za svaki folder; ništa se ne prihvata bez potvrde.</li>
+            <li>Folder bez pouzdanog znaka dobija „?“, pa ga ti raspoređuješ.</li>
+            <li>Isti ekran se otvara kasnije za nove foldere i za izmene.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="bar"><h4>Emisije</h4><svg class="ic"><use href="#i-set"/></svg></div>
+          <div class="tabs"><span class="tab">Folderi</span><span class="tab on">Feedovi</span></div>
+          <div class="acts"><div class="btn pri"><svg class="ic"><use href="#i-plus"/></svg>Dodaj feed</div><div class="btn">Osveži sve</div></div>
+          <div class="note"><span>3 pretplate</span><span>2 nove epizode</span></div>
+          <div class="list">
+            <div class="row"><div class="cv c1">JM</div><div class="tx"><div class="t">Just a Minute</div><div class="s"><span class="new">2 nove</span> · osveženo pre 3 h</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><div class="cv c2">TED</div><div class="tx"><div class="t">TED Talks Daily</div><div class="s">4 nepreslušane · osveženo pre 3 h</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><div class="cv c4">PG</div><div class="tx"><div class="t">Podcastologija</div><div class="s">sve preslušano · 12 u telefonu</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-plus"/></svg></span><div class="tx"><div class="t">Dodaj feed iz adrese</div><div class="s">zalepi link RSS feeda</div></div></div>
+          </div>
+          <div class="mini"><div class="cv c1">N</div><div class="tx"><div class="t">Na Drini ćuprija</div><div class="s">Glava VII · 23:41</div></div><span class="pb"><svg class="ic f"><use href="#i-play"/></svg></span></div>
+          <div class="nav">
+            <div class="nv"><svg class="ic"><use href="#i-music"/></svg>Muzika</div>
+            <div class="nv"><svg class="ic"><use href="#i-book"/></svg>Knjige</div>
+            <div class="nv on"><svg class="ic"><use href="#i-radio"/></svg>Emisije</div>
+          </div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">10</span>Emisije: feedovi</h3>
+          <ul>
+            <li>Ista sekcija ima dva izvora: lokalne foldere i pretplate na feedove.</li>
+            <li>„2 nove“ znači da su epizode objavljene posle poslednjeg otvaranja.</li>
+            <li>Epizoda se prvo preuzme, pa pušta sa telefona.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>23:14</span><span class="bat"></span></div>
+          <div class="bar"><h4>Emisije</h4><svg class="ic"><use href="#i-set"/></svg></div>
+          <div class="tabs"><span class="tab">Folderi</span><span class="tab">Feedovi</span><span class="tab on">Katalog</span></div>
+          <div class="field"><svg class="ic"><use href="#i-search"/></svg><span class="q">istori</span></div>
+          <div class="note"><span>Rezultati iz kataloga</span><span>24 pronađena</span></div>
+          <div class="list">
+            <div class="row"><div class="cv c1">H</div><div class="tx"><div class="t">Hardcore History</div><div class="s">Dan Carlin · istorija · 4 h po epizodi</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><div class="cv c2">TR</div><div class="tx"><div class="t">The Rest Is History</div><div class="s">Goalhanger · istorija · 2 epizode nedeljno</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><div class="cv c3">IH</div><div class="tx"><div class="t">Istorija za početnike</div><div class="s">srpski · istorija · 45 min</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><div class="cv c4">RJ</div><div class="tx"><div class="t">Radio Ježevi: arhiva</div><div class="s">radio · istorija · 60 min</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><div class="cv c5">O</div><div class="tx"><div class="t">Our Fake History</div><div class="s">Sebastian Major · istorija</div></div><svg class="ic go"><use href="#i-right"/></svg></div>
+            <div class="row"><span class="fi"><svg class="ic"><use href="#i-search"/></svg></span><div class="tx"><div class="t">Traži drugačije</div><div class="s">ime emisije ili autora</div></div></div>
+          </div>
+          <div class="toast" style="margin:8px 12px 10px"><span>Dodir na emisiju otvara epizode i dugme „Zaprati“</span></div>
+          <div class="home"></div>
+        </div></div>
+        <figcaption>
+          <h3><span class="n">11</span>Emisije: katalog</h3>
+          <ul>
+            <li>Treći tab: pretraga po imenu emisije ili autora, kroz katalog od nekoliko miliona feedova.</li>
+            <li>Dodir otvara spisak epizoda i dugme „Zaprati“; pretplata se dodaje u „Feedovi“.</li>
+            <li>Tvoji feedovi i pretraga su odvojeni tabovi, pa se ne meša pronađeno sa tvojim.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+    </div>
+  </div>
+</section>
+
+<!-- 2 PRAVILA -->
+<section id="pravila">
+  <div class="wrap">
+    <div class="sh"><span class="no">2</span><h2>Pravila po sekcijama</h2></div>
+    <p class="intro">Plejer je jedan, ali se ponaša različito prema tome iz koje sekcije dolazi fajl.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th></th><th>Muzika</th><th>Knjige</th><th>Emisije</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Izvori</th><td>Folderi, uz tagove iz fajlova</td><td>Folderi; podfolderi CD1, CD2… su ista knjiga</td><td>Folderi <b>i</b> pretplate na podkast feedove</td></tr>
+          <tr><th>Jedinica</th><td>Numera</td><td>Knjiga: folder sa fajlovima ili jedan fajl. Podfolderi CD1, CD2… čine jednu knjigu.</td><td>Epizoda je fajl, serija je folder.</td></tr>
+          <tr><th>Prikaz</th><td>Folderi, izvođači, albumi</td><td>Lista knjiga, poslednja slušana na vrhu</td><td>Folderi serija, u njima epizode</td></tr>
+          <tr><th>Pamćenje pozicije</th><td>Pamti se samo poslednji folder i red puštanja. Mesto u numeri se ne pamti, numera uvek ide od početka.</td><td>Po knjizi: fajl i sekunda</td><td>Po epizodi</td></tr>
+          <tr><th>Redosled</th><td>Redom, nasumično ili sa ponavljanjem</td><td>Uvek redom</td><td>Redom; dugme „Nasumična“ bira nepreslušanu</td></tr>
+          <tr><th>Kraj fajla</th><td>Sledeća numera</td><td>Sledeći fajl iste knjige</td><td>Sledeća epizoda (može se isključiti)</td></tr>
+          <tr><th>Oznake</th><td>Nema</td><td>Napredak, preostalo vreme, završena</td><td>Nova, započeta, preslušana</td></tr>
+          <tr><th>Brzina</th><td>Uvek 1×</td><td>0,5–2×, pamti se po knjizi</td><td>0,5–2×, pamti se po seriji</td></tr>
+          <tr><th>Glavna dugmad</th><td>Prethodna i sledeća numera; −30 i +30 s</td><td>−30 s i +30 s</td><td>−30 s i +30 s</td></tr>
+          <tr><th>Poništi skok</th><td>Nema</td><td>Samo posle ručnog traženja po skali</td><td>Samo posle ručnog traženja po skali</td></tr>
+          <tr><th>Zvuk obaveštenja</th><td>Muzika se kratko stiša</td><td>Pauza, pa nastavak</td><td>Pauza, pa nastavak</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- UVOZ -->
+<section id="uvoz">
+  <div class="wrap">
+    <div class="sh"><span class="no">3</span><h2>Uvoz i razvrstavanje</h2></div>
+    <p class="intro">Fajlovi ostaju tamo gde jesu. Aplikacija ne pravi svoju kopiju, nego pamti koji folder pripada kojoj sekciji.</p>
+
+    <div class="cols2">
+      <div>
+        <h3>Prvi uvoz</h3>
+        <ol>
+          <li>Dozvola „Pristup svim fajlovima“. Bez nje aplikacija ne može da čita foldere, a dozvolu po folderu ne može ni da traži, jer nije iz prodavnice.</li>
+          <li>Pregledaju se interna i SD memorija. Preskaču se sistemski folderi i oni sa zvukom obaveštenja, alarma i melodija zvona.</li>
+          <li>Za svaki folder sa audio fajlovima predlaže se sekcija, po redu provere: ime foldera (Audiobooks, Knjige, Podcasts, Radio, Music…); pa oblik sadržaja (mnogo fajlova sličnog trajanja preko 20 min upućuje na knjigu, mnogo kratkih sa datumom u imenu na seriju); pa žanr iz tagova.</li>
+          <li>Predlozi se vide na jednom ekranu. „Prihvati predloge“ raspoređuje sve odjednom, a svaki predlog se pre toga može ispraviti.</li>
+          <li>Folder bez pouzdanog znaka dobija „?“ i čeka tvoj izbor. Nijedan fajl se ne pojavljuje u sekciji dok folder nije raspoređen.</li>
+        </ol>
+        <p class="small" style="margin-top:12px">Kasnije se novi folderi pojavljuju u Podešavanjima kao „2 čekaju“. Ništa se ne dodaje bez tvog znanja.</p>
+      </div>
+      <div>
+        <h3>Premeštanje i ispravke</h3>
+        <p>Dva načina. Oba menjaju samo pripadnost sekciji, dok fajl na disku ostaje gde je, pa nema rizika da aplikacija nešto obriše ili izgubi.</p>
+        <ul>
+          <li><b>Pojedinačno:</b> dug pritisak na knjigu, seriju, numeru ili epizodu otvara „Prebaci u drugu sekciju“. Stavka odmah prelazi u izabranu sekciju, a pozicija i status ostaju. Tako se i fajl koji je završio u pogrešnom folderu vraća tamo gde pripada.</li>
+          <li><b>Mešani fajlovi:</b> u Podešavanjima je spisak stavki koje ne liče na svoj folder, po dužini, imenu i tagovima (fajl od 52 minuta pod nazivom „Glava 3“ u folderu muzike). Predlog, ne pravilo; dodir premešta.</li>
+          <li><b>Na disku:</b> u istom prozoru stoji „Premesti i na disku…“, koje otvara izbor odredišnog foldera i stvarno premešta fajl. Koristi se retko, jer posle toga Windows i druge aplikacije vide fajl na novom mestu.</li>
+          <li><b>Po folderu:</b> Podešavanja → „Rasporedi fajlove“, isti ekran kao pri uvozu.</li>
+          <li><b>Podfolderi</b> nasleđuju sekciju roditelja dok im se ne dodeli svoja. Tako „Music/Domaće“ može biti Muzika, a „Music/Knjige“ Knjige.</li>
+          <li>Kad fajl promeni sekciju, pozicija i status ostaju sačuvani. Ako ga vratiš, sve je kao pre.</li>
+          <li>Ako fajl preimenuješ ili premestiš spolja, u Windowsu ili kroz „Moji fajlovi“, aplikacija ga pri sledećem pregledu prepoznaje i pozicija se ne gubi.</li>
+        </ul>
+        <p class="small">Premeštanje fajlova na SD kartici iz same aplikacije nije pouzdano na novijim Androidima, pa to ne radim. Ako zatreba, dodajem prečicu „Otvori u Moji fajlovi“.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PODACI I INTERNET -->
+<section id="podaci">
+  <div class="wrap">
+    <div class="sh"><span class="no">4</span><h2>Podaci i internet</h2></div>
+    <p class="intro">Internet traže četiri stvari: dopuna podataka o fajlovima, omoti, podkast feedovi i pretraga kataloga. Nijedna se ne pokreće sama.</p>
+
+    <div class="cols2">
+      <div>
+        <h3>Odakle dolaze naslov, autor i omot</h3>
+        <ol>
+          <li><b>Iz samih fajlova.</b> MP3 nosi ID3 tagove, M4A i M4B svoje: naslov, autor, album ili serija, broj u nizu, trajanje, žanr i sliku omota. Ovo uvek radi, i bez interneta. Ako fajl ima sliku, ona uvek pobeđuje.</li>
+          <li><b>Iz imena fajla i foldera.</b> Kad tagova nema, ime poput „Ivo Andrić - Na Drini ćuprija - 07 - Glava VII.mp3“ daje naslov, autora i redni broj.</li>
+          <li><b>Iz podkast feeda.</b> Za epizode skinute preko feeda stižu tačni naslov, datum, broj epizode i slika serije.</li>
+          <li><b>Sa interneta, automatski.</b> Kad fajl nema omot, aplikacija ga traži sama: za muziku po albumu i izvođaču, za knjige po naslovu i autoru. Ide po albumu ili knjizi, nikad pojedinačno po 300 numera, i pamti rezultat da se ne traži dvaput. Prekidač „Preuzimaj omote sa interneta“ može da se isključi; tada ostaje slika iz fajla ili inicijal u boji.</li>
+        </ol>
+        <p class="small" style="margin-top:12px">Kad se omot nađe, vidi se u plejeru, na listi i na zaključanom ekranu. Sa telefona odlazi samo upit za naslov; nema naloga ni praćenja.</p>
+        </div>
+      <div>
+        <h3>Podkast feedovi</h3>
+        <p>Sekcija Emisije dobija tab „Feedovi“, pored lokalnih foldera.</p>
+        <ul>
+          <li><b>Dodavanje:</b> zalepiš adresu RSS feeda, a aplikacija pročita naslov, sliku i spisak epizoda. Za traženje po imenu služi tab „Katalog“.</li>
+          <li><b>Puštanje:</b> epizoda se prvo preuzme i pušta sa telefona, pa tajmer, pamćenje pozicije i rad sa ugašenim ekranom važe kao za svaki lokalni fajl.</li>
+          <li><b>Osvežavanje:</b> jednom dnevno, kad je telefon na Wi-Fi i punjaču. Oznaka „2 nove“ stoji dok ne otvoriš feed.</li>
+          <li><b>Preuzimanje:</b> biraš epizodu sam, ili se poslednje nepreslušane preuzimaju uz prekidač i ograničenje na Wi-Fi.</li>
+          <li><b>Strimovanje po potrebi.</b> Ako ne želiš da čekaš preuzimanje, epizoda može da se pušta i direktno sa mreže; pozicija se pamti isto.</li>
+          <li><b>Folderi rade i bez feeda.</b> Ako epizode skidaš sam, Emisije se ponašaju kao i do sad.</li>
+        </ul>
+        <p class="small">Ne rade: feedovi koji traže prijavu (Patreon, privatni), YouTube i Spotify, jer ne daju RSS.</p>
+      </div>
+    </div>
+
+    <div class="cols2">
+      <div>
+        <h3>Pretraga kataloga</h3>
+        <p>Katalog postoji, i to besplatan. Dva izvora rade bez plaćanja:</p>
+        <ul>
+          <li><b>Apple iTunes Search</b> vraća spisak emisija po imenu i, što je najvažnije, adresu RSS feeda. Bez ključa, ali oko 20 upita u minuti i najviše stotinu rezultata po upitu.</li>
+          <li><b>Podcast Index</b> je otvoren, neprofitni imenik sa sličnim mogućnostima i boljim pokrivanjem manjih emisija. Traži besplatan ključ i tajnu, koji se upisuju u kod aplikacije.</li>
+        </ul>
+        <p class="small">Za ličnu upotrebu oba su dovoljna. Pretraga ide po imenu emisije ili autora, a rezultat prikazuje autora, temu i tipično trajanje. Emisija se ne pušta direktno, nego se prvo zaprati, pa epizode dolaze kao i svaki drugi feed.</p>
+      </div>
+      <div>
+        <h3>Preporuke</h3>
+        <p>Gotove preporuke nijedan od tih izvora ne daje. Dve stvari su moguće bez ijednog dodatnog servisa:</p>
+        <ul>
+          <li><b>„Slično ovome“:</b> katalog zna emisije istog autora i teme, pa se nude pri dnu spiska epizoda.</li>
+          <li><b>Po tvojim feedovima:</b> iz tema tvojih pretplata izdvajaju se najslušanije emisije iz istih tema. Računa se lokalno, bez profila i bez praćenja.</li>
+        </ul>
+        <p class="small">Algoritamsko „preporučeno za tebe“ iz velikih servisa ovde ne postoji, i to je namerno. Bolje tri smislene nego trideset nasumičnih.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- TAJMER 5 -->
+<section id="tajmer">
+  <div class="wrap">
+    <div class="sh"><span class="no">5</span><h2>Tajmer za spavanje</h2></div>
+    <p class="intro">Primer prikazuje tajmer od 30 minuta. Vremenska osa nije u razmeri: prvih 29 minuta je skraćeno.</p>
+
+    <div class="diagram">
+      <svg class="w" viewBox="0 0 700 232" role="img" aria-label="Tok tajmera: puna jačina do 29. minuta, utišavanje do 30. minuta, pauza, zatim još jedan minut čekanja na potez.">
+        <!-- prozor za produžavanje -->
+        <rect x="300" y="34" width="310" height="126" fill="#B05F17" opacity=".10"/>
+        <line x1="300" y1="34" x2="300" y2="160" stroke="#B05F17" stroke-width="1" stroke-dasharray="3 4"/>
+        <line x1="610" y1="34" x2="610" y2="160" stroke="#B05F17" stroke-width="1" stroke-dasharray="3 4"/>
+        <text x="310" y="54" font-size="12.5" font-weight="700" fill="#B05F17">Prozor za produžavanje</text>
+        <!-- površina ispod krive -->
+        <polygon points="50,70 300,70 470,160 50,160" fill="#1E1B17" opacity=".06"/>
+        <!-- osa -->
+        <line x1="50" y1="160" x2="670" y2="160" stroke="#DAD3C5" stroke-width="1.5"/>
+        <!-- kriva jačine -->
+        <path d="M50 70H150M172 70H300L470 160H670" fill="none" stroke="#1E1B17" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M153 78l8-16M163 78l8-16" fill="none" stroke="#1E1B17" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="56" y="60" font-size="12" fill="#6A6257">puna jačina</text>
+        <text x="540" y="152" font-size="12" fill="#6A6257" text-anchor="middle">tišina, čeka se potez</text>
+        <!-- potez -->
+        <path d="M390 117.6L414 70H664" fill="none" stroke="#B05F17" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" stroke-linejoin="round"/>
+        <polygon points="670,70 661,65 661,75" fill="#B05F17"/>
+        <circle cx="390" cy="117.6" r="5" fill="#B05F17"/>
+        <text x="514" y="91" font-size="12.5" fill="#B05F17" text-anchor="middle" font-weight="600">potez: zvuk se vraća, +15 min</text>
+        <!-- oznake -->
+        <g stroke="#6A6257" stroke-width="1.5">
+          <line x1="50" y1="160" x2="50" y2="167"/><line x1="300" y1="160" x2="300" y2="167"/><line x1="470" y1="160" x2="470" y2="167"/><line x1="610" y1="160" x2="610" y2="167"/>
+        </g>
+        <g font-size="13" font-weight="700" fill="#1E1B17">
+          <text x="50" y="186">0:00</text>
+          <text x="300" y="186" text-anchor="middle">29:00</text>
+          <text x="470" y="186" text-anchor="middle">30:00</text>
+          <text x="610" y="186" text-anchor="middle">31:00</text>
+        </g>
+        <g font-size="12" fill="#6A6257">
+          <text x="50" y="203">pokretanje</text>
+          <text x="300" y="203" text-anchor="middle">počinje utišavanje</text>
+          <text x="470" y="203" text-anchor="middle">pauza</text>
+          <text x="610" y="203" text-anchor="middle">kraj čekanja</text>
+        </g>
+      </svg>
+      <svg class="n" viewBox="0 0 360 196" role="img" aria-label="Tok tajmera: puna jačina do 29. minuta, utišavanje do 30. minuta, pauza, zatim još jedan minut čekanja na potez.">
+        <rect x="110" y="26" width="210" height="124" fill="#B05F17" opacity=".10"/>
+        <line x1="110" y1="26" x2="110" y2="150" stroke="#B05F17" stroke-width="1" stroke-dasharray="3 4"/>
+        <line x1="320" y1="26" x2="320" y2="150" stroke="#B05F17" stroke-width="1" stroke-dasharray="3 4"/>
+        <text x="117" y="43" font-size="11.5" font-weight="700" fill="#B05F17">Prozor za produžavanje</text>
+        <polygon points="16,62 110,62 230,150 16,150" fill="#1E1B17" opacity=".06"/>
+        <line x1="16" y1="150" x2="344" y2="150" stroke="#DAD3C5" stroke-width="1.5"/>
+        <path d="M16 62H78M94 62H110L230 150H344" fill="none" stroke="#1E1B17" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M80 69l7-14M88 69l7-14" fill="none" stroke="#1E1B17" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="17" y="51" font-size="11" fill="#6A6257">puna jačina</text>
+        <text x="275" y="143" font-size="11" fill="#6A6257" text-anchor="middle">tišina</text>
+        <path d="M165 102.3L182 62H336" fill="none" stroke="#B05F17" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" stroke-linejoin="round"/>
+        <polygon points="344,62 335,57 335,67" fill="#B05F17"/>
+        <circle cx="165" cy="102.3" r="4.5" fill="#B05F17"/>
+        <text font-size="11.5" fill="#B05F17" text-anchor="middle" font-weight="600"><tspan x="262" y="82">potez: zvuk se vraća,</tspan><tspan x="262" y="96">+15 min</tspan></text>
+        <g stroke="#6A6257" stroke-width="1.5">
+          <line x1="16" y1="150" x2="16" y2="156"/><line x1="110" y1="150" x2="110" y2="156"/><line x1="230" y1="150" x2="230" y2="156"/><line x1="320" y1="150" x2="320" y2="156"/>
+        </g>
+        <g font-size="11.5" font-weight="700" fill="#1E1B17">
+          <text x="16" y="172">0:00</text>
+          <text x="110" y="172" text-anchor="middle">29:00</text>
+          <text x="230" y="172" text-anchor="middle">30:00</text>
+          <text x="320" y="172" text-anchor="middle">31:00</text>
+        </g>
+        <g font-size="10.5" fill="#6A6257">
+          <text x="16" y="187">pokretanje</text>
+          <text x="110" y="187" text-anchor="middle">utišavanje</text>
+          <text x="230" y="187" text-anchor="middle">pauza</text>
+          <text x="320" y="187" text-anchor="middle">kraj čekanja</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="cols2">
+      <div>
+        <h3>Tok</h3>
+        <ol>
+          <li>Biraš trajanje: 15, 30, 45 ili 60 min.</li>
+          <li>Poslednjih 60 s zvuk se ravnomerno utišava do nule.</li>
+          <li>Reprodukcija se pauzira. Pozicija ostaje tačno tamo gde je zvuk stao, bez vraćanja unazad.</li>
+          <li>Aplikacija još 60 s čeka potez, zatim prestaje da prati senzore i telefon spava. Kontrole ostaju na zaključanom ekranu, pa se slušanje usred noći nastavlja jednim dodirom.</li>
+        </ol>
+        <p class="small" style="margin-top:14px">Odbrojavanje teče samo dok zvuk ide. Ručna pauza zaustavlja i tajmer.</p>
+      </div>
+      <div>
+        <h3>Produžavanje naslepo</h3>
+        <p>Dok traje utišavanje i 60 s posle pauze, svaki od ovih poteza vraća zvuk i dodaje 15 min:</p>
+        <ul>
+          <li>pomeranje ili protresanje telefona</li>
+          <li>pritisak na dugme za jačinu</li>
+          <li>paljenje ekrana dugmetom sa strane</li>
+        </ul>
+        <p>Zvuk se vraća za dve sekunde, a kratka vibracija potvrđuje da je potez prepoznat.</p>
+        <p class="small">Podesivo: trajanje utišavanja (30, 60 ili 90 s), produžetak (5, 10, 15 ili 30 min), svaki potez posebno i osetljivost pokreta.</p>
+      </div>
+    </div>
+
+    <div class="limits">
+      <h3>Poznata ograničenja</h3>
+      <ul>
+        <li>Ako obaveštenje upali ekran tokom utišavanja, tajmer se produžava i bez tvoje namere. Režim „Ne uznemiravaj“ to sprečava.</li>
+        <li>Zvučnik blago trese kućište telefona. Prag za prepoznavanje pokreta mora biti iznad toga, pa se osetljivost podešava probom na telefonu.</li>
+        <li>Koliko dugo One UI zadržava kontrole pauziranog plejera na zaključanom ekranu utvrđuje se probom na telefonu.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- POZADINA 6 -->
+<section id="pozadina">
+  <div class="wrap">
+    <div class="sh"><span class="no">6</span><h2>Rad u pozadini</h2></div>
+    <p class="intro">Da zvuk ne stane kad se ekran ugasi, potrebne su dve stvari: aplikacija mora da radi onako kako Android 17 zahteva, a One UI ne sme da je uspava.</p>
+    <div class="cards2">
+      <div class="card">
+        <h3>Šta radi aplikacija</h3>
+        <ul>
+          <li>Reprodukcija radi u sistemskom servisu za medije (foreground service) sa stalnim obaveštenjem. Android 17 utišava pozadinski zvuk aplikacija koje takav servis nemaju, pa je ovo uslov, a ne izbor.</li>
+          <li>Gašenje ekrana, zaključavanje i uklanjanje aplikacije iz liste nedavnih ne prekidaju zvuk.</li>
+          <li>Puštanje uvek počinje tvojim dodirom: u aplikaciji, na obaveštenju ili na zaključanom ekranu. Aplikacija nikad ne počinje da svira sama.</li>
+          <li>Pozicija se upisuje na pet sekundi i pri svakoj pauzi, skoku i promeni fajla.</li>
+          <li>Poziv ili alarm: pauza, pa nastavak. Druga aplikacija pusti zvuk: pauza. Isključene slušalice: pauza.</li>
+          <li>Dnevnik događaja beleži puštanja, pauze, tajmer i greške. Ako zvuk nekad stane, vidi se kada i zašto.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Šta podešavaš jednom na telefonu</h3>
+        <ol>
+          <li><span class="path">Settings → Apps → Šaptač → Battery → Unrestricted</span></li>
+          <li><span class="path">Settings → Battery → Background usage limits → Never auto sleeping apps</span><br>Dodaj Uspavanku na spisak.</li>
+          <li>Dozvoli obaveštenja kad aplikacija pita.</li>
+        </ol>
+        <p>Aplikacija pri prvom pokretanju vodi kroz ova tri koraka i pokazuje koji su urađeni.</p>
+        <p class="small">Nazivi menija su navedeni na engleskom. Na telefonu podešenom na srpski stoje prevedeni, na istim mestima.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 OBIM -->
+<section id="obim">
+  <div class="wrap">
+    <div class="sh"><span class="no">7</span><h2>Obim</h2></div>
+    <p class="intro">Prva verzija sadrži ono bez čega aplikacija ne ispunjava svrhu. Ostalo čeka da se osnova dokaže na telefonu.</p>
+    <div class="scope">
+      <div class="sc now">
+        <h3>Verzija 1.0</h3>
+        <p>Prva isporuka</p>
+        <ul>
+          <li>Uvoz sa predlozima i raspoređivanje foldera</li>
+          <li>Tri sekcije sa folderima po izboru</li>
+          <li>Knjige: napredak, nastavak, brzina</li>
+          <li>Emisije: status epizoda, „Nastavi“, „Nasumična“</li>
+          <li>Muzika: folderi, izvođači, albumi, nasumično, ponavljanje</li>
+          <li>Podkast feedovi sa preuzimanjem i osvežavanjem</li>
+          <li>Pretraga kataloga po imenu emisije ili autora</li>
+          <li>Naslov, autor i omot iz tagova, uz automatsku dopunu sa interneta</li>
+          <li>Plejer: skok 30 s, prethodno i sledeće, poglavlja, brzina</li>
+          <li>Tajmer sa utišavanjem i produžavanjem naslepo</li>
+          <li>Noćni ekran</li>
+          <li>Kontrole u obaveštenju i na zaključanom ekranu</li>
+          <li>Vodič za podešavanja baterije</li>
+          <li>Dnevnik događaja</li>
+        </ul>
+      </div>
+      <div class="sc">
+        <h3>Verzija 1.1</h3>
+        <p>Posle probe na telefonu</p>
+        <ul>
+          <li>Pretraga</li>
+          <li>Izvoz i uvoz pozicija (rezervna kopija)</li>
+          <li>Prepoznavanje premeštenih i preimenovanih fajlova</li>
+          <li>Automatsko preuzimanje novih epizoda i brisanje posle slušanja</li>
+          <li>Preporuke: „slično ovome“ i po temama tvojih feedova</li>
+          <li>Noćni ekran preko zaključanog ekrana</li>
+          <li>Poglavlja unutar jednog fajla (M4B)</li>
+          <li>Obeleživači</li>
+        </ul>
+      </div>
+      <div class="sc">
+        <h3>Možda kasnije</h3>
+        <p>Ako se pokaže potreba</p>
+        <ul>
+          <li>Ujednačavanje glasnoće (tih govor, glasan smeh publike)</li>
+          <li>Liste numera za muziku</li>
+          <li>Tajmer do kraja epizode ili poglavlja</li>
+          <li>Automatski tajmer posle određenog sata</li>
+          <li>Vidžet na početnom ekranu</li>
+        </ul>
+      </div>
+      <div class="sc no">
+        <h3>Nije u planu</h3>
+        <p>Namerno izostavljeno</p>
+        <ul>
+          <li>Strimovanje onoga što nije preuzeto; noću se sluša sa telefona</li>
+          <li>Cloud i sinhronizacija između uređaja</li>
+          <li>Naloga, ocena i komentara za podkaste</li>
+          <li>Ekvilajzer, tekstovi pesama, uređivanje tagova</li>
+          <li>Android Auto, Chromecast</li>
+          <li>Svetla tema</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 TEHNIKA -->
+<section id="tehnika">
+  <div class="wrap">
+    <div class="sh"><span class="no">8</span><h2>Tehnika, izrada i instalacija</h2></div>
+    <p class="intro">Izbori su podređeni pouzdanoj reprodukciji u pozadini na Androidu 17 i što manjem broju delova.</p>
+    <dl class="spec">
+      <dt>Osnova</dt>
+      <dd>Kotlin, Jetpack Compose, Media3 (ExoPlayer i MediaSession) u aktuelnom stabilnom izdanju, Room. Jedan modul, bez mrežnih biblioteka.</dd>
+      <dt>Android</dt>
+      <dd>Cilja Android 17 (API 37). Radi od Androida 11.</dd>
+      <dt>Pristup fajlovima</dt>
+      <dd>Dozvola „Pristup svim fajlovima“. Aplikacija čita izabrane foldere direktno i vidi isto što i „Moji fajlovi“. To je moguće zato što se ne objavljuje u prodavnici.</dd>
+      <dt>Katalog podkasta</dt>
+      <dd>Apple iTunes Search kao primarni izvor, jer ne traži ključ. Podcast Index kao rezerva, sa besplatnim ključem. Oba se zovu samo pri pretrazi, a rezultati se keširaju.</dd>
+      <dt>Mreža</dt>
+      <dd>Internet postoji samo za podkast feedove i opcionu dopunu podataka. Nema naloga, reklama ni praćenja; saobraćaj ide preko HTTPS-a.</dd>
+      <dt>Podaci</dt>
+      <dd>Lokalna baza čuva pozicije, statuse i keš trajanja i tagova. Internet se koristi samo za feedove i katalog, nikad u pozadini bez tvog zahteva.</dd>
+      <dt>Formati</dt>
+      <dd>MP3, M4A i M4B, OGG i Opus, FLAC, WAV. Bez WMA i APE.</dd>
+      <dt>Izrada, tri faze</dt>
+      <dd><b>1. Prototip.</b> Klikabilan prikaz cele aplikacije kao jedan HTML fajl, koji otvaraš u Chrome-u na računaru ili na telefonu. Služi samo za dizajn: izgled, tok ekrana, tajmer, sve osim pravog zvuka. Tu se dogovaramo dok ne bude kako treba.<br>
+      <b>2. Aplikacija.</b> Isti ekrani u Kotlinu i Compose-u, sa pravom reprodukcijom. Pokušavam build i u svom okruženju; ako uspe, dobijaš APK.<br>
+      <b>3. Instalacija i probe.</b> Sideload na S25, pa zajedničko peglanje onoga što se vidi samo na telefonu.<br>
+      <span class="small">Prava Android aplikacija ne može da radi u Chrome-u. Emulator ovde nije moguć, jer okruženje nema virtuelizaciju, pa je prototip jedini način da dizajn vidiš pre instalacije.</span></dd>
+      <dt>Potpis</dt>
+      <dd>Jedan stalan ključ za potpisivanje. Nove verzije se instaliraju preko starih, bez gubitka pozicija.</dd>
+      <dt>Provera</dt>
+      <dd>Aplikaciju ne mogu da pokrenem na telefonu ni u emulatoru. Ponašanje sa ugašenim ekranom proveravaš ti, a dnevnik događaja služi da mi preneseš šta se desilo.</dd>
+      <dt>Instalacija na S25</dt>
+      <dd>Prvo isključi Auto Blocker (<span class="path">Settings → Security and privacy → Auto Blocker</span>); dok je uključen, blokira i APK fajlove i USB debugging. Zatim instaliraj preko USB-a komandom <span class="path">adb install</span> ili otvori APK fajl na telefonu.</dd>
+      <dt>Googleova provera programera</dt>
+      <dd>Obavezna registracija programera zasad važi u četiri zemlje, a globalno se uvodi 2027. Instalacija preko ADB-a je izuzeta, pa lična aplikacija ostaje instalabilna.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 8 IKONA -->
+<section id="ikona">
+  <div class="wrap">
+    <div class="sh"><span class="no">9</span><h2>Ikona</h2></div>
+    <p class="intro">Izabrana je ikona „uvo i šapat": uvo u prigušenoj krem liniji, a unutra glas u amber boji koji se stišava.</p>
+    <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+      <div style="width:104px;height:104px;border-radius:24%;background:#0B0A09;display:grid;place-items:center;flex:none">
+        <svg viewBox="0 0 108 108" width="70" height="70" aria-label="Ikona Šaptač">
+          <path d="M66 26c-16 0-28 12-28 28 0 11 6 17 10 24 3 5 2 12-4 14" fill="none" stroke="#ECE5D9" stroke-width="5" stroke-linecap="round"/>
+          <path d="M62 42c-8 0-14 6-14 14 0 7 5 10 10 10" fill="none" stroke="#EFA13A" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="66" cy="70" r="6" fill="#EFA13A"/>
+        </svg>
+      </div>
+      <dl class="spec" style="flex:1;min-width:260px;margin:0">
+        <dt>Boje</dt>
+        <dd>Podloga #0B0A09, glas #EFA13A, uvo #ECE5D9. Iste kao u plejeru, pa ikona i aplikacija izgledaju kao jedna celina.</dd>
+        <dt>Mere</dt>
+        <dd>Platno 108 jedinica, crtež u srednjih 74%, da ostane ceo kada One UI iseče oblik u krug ili kvadrat. Debljina linije 5 jedinica, tačka glasa 12.</dd>
+        <dt>Druga upotreba</dt>
+        <dd>Isti crtež služi za malu sliku u obaveštenju o reprodukciji. Postoji i monohromna verzija, koju sistem oboji po temi.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- 9 ODLUKE -->
+<section id="odluke">
+  <div class="wrap">
+    <div class="sh"><span class="no">10</span><h2>Otvorene odluke</h2></div>
+    <p class="intro">Jezik, naziv i put do APK fajla su rešeni. Ostale su dve sitnice, obe sa predlogom.</p>
+    <ol class="dec">
+      <li>
+        <h3>Potezi za produžavanje tajmera</h3>
+        <p>Pomeranje telefona, dugme za jačinu, paljenje ekrana: koji ti odgovaraju?</p>
+        <p class="def"><b>Pretpostavka</b>Sva tri su uključena, a svaki se može isključiti.</p>
+      </li>
+      <li>
+        <h3>Automatsko preuzimanje epizoda</h3>
+        <p>Da se nove epizode same preuzimaju na Wi-Fi, ili uvek ti biraš?</p>
+        <p class="def"><b>Pretpostavka</b>Poslednje tri nepreslušane, samo na Wi-Fi.</p>
+      </li>
+      <li>
+        <h3>Internet dopuna podataka</h3>
+        <p>Da se traži po albumu i knjizi, ili nikad?</p>
+        <p class="def"><b>Pretpostavka</b>Ručno, po albumu ili knjizi, uz pregled pre upisa.</p>
+      </li>
+      <li>
+        <h3>Obim verzije 1.0</h3>
+        <p>Treba li nešto iz kolona „1.1“ ili „Možda kasnije“ odmah? Ima li u „1.0“ nečeg što ti ne treba?</p>
+        <p class="def"><b>Pretpostavka</b>Raspored iz odeljka 5.</p>
+      </li>
+    </ol>
+
+    <div class="basis">
+      <h3>Odgovori na kojima se dizajn zasniva</h3>
+      <ul>
+        <li>Razlog za sopstvenu aplikaciju: pamćenje pozicije, rad u pozadini, jednostavnost i plejer po meri, sve četiri stvari.</li>
+        <li>Folderi su glavni prikaz; tagovi služe samo za muziku.</li>
+        <li>Odvojene sekcije Muzika, Knjige i Emisije, svaka sa svojim pravilima.</li>
+        <li>Tajmer sa produžavanjem naslepo.</li>
+        <li>Posle tajmera nastavak tačno tamo gde je stalo.</li>
+        <li>Slušanje preko zvučnika telefona, upravljanje preko ekrana.</li>
+        <li>Naziv: Šaptač, za sada.</li>
+        <li>Jezik interfejsa: srpski, latinica.</li>
+        <li>Put do APK fajla: prvo prototip u Chrome-u, pa aplikacija i instalacija.</li>
+        <li>Emisije obuhvataju i podkaste, preko feedova.</li>
+        <li>Samsung Galaxy S25, One UI 9.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <strong>Izvori za tvrdnje o platformi</strong>
+    <ul>
+      <li>Android Developers, „Background audio hardening“ (Android 17): <a href="https://developer.android.com/about/versions/17/changes/bg-audio">developer.android.com/about/versions/17/changes/bg-audio</a></li>
+      <li>Android Developers, beleške o izdanjima Media3: <a href="https://developer.android.google.cn/jetpack/androidx/releases/media3">developer.android.google.cn/jetpack/androidx/releases/media3</a></li>
+      <li>Android Developers Blog, provera programera i ADB: <a href="https://developer.android.com/blog/posts/android-developer-verification-rolling-out-to-all-developers-on-play-console-and-android-developer-console">developer.android.com/blog/posts/android-developer-verification-…</a></li>
+      <li>SamMobile, One UI 9.0 (Android 17) za Galaxy S25: <a href="https://www.sammobile.com/news/one-ui-9-0-stable-update-galaxy-s25-finally-here/">sammobile.com/news/one-ui-9-0-stable-update-galaxy-s25-finally-here</a></li>
+      <li>MakeUseOf, Auto Blocker i USB debugging: <a href="https://www.makeuseof.com/galaxy-phone-hiding-setting-locks-down-usb-debugging/">makeuseof.com/galaxy-phone-hiding-setting-locks-down-usb-debugging</a></li>
+      <li>Audify, podešavanja baterije na One UI: <a href="https://audifyplayer.com/guides/music-stops-samsung-galaxy.html">audifyplayer.com/guides/music-stops-samsung-galaxy.html</a></li>
+    </ul>
+  </div>
+</footer>
+
+</body>
+</html>

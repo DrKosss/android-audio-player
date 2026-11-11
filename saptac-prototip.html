@@ -1,0 +1,1580 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Šaptač — prototip</title>
+<style>
+:root{
+  --bg:#000; --s1:#131110; --s2:#1D1A17; --s3:#241f1b; --line:#2a2521;
+  --t1:#ECE5D9; --t2:#9B9286; --t3:#6E665C;
+  --amber:#EFA13A; --amber-d:#2c2013; --night:#8A5620;
+  --paper:#F4F1EA; --ink:#1E1B17; --muted:#6A6257; --rule:#DAD3C5;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Noto Serif",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:#0c0b0a;color:var(--t1);font:15px/1.45 var(--sans);overflow:hidden}
+.stage{height:100%;display:flex;align-items:center;justify-content:center;gap:44px;padding:20px}
+@media (max-width:900px){.stage{gap:0;padding:0}}
+.notes{width:300px;color:#b9b1a5;font-size:13.5px;line-height:1.55}
+.notes h1{font:400 30px/1.1 var(--serif);color:#F0EAE0;margin:0 0 6px;letter-spacing:-.01em}
+.notes .sub{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#8d8579;margin:0 0 18px}
+.notes ul{margin:0;padding-left:1.1em}
+.notes li{margin:0 0 7px}
+.notes b{color:#EDE6DA;font-weight:600}
+.notes .hint{margin-top:18px;padding:12px 14px;border:1px solid #2b2622;border-radius:12px;background:#141210}
+.notes kbd{font:11px/1 ui-monospace,Menlo,Consolas,monospace;background:#26211d;border:1px solid #3a332d;border-radius:5px;padding:2px 5px;color:#e6dfd3}
+@media (max-width:900px){.notes{display:none}}
+
+/* telefon */
+.phone{position:relative;flex:none;width:392px;height:800px;border-radius:44px;background:#0a0a0b;
+  box-shadow:0 0 0 1px #2c2c2f inset,0 0 0 9px #171718,0 0 0 10px #2c2c2f,0 40px 70px -30px rgba(0,0,0,.9);padding:9px}
+@media (max-width:900px){
+  .phone{width:100%;height:100%;border-radius:0;padding:0;box-shadow:none;background:#000}
+}
+.scr{position:relative;width:100%;height:100%;border-radius:36px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
+@media (max-width:900px){.scr{border-radius:0}}
+.sb{flex:none;height:32px;display:flex;align-items:center;justify-content:space-between;padding:calc(6px + env(safe-area-inset-top)) 24px 0;font-size:11.5px;font-weight:600;color:var(--t2);position:relative}
+.sb::after{content:"";position:absolute;left:50%;top:11px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#1a1a1c}
+@media (max-width:900px){.sb{padding-top:10px}.sb::after{display:none}}
+.bat{width:20px;height:10px;border:1.2px solid currentColor;border-radius:3px;position:relative}
+.bat::before{content:"";position:absolute;inset:1.2px 4px 1.2px 1.2px;background:currentColor;border-radius:1px}
+.home{flex:none;height:calc(18px + env(safe-area-inset-bottom));display:grid;place-items:center;background:var(--bg)}
+.home::before{content:"";width:96px;height:4px;border-radius:2px;background:#3a3632}
+@media (max-width:900px){.home{display:none}}
+
+#view{flex:1;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+.ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ic.f{fill:currentColor;stroke:none}
+
+.bar{flex:none;display:flex;align-items:center;justify-content:space-between;padding:6px 18px 10px;gap:10px}
+.bar h2{margin:0;font-size:26px;font-weight:600;letter-spacing:-.01em}
+.bar .ic{color:var(--t2);cursor:pointer}
+.bar.sub{justify-content:flex-start;padding-left:8px}
+.bar.sub h2{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .tbtn{background:none;border:0;color:var(--t2);padding:6px;cursor:pointer;display:grid;place-items:center;border-radius:10px}
+.bar .tbtn:active{background:var(--s2)}
+
+.chips{flex:none;display:flex;gap:6px;padding:0 16px 10px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font-size:12px;padding:6px 12px;border-radius:99px;background:var(--s2);color:var(--t2);white-space:nowrap;border:0;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--amber);color:#231503;font-weight:700}
+
+.list{padding:0 8px 8px}
+.row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:14px;cursor:pointer;background:none;border:0;width:100%;text-align:left;color:inherit;font-family:inherit}
+.row:active{background:var(--s2)}
+.tx{flex:1;min-width:0}
+.t{font-size:14.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{font-size:12px;color:var(--t2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s .new{color:var(--amber);font-weight:600}
+.s .ok{color:var(--amber)}
+.pg{height:3px;border-radius:2px;background:var(--line);margin-top:7px;overflow:hidden}
+.pg i{display:block;height:100%;background:var(--amber);border-radius:2px}
+.cv{width:48px;height:48px;border-radius:11px;flex:none;display:grid;place-items:center;font:600 16px/1 Georgia,"Noto Serif",serif;color:rgba(255,255,255,.72)}
+.c1{background:linear-gradient(140deg,#6a4320,#2e1e10)}
+.c2{background:linear-gradient(140deg,#2b4a45,#162724)}
+.c3{background:linear-gradient(140deg,#463a66,#231d36)}
+.c4{background:linear-gradient(140deg,#5c2c35,#2c151a)}
+.c5{background:linear-gradient(140deg,#3c4a2a,#1d2414)}
+.c6{background:linear-gradient(140deg,#30455c,#17212d)}
+.dim{opacity:.42}
+.tiny{width:16px;height:16px}
+.go{width:16px;height:16px;color:var(--t3)}
+.fi{width:42px;height:42px;border-radius:11px;background:var(--s2);display:grid;place-items:center;color:var(--t2);flex:none}
+.fi .ic{width:19px;height:19px}
+.st{width:22px;height:22px;flex:none;display:grid;place-items:center;color:var(--t2)}
+.st .dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}
+.st .ring{width:12px;height:12px;border-radius:50%;border:2px solid var(--amber)}
+.st .ic{width:16px;height:16px}
+.dur{font-size:12px;color:var(--t2);flex:none}
+
+.acts{flex:none;display:flex;gap:8px;padding:0 16px 10px}
+.btn{flex:1;height:42px;border-radius:14px;background:var(--s2);color:var(--t1);display:flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px;font-weight:600;border:0;font-family:inherit;cursor:pointer}
+.btn.pri{background:var(--amber);color:#231503}
+.btn .ic{width:15px;height:15px}
+.btn:active{filter:brightness(1.15)}
+
+.note{flex:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px 8px;font-size:12px;color:var(--t2)}
+.tabs{flex:none;display:flex;gap:22px;padding:0 18px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.tab{padding:6px 0 10px;font-size:13.5px;color:var(--t2);position:relative;background:none;border:0;font-family:inherit;cursor:pointer}
+.tab.on{color:var(--t1);font-weight:600}
+.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--amber);border-radius:2px}
+
+.field{flex:none;margin:0 16px 10px;height:40px;border-radius:12px;background:var(--s2);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--t3)}
+.field svg{width:16px;height:16px;flex:none}
+.field input{flex:1;background:none;border:0;outline:none;color:var(--t1);font:14px var(--sans);min-width:0}
+.field input::placeholder{color:var(--t3)}
+
+.mini{flex:none;margin:0 8px 6px;height:58px;border-radius:16px;background:var(--s2);display:flex;align-items:center;gap:10px;padding:0 9px;position:relative;overflow:hidden;cursor:pointer;border:0;width:calc(100% - 16px);font-family:inherit;color:inherit;text-align:left}
+.mini .cv{width:38px;height:38px;border-radius:9px;font-size:13px}
+.mini .pb{width:38px;height:38px;border-radius:50%;background:var(--amber);color:#231503;display:grid;place-items:center;flex:none;border:0;cursor:pointer}
+.mini .pb .ic{width:16px;height:16px;margin-left:2px}
+.mini::before{content:"";position:absolute;left:14px;right:14px;bottom:0;height:2px;background:var(--line)}
+.mini::after{content:"";position:absolute;left:14px;bottom:0;height:2px;width:calc((100% - 28px)*var(--pp,0));background:var(--amber)}
+
+.nav{flex:none;height:calc(58px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:flex;border-top:1px solid var(--line)}
+.nv{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;color:var(--t3);background:none;border:0;font-family:inherit;cursor:pointer}
+.nv.on{color:var(--amber)}
+.nv .ic{width:21px;height:21px}
+
+/* plejer */
+.pl{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 22px 6px;overflow-y:auto;scrollbar-width:none}
+.pl::-webkit-scrollbar{display:none}
+.pl-top{display:flex;align-items:center;justify-content:space-between;height:34px;color:var(--t2);font-size:10.5px;letter-spacing:.16em;font-weight:600;flex:none}
+.pl-top button{background:none;border:0;color:var(--t2);padding:4px;cursor:pointer;display:grid;place-items:center}
+.art{width:min(46vh,204px);height:min(46vh,204px);flex:none;margin:6px auto 16px;border-radius:20px;display:flex;flex-direction:column;justify-content:flex-end;padding:16px;color:rgba(255,255,255,.85);box-shadow:0 18px 40px -20px rgba(0,0,0,.9)}
+.art b{font:400 22px/1.08 Georgia,"Noto Serif",serif}
+.art span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-top:7px}
+.pl h3{margin:0;font-size:18px;font-weight:600;line-height:1.25}
+.who{font-size:12.5px;color:var(--t2);margin:3px 0 12px}
+.seek{height:26px;display:flex;align-items:center;flex:none;cursor:pointer}
+.seek .track{position:relative;height:4px;width:100%;border-radius:2px;background:var(--line)}
+.seek .fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--amber)}
+.seek .knob{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--amber)}
+.times{display:flex;justify-content:space-between;font-size:11.5px;color:var(--t2);font-variant-numeric:tabular-nums;margin-top:-2px}
+.times button{background:none;border:0;color:inherit;font:inherit;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer;padding:0}
+.whole{font-size:11.5px;color:#7d756a;text-align:center;margin-top:6px}
+.nextup{flex:none;margin:auto 0 0;padding-top:12px;text-align:center;font-size:12px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nextup b{color:var(--t2);font-weight:600}
+.ctl{display:flex;align-items:center;justify-content:space-between;flex:none;padding:10px 0 2px}
+.cb{display:grid;place-items:center;color:var(--t1);border-radius:50%;flex:none;background:none;border:0;cursor:pointer}
+.cb.sm{width:34px;height:34px;color:#8b8377}
+.cb.sm .ic{width:20px;height:20px}
+.cb.md{width:56px;height:56px}
+.cb.md .ic{width:40px;height:40px;stroke-width:1.4}
+.cb.lg{width:74px;height:74px;background:var(--amber);color:#231503}
+.cb.lg .ic{width:30px;height:30px}
+.toast{flex:none;margin:10px 0 0;min-height:34px;border-radius:10px;background:var(--s2);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;font-size:12px;color:var(--t2)}
+.toast b{color:var(--amber);letter-spacing:.06em;font-size:11px;cursor:pointer}
+.toast.hide{visibility:hidden}
+.tools{margin:16px 0 0;display:flex;gap:8px;padding:0;flex:none}
+.tool{flex:1;height:52px;border-radius:14px;background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;color:var(--t2);font-family:inherit;cursor:pointer}
+.tool .ic{width:18px;height:18px;color:var(--t1)}
+.tool .v{font-size:14px;font-weight:700;color:var(--t1);line-height:18px}
+.tool.on{border-color:var(--amber);color:var(--amber)}
+.tool.on .ic{color:var(--amber)}
+
+/* liste / podesavanja */
+.sr{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;font-size:14px;border-bottom:1px solid var(--s2);padding:6px 0;width:100%;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font-family:inherit;text-align:left}
+.sr .v{color:var(--t2);font-size:13px}
+.sr .ok{color:var(--amber);display:flex;align-items:center;gap:4px;font-size:12.5px}
+.sr .ok .ic{width:14px;height:14px}
+.gh{font-size:10.5px;letter-spacing:.14em;font-weight:700;color:var(--amber);margin:16px 0 2px}
+.set{flex:1;min-height:0;overflow-y:auto;padding:0 18px 16px;scrollbar-width:none}
+.set::-webkit-scrollbar{display:none}
+.sw{width:36px;height:21px;border-radius:11px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--t2);transition:left .15s,background .15s}
+.sw.on{background:var(--amber)}
+.sw.on::after{left:18px;background:#231503}
+.pick{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:9px;background:var(--s2);color:var(--t2);flex:none;border:0;font-family:inherit;cursor:pointer}
+.pick.done{background:var(--amber-d);color:var(--amber)}
+.pick.none{border:1px dashed #3b3530;background:transparent;color:var(--t3)}
+
+/* tajmer */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.72);z-index:20;display:flex;align-items:flex-end;animation:fade .15s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{width:100%;background:var(--s1);border-radius:26px 26px 0 0;padding:10px 18px 26px;border-top:1px solid var(--line);animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(14px)}to{transform:none}}
+.sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:#3a3632;margin:0 auto 16px}
+.sheet h3{margin:0 0 14px;font-size:17px;font-weight:600}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ps{height:66px;border-radius:16px;background:var(--s2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px;font-weight:600;border:0;color:var(--t1);font-family:inherit;cursor:pointer}
+.ps small{font-size:10px;font-weight:500;color:var(--t2);margin-top:1px}
+.ps.on{box-shadow:0 0 0 1.5px var(--amber) inset;color:var(--amber)}
+.ps.on small{color:var(--amber)}
+.hint{margin:16px 0 0;font-size:12px;line-height:1.55;color:var(--t2)}
+.hint b{color:var(--t1);font-weight:600}
+.tmrow{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:13.5px}
+.tmrow .big{font-size:22px;font-weight:600;color:var(--amber);font-variant-numeric:tabular-nums}
+
+/* nocni ekran */
+.night{position:absolute;inset:0;background:#050403;color:var(--night);z-index:30;display:flex;flex-direction:column;animation:fade .2s}
+.n-top{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;font-size:12px;flex:none}
+.n-top button{background:none;border:0;color:inherit;padding:8px;cursor:pointer}
+.zones{flex:1;display:grid;grid-template-columns:1fr 1.3fr 1fr;min-height:0;border-top:1px dashed #23160b}
+.z{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:12.5px;border-right:1px dashed #23160b;background:none;border-top:0;border-bottom:0;border-left:0;color:inherit;font-family:inherit;cursor:pointer}
+.z:last-child{border-right:0}
+.z:active{background:#120b04}
+.z .ic{width:46px;height:46px;stroke-width:1.3}
+.z.mid .ic{width:92px;height:92px}
+.n-bot{flex:none;border-top:1px dashed #23160b;padding:16px 20px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.n-time{display:flex;align-items:center;gap:10px;font-size:30px;font-weight:300;font-variant-numeric:tabular-nums}
+.n-time .ic{width:22px;height:22px}
+.n-plus{height:52px;padding:0 20px;border-radius:26px;border:1.5px solid var(--night);display:grid;place-items:center;font-size:16px;font-weight:600;background:none;color:inherit;font-family:inherit;cursor:pointer}
+.extendbar{flex:none;background:#2a1a08;color:#ffd8a3;font-size:12px;padding:9px 16px;text-align:center}
+
+/* zakljucan ekran */
+.lock{position:absolute;inset:0;background:radial-gradient(120% 70% at 50% 0%,#1d2537 0%,#0a0c12 62%,#050608 100%);color:#d5d9e2;z-index:30;display:flex;flex-direction:column;animation:fade .2s}
+.lock .clock{text-align:center;margin-top:54px;font-size:64px;font-weight:300;letter-spacing:-.02em;line-height:1}
+.lock .date{text-align:center;font-size:13px;color:#9aa1b0;margin-top:8px}
+.media{margin:34px 12px 0;border-radius:24px;background:rgba(255,255,255,.09);padding:14px 14px 13px}
+.media .hd{display:flex;gap:11px;align-items:center}
+.media .cv{width:40px;height:40px;border-radius:9px;font-size:14px}
+.media .app{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#9aa1b0;margin-bottom:2px}
+.media .s{color:#9aa1b0}
+.media .pg{margin-top:15px;background:rgba(255,255,255,.16)}
+.media .pg i{background:#d5d9e2}
+.mc{display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding:0 8px}
+.mc button{background:none;border:0;color:#e7eaf1;padding:6px;cursor:pointer;display:grid;place-items:center}
+.mc .ic{width:30px;height:30px;stroke-width:1.5}
+.mc .ic.f{width:24px;height:24px}
+.plus15{display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:#e7eaf1;background:none;border:0;font-family:inherit;cursor:pointer}
+.plus15 .ic{width:15px;height:15px}
+.unlock{margin-top:auto;font-size:11px;color:#6f7686;padding:0 0 16px;display:flex;justify-content:center;align-items:center;gap:6px}
+.unlock .ic{width:12px;height:12px}
+.lockclose{position:absolute;top:10px;right:10px;background:none;border:0;color:#8b93a3;padding:10px;cursor:pointer;z-index:2}
+
+/* razno */
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--amber);background:var(--amber-d);border-radius:99px;padding:4px 10px}
+.center{padding:26px 24px;color:var(--t2);font-size:13.5px;text-align:center;line-height:1.6}
+.empty{padding:40px 24px;text-align:center;color:var(--t3);font-size:13px}
+.kbd{font:11px/1 ui-monospace,Menlo,Consolas,monospace;background:var(--s2);border:1px solid var(--line);border-radius:5px;padding:2px 5px;color:var(--t1)}
+.sec-title{font-size:12px;color:var(--t3);padding:10px 18px 4px}
+.helpbtn{position:absolute;right:14px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:16;width:40px;height:40px;border-radius:50%;background:#221d19;border:1px solid var(--line);color:var(--t2);display:none;place-items:center;cursor:pointer;font:600 16px/1 var(--sans);box-shadow:0 6px 18px rgba(0,0,0,.5)}
+@media (max-width:900px){.helpbtn{display:grid}}
+.sheet .helplist{margin:0;padding-left:1.1em;font-size:13px;line-height:1.6;color:var(--t2)}
+.sheet .helplist li{margin:0 0 8px}
+.sheet .helplist b{color:var(--t1)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+  <symbol id="i-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></symbol>
+  <symbol id="i-set" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="7 4 20 12 7 20"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5.5" y="4" width="4.5" height="16" rx="1.2"/><rect x="14" y="4" width="4.5" height="16" rx="1.2"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4"/><rect x="4.5" y="4.5" width="2.2" height="15" rx="1.1"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20"/><rect x="17.3" y="4.5" width="2.2" height="15" rx="1.1"/></symbol>
+  <symbol id="i-b30" viewBox="0 0 24 24"><path d="M12 5.5A7.5 7.5 0 1 1 4.95 10.43"/><polygon points="12.4 2.4 8.3 5.5 12.4 8.6" style="fill:currentColor;stroke-width:1"/><text x="12" y="15.7" text-anchor="middle" style="fill:currentColor;stroke:none;font-size:7px;font-weight:700">30</text></symbol>
+  <symbol id="i-f30" viewBox="0 0 24 24"><path d="M12 5.5A7.5 7.5 0 1 0 19.05 10.43"/><polygon points="11.6 2.4 15.7 5.5 11.6 8.6" style="fill:currentColor;stroke-width:1"/><text x="12" y="15.7" text-anchor="middle" style="fill:currentColor;stroke:none;font-size:7px;font-weight:700">30</text></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+</defs></svg>
+
+<div class="stage">
+  <div class="phone">
+    <div class="scr">
+      <div class="sb"><span id="clock">23:14</span><span class="bat"></span></div>
+      <div id="view"></div>
+      <div class="home"></div>
+    </div>
+  </div>
+
+  <aside class="notes">
+    <h1>Šaptač</h1>
+    <p class="sub">Prototip · v0.1</p>
+    <p style="margin:0 0 14px">Klikabilan prikaz cele aplikacije. Služi za dizajn: ekrani, tok i tajmer. <b>Bez zvuka i bez tvojih fajlova</b> — to dolazi u pravoj aplikaciji.</p>
+    <ul>
+      <li><b>Donja traka</b> menja sekcije.</li>
+      <li><b>Dodir na knjigu</b> otvara plejer; plejer se otvara i iz mini-plejera na dnu.</li>
+      <li><b>Tajmer</b> počinje na plejeru, pa vodi na noćni ekran. Poslednjih 60 s zvuk se stišava: u tom prozoru pritisni <kbd>↑</kbd> (ili dugme „Protresi“) da dodaš 15 min.</li>
+      <li><b>Emisije → Katalog</b> traži po imenu iz demo liste; ukucaj „isto“.</li>
+      <li><b>Podešavanja</b> (ikonica zupčanika): folderi, tajmer, ubrzano vreme za probu.</li>
+      <li><b>Rasporedi fajlove</b>: dodir na oznaku menja sekciju.</li>
+    </ul>
+    <div class="hint">Ubrzano vreme je u <b>Podešavanja → Timer → Ubrzano vreme</b>. Njime cela noć prođe za pola minuta, da vidiš utišavanje i produžavanje.</div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+/* ---------- pomoćne ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = (s) => {
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60, p = (n) => String(n).padStart(2, '0');
+  return h ? `${h}:${p(m)}:${p(x)}` : `${m}:${p(x)}`;
+};
+const fmtShort = (s) => {
+  s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  if (h && m) return `${h} h ${String(m).padStart(2, '0')} min`;
+  if (h) return `${h} h`;
+  return `${m} min`;
+};
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('saptac.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('saptac.' + k, JSON.stringify(v)); } catch (e) { } }
+};
+
+/* ---------- demo podaci ---------- */
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV'];
+let BOOKS = [
+  { id:'b1', t:'Na Drini ćuprija', a:'Ivo Andrić', c:'c1', i:'N', dur: 15*3600 + 12*60, pos: 6*3600 + 41*60 + 12, ch: 24, fav:false },
+  { id:'b2', t:'Sapiens', a:'Yuval Noah Harari', c:'c2', i:'S', dur: 12*3600 + 51*60, pos: 1*3600 + 48*60, ch: 20 },
+  { id:'b3', t:'Derviš i smrt', a:'Meša Selimović', c:'c3', i:'D', dur: 14*3600 + 30*60, pos: 0, ch: 18 },
+  { id:'b4', t:'Prokleta avlija', a:'Ivo Andrić', c:'c4', i:'P', dur: 3*3600 + 48*60, pos: 0, ch: 8 },
+  { id:'b5', t:'Seobe', a:'Miloš Crnjanski', c:'c6', i:'S', dur: 9*3600 + 20*60, pos: 0, ch: 16 },
+  { id:'b6', t:'Autostoperski vodič kroz galaksiju', a:'Douglas Adams', c:'c5', i:'A', dur: 5*3600 + 40*60, pos: 5*3600 + 40*60, ch: 12, done:true }
+];
+const SERIES = [
+  { id:'s1', t:'Just a Minute', a:'BBC Radio 4', c:'c1', i:'JM', eps:[
+    { n:'S31E01 · 7. avgust', dur:1680, st:'done' },
+    { n:'S31E02 · 14. avgust', dur:1680, st:'done' },
+    { n:'S31E03 · 21. avgust', dur:1680, st:'started', pos:672 },
+    { n:'S31E04 · 28. avgust', dur:1680, st:'new' },
+    { n:'S31E05 · 4. septembar', dur:1620, st:'new' },
+    { n:'S31E06 · 11. septembar', dur:1680, st:'new' },
+    { n:'S31E07 · 18. septembar', dur:1680, st:'new' },
+    { n:'S31E08 · 25. septembar', dur:1620, st:'new' }
+  ]},
+  { id:'s2', t:'Radio Beograd 2: Emisija', a:'RTS', c:'c2', i:'RB', eps:[
+    { n:'Emisija · 3. novembar', dur:3600, st:'new' },
+    { n:'Emisija · 27. oktobar', dur:3600, st:'new' },
+    { n:'Emisija · 20. oktobar', dur:3480, st:'done' }
+  ]},
+  { id:'s3', t:'The News Quiz', a:'BBC Radio 4', c:'c4', i:'NQ', eps:[
+    { n:'Serija 118, ep. 5', dur:1740, st:'new' },
+    { n:'Serija 118, ep. 4', dur:1740, st:'started', pos:300 }
+  ]}
+];
+const MUSIC = [
+  { id:'m1', t:'Domaće', n:214, c:'c1' },
+  { id:'m2', t:'Džez', n:86, c:'c2' },
+  { id:'m3', t:'Klasika', n:132, c:'c3' },
+  { id:'m4', t:'Rok', n:407, c:'c4' },
+  { id:'m5', t:'Filmska muzika', n:58, c:'c5' }
+];
+const TRACKS = ['Bistra voda','Kad si sam','Noćna ptica','Rano jutro','Stari grad','Tiho, tiho','Duga ulica','Pesma o drugoj','Zvuk sa juga','Igra senki','Vetar u kosi','Poslednji voz','Mali znak','Daleki bubanj'];
+const FEEDS = [
+  { id:'f1', t:'Just a Minute', a:'BBC Radio 4', c:'c1', i:'JM', unread:2, eps:42, got:9, when:'pre 3 h' },
+  { id:'f2', t:'TED Talks Daily', a:'TED', c:'c2', i:'TED', unread:4, eps:1800, got:4, when:'pre 3 h' },
+  { id:'f3', t:'Podcastologija', a:'Nezavisni', c:'c4', i:'PG', unread:0, eps:210, got:12, when:'pre 7 h' }
+];
+const CATALOG = [
+  { t:'Hardcore History', a:'Dan Carlin', g:'istorija', d:'4 h po epizodi' },
+  { t:'The Rest Is History', a:'Goalhanger', g:'istorija', d:'2 epizode nedeljno' },
+  { t:'Istorija za početnike', a:'Nezavisni', g:'istorija', d:'45 min' },
+  { t:'Radio Ježevi: arhiva', a:'Radio', g:'istorija', d:'60 min' },
+  { t:'Our Fake History', a:'Sebastian Major', g:'istorija', d:'50 min' },
+  { t:'Dan Carlin\'s Addendum', a:'Dan Carlin', g:'istorija', d:'30 min' },
+  { t:'The History of Rome', a:'Mike Duncan', g:'istorija', d:'25 min' },
+  { t:'Revolucije', a:'Nezavisni', g:'istorija', d:'40 min' },
+  { t:'Srpska istorija', a:'Arhiva', g:'istorija', d:'35 min' },
+  { t:'The Daily', a:'The New York Times', g:'vesti', d:'25 min' },
+  { t:'Startups For the Rest of Us', a:'Rob Walling', g:'biznis', d:'45 min' },
+  { t:'Noćni program', a:'Radio Beograd', g:'radio', d:'90 min' }
+];
+const AVAILABLE = [
+  { id:'a1', path:'/storage/1A2B-3C4D/Audiobooks/Kershaw - Hitler', n:38, sec:'Knjige',  inc:true },
+  { id:'a2', path:'/storage/emulated/0/WhatsApp Audio', n:86, sec:null, inc:false },
+  { id:'a3', path:'/storage/1A2B-3C4D/Music/Ex Yu 2019', n:240, sec:'Muzika', inc:true },
+  { id:'a4', path:'/storage/emulated/0/Audiozapisi', n:12, sec:null, inc:false },
+  { id:'a5', path:'/storage/emulated/0/Radio/Radio 2026', n:34, sec:'Emisije', inc:true },
+  { id:'a6', path:'/storage/emulated/0/Voice Recorder', n:19, sec:null, inc:false }
+];
+const FOLDERS = [
+  { p:'Music', n:908, sec:'Muzika' },
+  { p:'Audiobooks', n:24, sec:'Knjige' },
+  { p:'Podcasts', n:37, sec:'Emisije' },
+  { p:'Radio 2025', n:112, sec:'Emisije' },
+  { p:'Download', n:41, sec:null },
+  { p:'Snimci', n:162, sec:null }
+];
+
+/* ---------- stanje ---------- */
+const S = {
+  tab: 'books',           // books | series | music
+  stack: [{ v:'books' }], // ekrani
+  chips: 'sve',
+  musicTab: 'folderi',
+  seriesTab: 'folderi',
+  query: '',
+  feedQuery: '',
+  player: null,           // {kind, title, sub, art:'c1', init:'N', dur, pos, playing, rate}
+  timer: null,            // {left, fade, extend, phase:'run'|'fade'|'grace', total}
+  undo: null,
+  sheet: null,            // 'timer' | null
+  night: false,
+  lock: false,
+  speed: store.get('speed', 1),      // demo ubrzanje
+  set: Object.assign({
+    jump: 30, fade: 60, extend: 15,
+    gShake: true, gVol: true, gScreen: true,
+    autodl: true, wifiOnly: true, nextAuto: true, covers: true,
+    folders: FOLDERS.map(f => ({ ...f }))
+  }, store.get('set', {})),
+  toast: null,
+  perm: store.get('perm', false),      // simulirana dozvola "pristup svim fajlovima"
+  scanning: false,
+  avail: AVAILABLE.map(f => ({ ...f })),
+  filesTarget: null,
+  move: null,          // {type, id, idx, name, sec}
+  mixed: [
+    { id:'x1', where:'Rok', name:'Istorija filozofije - Glava 3.mp3', dur: 3120, looks:'Knjige' },
+    { id:'x2', where:'Na Drini ćuprija', name:'Uvodna tema.mp3', dur: 194, looks:'Muzika' }
+  ]
+};
+S.player = store.get('player', null);
+if (S.player && S.player.kind === 'track') { S.player.pos = 0; S.player.playing = false; }
+
+function save() {
+  store.set('set', S.set);
+  store.set('speed', S.speed);
+  if (S.player) {
+    const p = { ...S.player, playing:false };
+    if (p.kind === 'track') { p.pos = 0; delete p.queue; }
+    store.set('player', p);
+  }
+}
+
+/* ---------- toast / poruke ---------- */
+let toastT = null;
+function toast(msg, ms = 2200) {
+  S.toast = msg; render();
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { S.toast = null; render(); }, ms);
+}
+
+/* ---------- navigacija ---------- */
+function go(v, opt = {}) {
+  if (!opt.replace) S.stack.push({ v, ...opt });
+  else S.stack[S.stack.length - 1] = { v, ...opt };
+  S.sheet = null; S.night = false; S.lock = false;
+  render();
+}
+function back() { if (S.stack.length > 1) S.stack.pop(); S.sheet = null; S.night = false; S.lock = false; render(); }
+function cur() { return S.stack[S.stack.length - 1]; }
+function tabHome(t) {
+  S.stack = [{ v: t }]; S.sheet = null; S.night = false; S.lock = false;
+  S.tab = t === 'books' ? 'books' : t === 'series' ? 'series' : 'music';
+  render();
+}
+
+/* ---------- reprodukcija (simulacija) ---------- */
+function playItem(kind, item, sub, art, init, dur, pos, listInfo) {
+  if (S.player && S.player.key === item) {
+    S.player.playing = true;
+  } else {
+    S.player = { key:item, kind, title:item, sub:sub || '', art:art || 'c1', init:init || 'N', dur, pos: pos || 0, playing:true, rate:1, listInfo:listInfo || '' };
+  }
+  go('player');
+  save();
+}
+function toggle() {
+  if (!S.player) return;
+  S.player.playing = !S.player.playing;
+  if (S.player.playing && S.timer && S.timer.phase === 'grace') { /* ručno puštanje: tajmer ostaje */ }
+  save(); render();
+}
+function seekTo(sec) {
+  if (!S.player) return;
+  S.player.pos = clamp(sec, 0, S.player.dur);
+  save(); render();
+}
+function bump(delta) {
+  if (!S.player) return;
+  S.player.pos = clamp(S.player.pos + delta, 0, S.player.dur);
+  save(); render();
+}
+/* poništi se nudi samo kad je mesto traženo ručno, povlačenjem po skali */
+function setSeekUndo(fromPos) {
+  const p = S.player;
+  if (!p || p.kind === 'track') { S.undo = null; return; }
+  S.undo = { old: fromPos, at: Date.now() };
+}
+function undo() {
+  if (!S.undo || !S.player) return;
+  S.player.pos = S.undo.old; S.undo = null; save(); render();
+}
+
+/* ---------- tajmer ---------- */
+function startTimer(min) {
+  S.timer = { total: min * 60, left: min * 60, phase:'run', fade: S.set.fade, extend: S.set.extend, ticks:0 };
+  S.sheet = null; S.night = true;
+  if (S.player && !S.player.playing) { S.player.playing = true; }
+  render();
+}
+function cancelTimer() { S.timer = null; S.night = false; render(); }
+function extendTimer(byMin) {
+  if (!S.timer) { startTimer(byMin); return; }
+  const v = byMin || S.timer.extend;
+  const rest = S.timer.phase === 'grace' ? 0 : Math.max(0, S.timer.left);
+  S.timer.left = rest + v * 60;
+  S.timer.phase = 'run';
+  if (S.player) S.player.playing = true;
+}
+
+function tickPlayer(dt) {
+  if (!S.player || !S.player.playing) return;
+  S.player.pos = S.player.pos + dt * (S.player.rate || 1);
+  if (S.player.pos >= S.player.dur) {
+    S.player.pos = S.player.dur; S.player.playing = false;
+    toast('Kraj fajla');
+  }
+}
+function tickTimer(realDt) {
+  if (!S.timer) return;
+  const dt = realDt * S.speed;
+  if (S.timer.phase === 'grace') {
+    S.timer.graceLeft -= dt;
+    if (S.timer.graceLeft <= 0) {
+      S.timer = null;
+      if (S.player) S.player.playing = false;
+      S.night = false;
+      toast('Tajmer je završio. Reprodukcija je pauzirana.');
+    }
+    return;
+  }
+  S.timer.left -= dt;
+  if (S.timer.left <= S.timer.fade) S.timer.phase = 'fade';
+  if (S.timer.left <= 0) {
+    S.timer.left = 0;
+    S.timer.phase = 'grace';
+    S.timer.graceLeft = 60;
+    if (S.player) S.player.playing = false;
+  }
+}
+function timerVolume() {
+  if (!S.timer) return 1;
+  if (S.timer.phase === 'fade') return clamp(S.timer.left / Math.max(1, S.timer.fade), 0, 1);
+  if (S.timer.phase === 'grace') return 0;
+  return 1;
+}
+function sig() {
+  const p = S.player;
+  return [cur().v, S.sheet || '', S.night ? 1 : 0, S.lock ? 1 : 0,
+    S.timer ? S.timer.phase : 'off', p && p.playing ? 1 : 0, S.undo ? 1 : 0,
+    p ? p.key : ''].join('|');
+}
+let lastSig = null;
+setInterval(() => {
+  let dragging = false;
+  try { dragging = !!window.__dragSeek; } catch (e) { }
+  tickPlayer(0.5);
+  tickTimer(0.5);
+  if (dragging) return;
+  const now = sig();
+  if (now !== lastSig) { lastSig = now; render(); return; }
+  updateDynamic();
+}, 500);
+
+function updateDynamic() {
+  const p = S.player;
+  const v = $('#view');
+  if (p) {
+    const pp = clamp(p.pos / p.dur, 0, 1);
+    const fill = v.querySelector('.seek .fill'), knob = v.querySelector('.seek .knob');
+    if (fill) fill.style.width = (pp * 100).toFixed(2) + '%';
+    if (knob) knob.style.left = (pp * 100).toFixed(2) + '%';
+    const tm = v.querySelector('.times');
+    if (tm && tm.children.length === 2) {
+      tm.children[0].textContent = fmt(p.pos);
+      tm.children[1].textContent = '−' + fmt(p.dur - p.pos);
+    }
+    const wh = v.querySelector('.whole');
+    if (wh) wh.textContent = p.kind === 'book'
+      ? 'Cela knjiga: ' + Math.round(pp * 100) + '% · preostalo ' + fmtShort(p.dur - p.pos)
+      : 'ukupno ' + fmtShort(p.dur);
+    const h3 = v.querySelector('.pl h3');
+    if (h3 && p.kind === 'book') h3.textContent = glavaAt(p.pos);
+    const mini = v.querySelector('.mini');
+    if (mini) mini.style.setProperty('--pp', pp.toFixed(4));
+    const lpg = v.querySelector('.lock .media .pg i');
+    if (lpg) lpg.style.width = (pp * 100).toFixed(1) + '%';
+  }
+  if (S.timer) {
+    const left = S.timer.phase === 'grace' ? S.timer.graceLeft : S.timer.left;
+    const nt = v.querySelector('.n-time');
+    if (nt) nt.lastChild.textContent = fmt(left);
+    const tool = v.querySelector('.tool[data-act="timer"]');
+    if (tool) tool.innerHTML = '<svg class="ic"><use href="#i-moon"/></svg>' + fmt(left);
+    const tt = v.querySelectorAll('.toast b[data-act="timer"]');
+    tt.forEach(b => b.textContent = fmt(left));
+  }
+}
+
+/* ---------- uvoz: dodavanje sadržaja ---------- */
+let uid = 1;
+const COLS = ['c1','c2','c3','c4','c5','c6'];
+function addBookFromFolder(name, n, tag) {
+  BOOKS.unshift({ id:'imp' + (uid++), t:name, a:tag || 'uvezeno', c:COLS[uid % 6], i:name.slice(0,1).toUpperCase(),
+    dur: Math.max(1800, n * 210), pos:0, ch: Math.max(1, Math.round(n / 4)) });
+}
+function addSeriesFromFolder(name, n, tag) {
+  SERIES.unshift({ id:'imps' + (uid++), t:name, a:tag || 'uvezeno', c:COLS[uid % 6], i:name.slice(0,2).toUpperCase(),
+    eps: Array.from({ length: Math.min(n, 4) }, (_, i) => ({ n:'Epizoda ' + (i + 1), dur: 1800 + i * 60, st:'new' })) });
+}
+function addMusicFromFolder(name, n, tag) {
+  MUSIC.unshift({ id:'impm' + (uid++), t:name, n, c:COLS[uid % 6] });
+}
+function doImport() {
+  const inc = S.avail.filter(f => f.inc);
+  if (!inc.length) { toast('Izaberi najmanje jedan folder'); return; }
+  inc.forEach(f => {
+    const name = f.path.split('/').pop();
+    S.set.folders.push({ p:name, n:f.n, sec:f.sec });
+    if (f.sec === 'Knjige') addBookFromFolder(name, f.n, 'uvezeno · ' + f.n + ' fajlova');
+    else if (f.sec === 'Emisije') addSeriesFromFolder(name, f.n, 'uvezeno · ' + f.n + ' fajlova');
+    else if (f.sec === 'Muzika') addMusicFromFolder(name, f.n, 'uvezeno');
+  });
+  S.avail = S.avail.filter(f => !f.inc);
+  const bez = inc.filter(f => !f.sec).length;
+  store.set('set', S.set);
+  toast('Uvezeno: ' + inc.length + ' foldera' + (bez ? ' · ' + bez + ' čeka raspoređivanje' : ''));
+  if (bez) { go('arrange', { replace:true }); toast(bez + ' foldera čeka raspoređivanje', 2600); } else back();
+}
+function addLoose(sec) {
+  const stamp = 'Snimak ' + new Date().toLocaleDateString('sr-RS', { day:'2-digit', month:'2-digit' }) + '.mp3';
+  if (sec === 'Knjige') addBookFromFolder(stamp, 1, 'pojedinačni fajl');
+  else if (sec === 'Emisije') {
+    const ex = SERIES.find(x => x.t === 'Snimci');
+    if (ex) ex.eps.unshift({ n:stamp, dur:2520, st:'new' });
+    else addSeriesFromFolder('Snimci', 1, 'pojedinačni fajlovi');
+  } else addMusicFromFolder('Snimci', 1, 'pojedinačni fajlovi');
+  const tab = sec === 'Knjige' ? 'books' : sec === 'Emisije' ? 'series' : 'music';
+  tabHome(tab);
+  toast('Dodato u ' + sec + ': ' + stamp, 2600);
+}
+
+/* ---------- premeštanje stavke u drugu sekciju ---------- */
+function secOfType(t) { return t === 'track' ? 'Muzika' : t === 'book' ? 'Knjige' : 'Emisije'; }
+
+function addTrackToFolder(folderId, name, dur) {
+  let m = MUSIC.find(x => x.id === folderId);
+  if (!m) { m = { id:folderId, t:'Premešteno', n:0, c:'c5' }; MUSIC.unshift(m); }
+  folderQueue(folderId);            // napuni keš ako još nije
+  const { q } = FOLDER_CACHE[folderId];
+  q.unshift({ t:name, dur, sub:m.t });
+  m.n = q.length;
+}
+function addBook(name, dur) {
+  BOOKS.unshift({ id:'mv' + (uid++), t:name.replace(/\.mp3$/i, ''), a:'premešteno', c:COLS[uid % 6],
+    i:name.slice(0, 1).toUpperCase(), dur: Math.max(600, dur || 2400), pos:0,
+    ch: clamp(Math.round((dur || 2400) / 2400), 1, 24) });
+}
+function addEpisode(name, dur) {
+  let sr = SERIES.find(x => x.t === 'Premešteno');
+  if (!sr) { sr = { id:'mvs' + (uid++), t:'Premešteno', a:'premešteno iz drugih sekcija', c:'c5', i:'PR', eps:[] }; SERIES.unshift(sr); }
+  sr.eps.unshift({ n:name, dur: Math.max(300, dur || 1800), st:'new' });
+}
+
+function doMove(m, to) {
+  if (!m || !to) return;
+  const name = m.name || moveName(m);
+  if (m.type === 'track') {
+    const { q } = folderQueue(m.id);
+    const it = q.splice(m.idx, 1)[0];
+    if (!it) return;
+    if (to === 'Knjige') addBook(it.t, it.dur);
+    else if (to === 'Emisije') addEpisode(it.t, it.dur);
+    else addTrackToFolder('mvmu', it.t, it.dur);
+  } else if (m.type === 'book') {
+    const b = BOOKS.find(x => x.id === m.id); if (!b) return;
+    BOOKS = BOOKS.filter(x => x.id !== m.id);
+    if (to === 'Muzika') addTrackToFolder('mvmu', b.t, 214);
+    else addEpisode(b.t, b.dur);
+  } else if (m.type === 'series') {
+    const sr = SERIES.find(x => x.id === m.id); if (!sr) return;
+    SERIES = SERIES.filter(x => x.id !== m.id);
+    if (to === 'Muzika') sr.eps.forEach((e, i) => addTrackToFolder('mvmu', e.n, e.dur));
+    else sr.eps.forEach(e => addBook(e.n, e.dur));
+  } else if (m.type === 'ep') {
+    const sr = SERIES.find(x => x.id === m.id); if (!sr) return;
+    const e = sr.eps.splice(m.idx, 1)[0]; if (!e) return;
+    if (to === 'Knjige') addBook(e.n, e.dur);
+    else addTrackToFolder('mvmu', e.n, e.dur);
+  }
+  S.sheet = null; S.move = null;
+  toast('Premešteno u ' + to + ': ' + name);
+  save(); render();
+}
+
+/* ---------- delovi ---------- */
+function miniHtml() {
+  if (!S.player) return '';
+  const p = S.player, pp = p.dur ? p.pos / p.dur : 0;
+  const vol = timerVolume();
+  return `<button class="mini" style="--pp:${pp.toFixed(4)}" data-act="player">
+    <div class="cv ${p.art}">${p.init}</div>
+    <div class="tx"><div class="t">${esc(p.title)}</div><div class="s">${esc(p.sub)}${S.timer ? ' · <span class="ok">tajmer ' + fmt(S.timer.phase === 'grace' ? S.timer.graceLeft : S.timer.left) + '</span>' : ''}</div></div>
+    <span class="pb" data-act="toggle" onclick="event.stopPropagation()"><svg class="ic f"><use href="#i-${p.playing ? 'pause' : 'play'}"/></svg></span>
+  </button>`;
+}
+function navHtml() {
+  const t = S.tab;
+  return `<div class="nav">
+    <button class="nv ${t === 'music' ? 'on' : ''}" data-act="tab" data-v="music"><svg class="ic"><use href="#i-music"/></svg>Muzika</button>
+    <button class="nv ${t === 'books' ? 'on' : ''}" data-act="tab" data-v="books"><svg class="ic"><use href="#i-book"/></svg>Knjige</button>
+    <button class="nv ${t === 'series' ? 'on' : ''}" data-act="tab" data-v="series"><svg class="ic"><use href="#i-radio"/></svg>Emisije</button>
+  </div>`;
+}
+function header(title, opts = {}) {
+  return `<div class="bar">
+    <h2>${esc(title)}</h2>
+    ${opts.gear ? `<button class="tbtn" data-act="settings" aria-label="Podešavanja"><svg class="ic"><use href="#i-set"/></svg></button>` : ''}
+  </div>`;
+}
+function subHeader(title) {
+  return `<div class="bar sub">
+    <button class="tbtn" data-act="back"><svg class="ic"><use href="#i-back"/></svg></button>
+    <h2>${esc(title)}</h2>
+  </div>`;
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+
+/* ---------- ekrani ---------- */
+function importBtn() {
+  return `<button class="tbtn" data-act="import" aria-label="Uvoz"><svg class="ic"><use href="#i-plus"/></svg></button>`;
+}
+function vBooks() {
+  const chips = [['sve','Sve'],['tok','U toku'],['nove','Nove'],['zav','Završene']];
+  const list = BOOKS.filter(b => {
+    const done = b.done || b.pos >= b.dur;
+    if (S.chips === 'tok') return b.pos > 0 && !done;
+    if (S.chips === 'nove') return b.pos === 0;
+    if (S.chips === 'zav') return done;
+    return true;
+  });
+  return `<div class="bar"><h2>Knjige</h2><div style="display:flex;gap:2px">${importBtn()}<button class="tbtn" data-act="settings" aria-label="Podešavanja"><svg class="ic"><use href="#i-set"/></svg></button></div></div>
+  <div class="chips">${chips.map(([k, l]) => `<button class="chip ${S.chips === k ? 'on' : ''}" data-act="chips" data-v="${k}">${l}</button>`).join('')}</div>
+  <div class="scroll"><div class="list">
+    ${list.map(b => {
+      const pp = clamp(b.pos / b.dur, 0, 1), done = b.done || b.pos >= b.dur;
+      const sub = done ? `${esc(b.a)} · završena`
+        : b.pos > 0 ? `${esc(b.a)} · preostalo ${fmtShort(b.dur - b.pos)}`
+        : `${esc(b.a)} · ${fmtShort(b.dur)} · nova`;
+      return `<button class="row ${done ? 'dim' : ''}" data-long="book" data-lid="${b.id}" data-act="openbook" data-v="${b.id}">
+        <div class="cv ${b.c}">${b.i}</div>
+        <div class="tx"><div class="t">${esc(b.t)}</div><div class="s">${sub}</div>
+        ${pp > 0 && !done ? `<div class="pg"><i style="width:${(pp * 100).toFixed(1)}%"></i></div>` : ''}</div>
+        ${done ? `<svg class="ic tiny"><use href="#i-check"/></svg>` : ''}
+      </button>`;
+    }).join('')}
+  </div></div>
+  ${miniHtml()}
+  ${navHtml()}`;
+}
+
+function vSeries() {
+  const tabs = [['folderi','Folderi'],['feedovi','Feedovi'],['katalog','Katalog']];
+  let inner = '';
+  if (S.seriesTab === 'folderi') {
+    inner = `<div class="scroll"><div class="list">
+      ${SERIES.map(s => {
+        const started = s.eps.find(e => e.st === 'started');
+        const fresh = s.eps.filter(e => e.st === 'new').length;
+        return `<button class="row" data-long="series" data-lid="${s.id}" data-act="opendseries" data-v="${s.id}">
+          <div class="cv ${s.c}">${s.i}</div>
+          <div class="tx"><div class="t">${esc(s.t)}</div><div class="s">${s.eps.length} epizoda${fresh ? ' · <span class="new">' + fresh + ' nove</span>' : ''}${started ? ' · u toku' : ''}</div></div>
+          <svg class="ic go"><use href="#i-right"/></svg>
+        </button>`;
+      }).join('')}
+      <button class="row" data-act="import"><span class="fi"><svg class="ic"><use href="#i-plus"/></svg></span>
+        <div class="tx"><div class="t">Uvezi foldere ili fajlove</div><div class="s">interna memorija, SD kartica</div></div></button>
+    </div></div>`;
+  } else if (S.seriesTab === 'feedovi') {
+    inner = `<div class="acts"><button class="btn pri" data-act="addfeed"><svg class="ic"><use href="#i-plus"/></svg>Dodaj feed</button>
+        <button class="btn" data-act="refreshfeeds"><svg class="ic"><use href="#i-refresh"/></svg>Osveži sve</button></div>
+      <div class="note"><span>${FEEDS.length} pretplate</span><span>${FEEDS.reduce((a, f) => a + f.unread, 0)} nove epizode</span></div>
+      <div class="scroll"><div class="list">
+        ${FEEDS.map(f => `<button class="row" data-act="openfeed" data-v="${f.id}">
+          <div class="cv ${f.c}">${f.i}</div>
+          <div class="tx"><div class="t">${esc(f.t)}</div>
+            <div class="s">${f.unread ? '<span class="new">' + f.unread + ' nove</span> · ' : ''}osveženo ${f.when}</div></div>
+          <svg class="ic go"><use href="#i-right"/></svg></button>`).join('')}
+      </div></div>`;
+  } else {
+    const q = S.query.trim().toLowerCase();
+    const res = q ? CATALOG.filter(c => (c.t + ' ' + c.a + ' ' + c.g).toLowerCase().includes(q)) : CATALOG.slice(0, 6);
+    inner = `<div class="field"><svg class="ic"><use href="#i-search"/></svg>
+        <input id="q" placeholder="ime emisije ili autora" value="${esc(S.query)}" autocomplete="off">
+      </div>
+      <div class="note"><span>${q ? 'Rezultati iz kataloga' : 'Predlozi'}</span><span>${res.length} pronađeno</span></div>
+      <div class="scroll"><div class="list">
+        ${res.length ? res.map(c => `<button class="row" data-act="cat" data-v="${esc(c.t)}">
+          <div class="cv ${['c1','c2','c3','c4','c5','c6'][c.t.length % 6]}">${esc(c.t.slice(0, 1).toUpperCase())}</div>
+          <div class="tx"><div class="t">${esc(c.t)}</div><div class="s">${esc(c.a)} · ${esc(c.g)} · ${esc(c.d)}</div></div>
+          <svg class="ic go"><use href="#i-right"/></svg></button>`).join('')
+          : `<div class="empty">Nema rezultata u demo katalogu.<br>U pravoj aplikaciji ovde traži Apple katalog i Podcast Index.</div>`}
+      </div></div>`;
+  }
+  return `<div class="bar"><h2>Emisije</h2><div style="display:flex;gap:2px">${importBtn()}<button class="tbtn" data-act="settings" aria-label="Podešavanja"><svg class="ic"><use href="#i-set"/></svg></button></div></div>
+    <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${S.seriesTab === k ? 'on' : ''}" data-act="seriestab" data-v="${k}">${l}</button>`).join('')}</div>
+    ${inner}
+    ${miniHtml()}
+    ${navHtml()}`;
+}
+
+function vSeriesDetail(id) {
+  const s = SERIES.find(x => x.id === id) || SERIES[0];
+  const started = s.eps.find(e => e.st === 'started');
+  const next = started || s.eps.find(e => e.st === 'new') || s.eps[0];
+  return `${subHeader(s.t)}
+  <div class="acts">
+    <button class="btn pri" data-act="playep" data-v="${s.id}:${s.eps.indexOf(next)}"><svg class="ic f"><use href="#i-play"/></svg>Nastavi</button>
+    <button class="btn" data-act="random"><svg class="ic"><use href="#i-shuffle"/></svg>Nasumična</button>
+  </div>
+  <div class="note"><span>${s.eps.filter(e => e.st === 'new').length} nepreslušanih od ${s.eps.length}</span><span>${esc(s.a)}</span></div>
+  <div class="scroll"><div class="list">
+    ${s.eps.map((e, i) => `<button class="row ${e.st === 'done' ? 'dim' : ''}" data-long="ep" data-lid="${s.id}" data-lidx="${i}" data-act="playep" data-v="${s.id}:${i}">
+      <span class="st">${e.st === 'done' ? '<svg class="ic"><use href="#i-check"/></svg>' : e.st === 'started' ? '<i class="ring"></i>' : '<i class="dot"></i>'}</span>
+      <div class="tx"><div class="t">${esc(e.n)}</div>
+        ${e.st === 'started' ? `<div class="pg"><i style="width:${(e.pos / e.dur * 100).toFixed(0)}%"></i></div>` : ''}</div>
+      <span class="dur">${e.st === 'started' ? 'još ' + Math.round((e.dur - e.pos) / 60) + ' min' : Math.round(e.dur / 60) + ' min'}</span>
+    </button>`).join('')}
+  </div></div>
+  ${miniHtml()}`;
+}
+
+function vMusic() {
+  const tabs = [['folderi','Folderi'],['izvodjaci','Izvođači'],['albumi','Albumi']];
+  const art = (m) => `<button class="row" data-act="openfolder" data-v="${m.id}">
+      <div class="cv ${m.c}">${m.t.slice(0, 1)}</div>
+      <div class="tx"><div class="t">${esc(m.t)}</div><div class="s">${m.n} numera</div></div>
+      <svg class="ic go"><use href="#i-right"/></svg></button>`;
+  let body;
+  if (S.musicTab === 'folderi') body = MUSIC.map(art).join('');
+  else if (S.musicTab === 'izvodjaci') body = ['Ivo Robić','Elvis Costello','Miles Davis','Bijelo Dugme','Riblja Čorba','Arvo Pärt']
+    .map(n => `<button class="row" data-act="openfolder" data-v="m1"><div class="cv c2">${n.slice(0, 1)}</div><div class="tx"><div class="t">${n}</div><div class="s">${rnd(8, 60)} numera</div></div><svg class="ic go"><use href="#i-right"/></svg></button>`).join('');
+  else body = ['Kind of Blue','Abbey Road','Ostrvo','Koncert za klavir','Blue Train']
+    .map(n => `<button class="row" data-act="openfolder" data-v="m2"><div class="cv c3">${n.slice(0, 1)}</div><div class="tx"><div class="t">${n}</div><div class="s">${rnd(6, 14)} numera</div></div><svg class="ic go"><use href="#i-right"/></svg></button>`).join('');
+  return `<div class="bar"><h2>Muzika</h2><div style="display:flex;gap:2px">${importBtn()}<button class="tbtn" data-act="settings" aria-label="Podešavanja"><svg class="ic"><use href="#i-set"/></svg></button></div></div>
+    <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${S.musicTab === k ? 'on' : ''}" data-act="musictab" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="acts"><button class="btn" data-act="shuffleall"><svg class="ic"><use href="#i-shuffle"/></svg>Nasumično sve</button></div>
+    <div class="scroll"><div class="list">${body}</div></div>
+    ${miniHtml()}
+    ${navHtml()}`;
+}
+
+const FOLDER_CACHE = {};
+function folderQueue(id) {
+  if (FOLDER_CACHE[id]) return FOLDER_CACHE[id];
+  const m = MUSIC.find(x => x.id === id) || MUSIC[0];
+  const q = TRACKS.map((t, i) => ({ t, dur: 150 + ((i * 53 + m.t.length * 11) % 170), sub: m.t }));
+  FOLDER_CACHE[id] = { m, q };
+  return { m, q };
+}
+function vFolder(id) {
+  const { m, q } = folderQueue(id);
+  const tracks = q.map((x, i) => ({ t: x.t, dur: x.dur, i }));
+  return `${subHeader(m.t)}
+  <div class="acts"><button class="btn pri" data-act="playtrack" data-v="${m.id}:0"><svg class="ic f"><use href="#i-play"/></svg>Pusti sve</button>
+    <button class="btn" data-act="shuffleall"><svg class="ic"><use href="#i-shuffle"/></svg>Nasumično</button></div>
+  <div class="scroll"><div class="list">
+    ${tracks.map(x => `<button class="row" data-long="track" data-lid="${m.id}" data-lidx="${x.i}" data-act="playtrack" data-v="${m.id}:${x.i}">
+      <div class="tx"><div class="t">${esc(x.t)}</div><div class="s">${m.t} · ${fmt(x.dur)}</div></div>
+      <span class="dur">${fmt(x.dur)}</span></button>`).join('')}
+  </div></div>
+  ${miniHtml()}`;
+}
+
+function vPlayer() {
+  const p = S.player;
+  if (!p) {
+    return `${header('Plejer')}<div class="center">Ništa se ne pušta.<br>Otvori knjigu, epizodu ili numeru.</div>${navHtml()}`;
+  }
+  const pp = clamp(p.pos / p.dur, 0, 1);
+  const left = S.timer ? (S.timer.phase === 'grace' ? S.timer.graceLeft : S.timer.left) : null;
+  const showExtend = S.timer && (S.timer.phase === 'fade' || S.timer.phase === 'grace');
+  const showUndo = !!S.undo && p.kind !== 'track';
+  return `<div class="pl"><div class="pl-top">
+      <button data-act="back" aria-label="Nazad"><svg class="ic"><use href="#i-down"/></svg></button>
+      <span>${p.kind === 'book' ? 'KNJIGE' : p.kind === 'ep' ? 'EMISIJE' : 'MUZIKA'}</span>
+      <button data-act="lock" aria-label="Zaključan ekran"><svg class="ic"><use href="#i-lock"/></svg></button>
+    </div>
+    <div class="art ${p.art}"><b>${esc(p.artTitle || p.title)}</b><span>${esc(p.artSub || p.sub)}</span></div>
+    <h3>${esc(p.kind === 'book' ? glavaAt(p.pos) : p.title)}</h3>
+    <div class="who">${esc(p.kind === 'book' ? p.title + ' · ' + p.listInfo : p.sub)}</div>
+    <div class="seek" data-seek><div class="track"><div class="fill" style="width:${(pp * 100).toFixed(2)}%"></div><div class="knob" style="left:${(pp * 100).toFixed(2)}%"></div></div></div>
+    <div class="times"><button data-act="goto">${fmt(p.pos)}</button><span>−${fmt(p.dur - p.pos)}</span></div>
+    <div class="whole">${p.kind === 'book' ? 'Cela knjiga: ' + Math.round(pp * 100) + '% · preostalo ' + fmtShort(p.dur - p.pos) : 'ukupno ' + fmtShort(p.dur)}</div>
+    <div class="tools">
+      <button class="tool ${S.timer ? 'on' : ''}" data-act="timer"><svg class="ic"><use href="#i-moon"/></svg>${S.timer ? fmt(left) : 'Tajmer'}</button>
+      <button class="tool" data-act="rate"><span class="v">${p.rate.toFixed(1).replace('.', ',')}×</span>Brzina</button>
+      <button class="tool" data-act="chapters"><svg class="ic"><use href="#i-list"/></svg>${p.kind === 'book' ? 'Poglavlja' : 'Lista'}</button>
+    </div>
+    <div class="toast ${showUndo ? '' : 'hide'}"><span>${showUndo ? 'Skok sa ' + fmt(S.undo.old) : ''}</span><b data-act="undo">PONIŠTI</b></div>
+    ${showExtend ? `<div class="toast" style="color:#FFD8A3;background:#2a1a08"><span>Stišava se: <b style="color:#FFD8A3">↑</b> ili protresi za +${S.timer.extend} min</span><b data-act="extend">PRODUŽI</b></div>` : ''}
+    ${S.timer ? `<div class="toast"><span>Tajmer · ${S.timer.phase === 'grace' ? 'čeka potez' : S.timer.phase === 'fade' ? 'stišava se' : 'radi'}</span><b data-act="timer">${fmt(left)}</b></div>` : ''}
+    <div class="nextup">${nextUpText(p)}</div>
+    <div class="ctl">
+      <button class="cb sm" data-act="prev"><svg class="ic f"><use href="#i-prev"/></svg></button>
+      <button class="cb md" data-act="bump" data-v="-${S.set.jump}"><svg class="ic"><use href="#i-b30"/></svg></button>
+      <button class="cb lg" data-act="toggle"><svg class="ic f"><use href="#i-${p.playing ? 'pause' : 'play'}"/></svg></button>
+      <button class="cb md" data-act="bump" data-v="${S.set.jump}"><svg class="ic"><use href="#i-f30"/></svg></button>
+      <button class="cb sm" data-act="next"><svg class="ic f"><use href="#i-next"/></svg></button>
+    </div></div>`;
+}
+/* predji na sledeću/prethodnu stavku u redu puštanja; kod knjige po poglavljima */
+function bookCount(p) {
+  const b = BOOKS.find(x => x.t === p.title);
+  return b ? b.ch : 12;
+}
+function loadQueueItem(p, i) {
+  if (!p.queue || i < 0 || i >= p.queue.length) return false;
+  const it = p.queue[i];
+  p.qi = i; p.title = it.t; p.dur = it.dur; p.pos = 0; p.playing = true;
+  p.listInfo = (i + 1) + ' od ' + p.queue.length;
+  p.key = (p.qid || 'q') + ':' + i;
+  if (p.artSub === 'album' || p.artSub === 'emisija') { /* omot ostaje isti */ }
+  return true;
+}
+function advance(dir) {
+  const p = S.player; if (!p) return;
+  if (p.kind === 'book') {
+    const n = bookCount(p), step = p.dur / n;
+    const here = clamp(Math.floor(p.pos / step), 0, n - 1);
+    const target = clamp(here + dir, 0, n - 1);
+    p.pos = dir > 0 ? Math.min(target * step, p.dur - 1) : target * step;
+    p.playing = true;
+    return;
+  }
+  if (!loadQueueItem(p, p.qi + dir)) {
+    if (dir > 0) { p.pos = p.dur; p.playing = false; } else { p.pos = 0; }
+  }
+}
+function prevAction() {
+  const p = S.player; if (!p) return;
+  const nearStart = p.kind === 'book'
+    ? (p.pos - Math.floor(p.pos / (p.dur / bookCount(p))) * (p.dur / bookCount(p))) < 3
+    : p.pos < 3;
+  if (nearStart) advance(-1);
+  else {
+    if (p.kind === 'book') { const step = p.dur / bookCount(p); p.pos = Math.floor(p.pos / step) * step; }
+    else p.pos = 0;
+  }
+}
+function nextUpText(p) {
+  if (p.kind === 'book') {
+    const b = BOOKS.find(x => x.t === p.title);
+    const n = b ? b.ch : 12;
+    const step = p.dur / n;
+    const i = clamp(Math.floor(p.pos / step) + 1, 0, n - 1);
+    return `Sledeće: <b>Glava ${ROMAN[i] || (i + 1)}</b> · za ${fmtShort(i * step - p.pos)}`;
+  }
+  if (p.queue && p.qi != null) {
+    const e = p.queue[p.qi + 1];
+    return e ? `Sledeće: <b>${esc(e.t)}</b> · ${Math.round(e.dur / 60)} min` : 'Poslednje u redu';
+  }
+  return '';
+}
+function glavaAt(pos) {
+  const p = S.player;
+  if (!p || p.kind !== 'book') return 'Glava';
+  const b = BOOKS.find(x => x.t === p.title);
+  const n = b ? b.ch : 12;
+  const i = clamp(Math.floor(pos / (p.dur / n)), 0, n - 1);
+  return 'Glava ' + (ROMAN[i] || (i + 1));
+}
+
+function vChapters() {
+  const p = S.player;
+  if (!p) return `${subHeader('Poglavlja')}<div class="center">Ništa se ne pušta.</div>`;
+  const b = BOOKS.find(x => x.t === p.title);
+  const n = b ? b.ch : 15;
+  const step = p.dur / n;
+  const here = Math.floor(p.pos / step);
+  return `${subHeader(p.kind === 'book' ? 'Poglavlja' : 'Lista')}
+  <div class="scroll"><div class="list">
+    ${Array.from({ length: n }, (_, i) => {
+      const name = p.kind === 'book' ? 'Glava ' + (ROMAN[i] || (i + 1)) : 'Numera ' + (i + 1);
+      return `<button class="row ${i === here ? '' : 'dim'}" data-act="seekabs" data-v="${Math.round(i * step)}">
+        <span class="st">${i === here ? '<i class="dot"></i>' : ''}</span>
+        <div class="tx"><div class="t" ${i === here ? 'style="color:var(--amber)"' : ''}>${name}</div><div class="s">${fmt(i * step)}</div></div>
+        <span class="dur">${fmt(step)}</span></button>`;
+    }).join('')}
+  </div></div>`;
+}
+
+function vHelpSheet() {
+  return `<div class="scrim" data-act="closesheet">
+    <div class="sheet" data-stop>
+      <h3>Kako da probaš</h3>
+      <ul class="helplist">
+        <li><b>Knjige, Muzika, Emisije</b> — donja traka menja sekciju.</li>
+        <li>Dodir na knjigu otvara <b>plejer</b>; na dnu liste je mini-plejer.</li>
+        <li>Na plejeru su <b>alati</b> (Tajmer, Brzina, Lista) ispod trake, a <b>transport</b> (−30, pusti, +30) na dnu, uz palac.</li>
+        <li><b>Prethodno</b> prvo vraća na početak dela; drugi dodir, dok si na početku, prebacuje na prethodnu numeru ili epizodu.</li>
+        <li><b>Tajmer</b> na plejeru vodi na noćni ekran. Poslednjih 60 s pre pritiska na <b>+15 min</b> traje utišavanje.</li>
+        <li><b>Uvoz</b>: dugme <b>+</b> gore desno u svakoj sekciji, ili prvi red u Podešavanjima.</li>
+        <li><b>Pogrešna sekcija:</b> dug pritisak na numeru, knjigu ili epizodu otvara „Prebaci u…“. U Podešavanjima je i „Mešani fajlovi“.</li>
+        <li><b>Emisije → Katalog</b>: ukucaj „isto“ da vidiš pretragu podkasta.</li>
+        <li><b>Zupčanik</b> gore desno: folderi, tajmer, <b>ubrzano vreme</b> za probu.</li>
+      </ul>
+      <p class="hint">Zvuk i tvoji fajlovi dolaze u pravoj aplikaciji. Ovde se gleda raspored i tok.</p>
+    </div>
+  </div>`;
+}
+
+function vTimerSheet() {
+  const t = S.timer;
+  return `<div class="scrim" data-act="closesheet">
+    <div class="sheet" data-stop>
+      <h3>Tajmer za spavanje</h3>
+      <div class="presets">
+        ${[15,30,45,60].map(m => `<button class="ps ${t && Math.round(t.total / 60) === m ? 'on' : ''}" data-act="starttimer" data-v="${m}">${m}<small>min</small></button>`).join('')}
+      </div>
+      ${t ? `<div class="tmrow"><div><div style="color:var(--t2);font-size:12px">Preostalo</div>
+          <div class="big">${fmt(t.phase === 'grace' ? t.graceLeft : t.left)}</div></div>
+          <button class="btn" style="flex:none;padding:0 16px" data-act="canceltimer">Isključi</button></div>` : ''}
+      <div class="tmrow" style="display:block">
+        <div style="font-size:12.5px;color:var(--t2);margin-bottom:8px">Utišavanje i produžetak</div>
+        <div style="display:flex;gap:8px">
+          <button class="pick" data-act="cyclefade">utišavanje ${S.set.fade} s</button>
+          <button class="pick" data-act="cycleextend">produžetak ${S.set.extend} min</button>
+        </div>
+      </div>
+      <p class="hint">Kad zvuk počne da se stišava: <b>pomeri telefon</b>, <b>pritisni dugme za jačinu</b> ili <b>upali ekran</b>. Tajmer dobija još ${S.set.extend} min.</p>
+    </div>
+  </div>`;
+}
+
+function vNight() {
+  const t = S.timer;
+  const left = t ? (t.phase === 'grace' ? t.graceLeft : t.left) : 0;
+  const p = S.player || { title:'—', sub:'' };
+  return `<div class="night">
+    <div class="n-top"><span>${esc(p.title)}${p.sub ? ' · ' + esc(p.sub) : ''}</span>
+      <button data-act="closenight"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="zones">
+      <button class="z" data-act="bump" data-v="-30"><svg class="ic"><use href="#i-b30"/></svg>−30 s</button>
+      <button class="z mid" data-act="toggle"><svg class="ic ${p.playing ? 'f' : ''}"><use href="#i-${p.playing ? 'pause' : 'play'}"/></svg></button>
+      <button class="z" data-act="bump" data-v="30"><svg class="ic"><use href="#i-f30"/></svg>+30 s</button>
+    </div>
+    ${t && (t.phase === 'fade' || t.phase === 'grace') ? `<div class="extendbar">Stišava se · pritisni <b>↑</b>, protresi telefon ili dodirni dugme ispod</div>` : ''}
+    <div class="n-bot">
+      <div class="n-time"><svg class="ic"><use href="#i-moon"/></svg>${fmt(left)}</div>
+      <button class="n-plus" data-act="extend">+${S.set.extend} min</button>
+    </div>
+  </div>`;
+}
+
+function vLock() {
+  const p = S.player;
+  const pp = p ? p.pos / p.dur : 0;
+  return `<div class="lock">
+    <button class="lockclose" data-act="closelock"><svg class="ic"><use href="#i-x"/></svg></button>
+    <div class="clock">23:14</div>
+    <div class="date">sreda, 11. novembar</div>
+    <div class="media">
+      <div class="hd"><div class="cv ${p ? p.art : 'c1'}">${p ? p.init : 'N'}</div>
+        <div class="tx"><div class="app">Šaptač</div><div class="t">${p ? esc(p.title) : '—'}</div><div class="s">${p ? esc(p.sub) : ''}</div></div></div>
+      <div class="pg"><i style="width:${(pp * 100).toFixed(1)}%"></i></div>
+      <div class="mc">
+        <button data-act="bump" data-v="-30"><svg class="ic"><use href="#i-b30"/></svg></button>
+        <button data-act="toggle"><svg class="ic ${p && p.playing ? 'f' : ''}"><use href="#i-${p && p.playing ? 'pause' : 'play'}"/></svg></button>
+        <button data-act="bump" data-v="30"><svg class="ic"><use href="#i-f30"/></svg></button>
+        <button class="plus15" data-act="extend"><svg class="ic"><use href="#i-moon"/></svg>+${S.set.extend}</button>
+      </div>
+    </div>
+    <div class="unlock"><svg class="ic"><use href="#i-lock"/></svg>Skica sistemskih kontrola · ne menja zaključavanje</div>
+  </div>`;
+}
+
+function vSettings() {
+  const s = S.set;
+  return `${subHeader('Podešavanja')}
+  <div class="set">
+    <div class="gh">FOLDERI</div>
+    <button class="sr" data-act="import" style="color:var(--amber)"><span>+ Uvezi foldere i fajlove</span><span class="v">${S.avail.length} novih</span></button>
+    ${s.folders.map((f, i) => `<button class="sr" data-act="foldersec" data-v="${i}">
+      <span>${esc(f.p)}</span>
+      <span class="pick ${f.sec ? 'done' : 'none'}">${f.sec || '?'}</span></button>`).join('')}
+    <button class="sr" data-act="arrange"><span>Rasporedi fajlove</span><span class="v">${s.folders.filter(f => !f.sec).length} čekaju</span></button>
+    <button class="sr" data-act="mixed"><span>Mešani fajlovi</span><span class="v">${S.mixed.length} sumnjivih</span></button>
+    <button class="sr" data-act="feeds"><span>Podkast feedovi</span><span class="v">${FEEDS.length} · ${s.wifiOnly ? 'samo Wi-Fi' : 'i mobilni'}</span></button>
+
+    <div class="gh">REPRODUKCIJA</div>
+    <button class="sr" data-act="cyclejump"><span>Skok</span><span class="v">${s.jump} s</span></button>
+    <button class="sr" data-act="tnextauto"><span>Sledeća epizoda automatski</span><i class="sw ${s.nextAuto ? 'on' : ''}"></i></button>
+
+    <div class="gh">TAJMER</div>
+    <button class="sr" data-act="cyclefade"><span>Utišavanje</span><span class="v">${s.fade} s</span></button>
+    <button class="sr" data-act="cycleextend"><span>Produžetak</span><span class="v">${s.extend} min</span></button>
+    <button class="sr" data-act="gshake"><span>Potez: pomeranje telefona</span><i class="sw ${s.gShake ? 'on' : ''}"></i></button>
+    <button class="sr" data-act="gvol"><span>Potez: dugme za jačinu</span><i class="sw ${s.gVol ? 'on' : ''}"></i></button>
+    <button class="sr" data-act="gscreen"><span>Potez: paljenje ekrana</span><i class="sw ${s.gScreen ? 'on' : ''}"></i></button>
+    <button class="sr" data-act="speed"><span>Ubrzano vreme (proba)</span><span class="v">×${S.speed}</span></button>
+
+    <div class="gh">OMOTI</div>
+    <button class="sr" data-act="covers"><span>Preuzimaj omote sa interneta</span><i class="sw ${S.set.covers !== false ? 'on' : ''}"></i></button>
+
+    <div class="gh">PODKASTI</div>
+    <button class="sr" data-act="tautodl"><span>Preuzimaj nove epizode</span><i class="sw ${s.autodl ? 'on' : ''}"></i></button>
+    <button class="sr" data-act="twifi"><span>Preuzimanja samo na Wi-Fi</span><i class="sw ${s.wifiOnly ? 'on' : ''}"></i></button>
+
+    <div class="gh">RAD U POZADINI</div>
+    <button class="sr" data-act="battery"><span>Baterija bez ograničenja</span><span class="ok"><svg class="ic"><use href="#i-check"/></svg>urađeno</span></button>
+    <button class="sr" data-act="battery"><span>Izuzeta od uspavljivanja</span><span class="ok"><svg class="ic"><use href="#i-check"/></svg>urađeno</span></button>
+    <button class="sr" data-act="log"><span>Dnevnik događaja</span><span class="v">—</span></button>
+    <div class="center" style="padding:18px 4px 6px;text-align:left;font-size:11.5px;color:var(--t3)">
+      Prototip. Postavke se pamte u pregledaču; u pravoj aplikaciji ove prečice vode u sistemske ekrane.
+    </div>
+  </div>`;
+}
+
+function vImport() {
+  const a = S.avail;
+  const inc = a.filter(f => f.inc);
+  if (!S.perm) {
+    return `${subHeader('Uvoz')}
+    <div class="scroll"><div style="padding:10px 22px 6px">
+      <div class="fi" style="width:54px;height:54px;margin-bottom:16px"><svg class="ic" style="width:26px;height:26px"><use href="#i-folder"/></svg></div>
+      <h3 style="margin:0 0 8px;font-size:19px">Šaptač traži pristup fajlovima</h3>
+      <p style="margin:0 0 14px;font-size:13.5px;color:var(--t2);line-height:1.6">
+        Da bi čitao muziku, knjige i emisije sa telefona i SD kartice, potrebna je dozvola
+        <b style="color:var(--t1)">„Pristup svim fajlovima“</b>. Aplikacija ništa ne menja i ništa ne briše;
+        samo čita ono što joj ti pokažeš.
+      </p>
+      <p style="margin:0 0 22px;font-size:12px;color:var(--t3);line-height:1.6">
+        Aplikacija nije iz prodavnice, pa ne može da traži dozvolu pojedinačno po folderu. Zato traži ovu jednu.
+      </p>
+      <button class="btn pri" style="height:48px" data-act="grantperm">Dozvoli pristup svim fajlovima</button>
+      <button class="btn" style="height:44px;margin-top:8px" data-act="back">Ne sad</button>
+      <p class="small" style="margin-top:16px;font-size:11.5px;color:var(--t3)">U prototipu je ovo simulacija: ništa se stvarno ne čita sa uređaja.</p>
+    </div></div>`;
+  }
+  if (S.scanning) {
+    return `${subHeader('Uvoz')}
+    <div class="center" style="padding-top:70px">
+      <div class="pill" style="margin-bottom:16px"><svg class="ic" style="width:14px;height:14px"><use href="#i-refresh"/></svg>Pregledam telefon…</div>
+      <div style="color:var(--t2);font-size:13.5px">Interna memorija i SD kartica<br>Tražim audio fajlove i preskačem zvukove obaveštenja.</div>
+    </div>`;
+  }
+  return `${subHeader('Uvoz')}
+  <div class="note" style="padding-top:4px"><span>${a.length} foldera sa zvukom</span><span>${a.reduce((x, f) => x + f.n, 0)} fajlova</span></div>
+  <div class="scroll">
+    <div class="list">
+      ${a.length ? a.map((f, i) => `<div class="row" data-act="inc" data-v="${i}">
+        <span class="st">${f.inc ? '<svg class="ic" style="color:var(--amber)"><use href="#i-check"/></svg>' : '<i style="width:16px;height:16px;border:1.5px solid #3b3530;border-radius:5px;display:block"></i>'}</span>
+        <div class="tx"><div class="t">${esc(f.path.split('/').pop())}</div>
+          <div class="s">${esc(f.path.replace('/storage/emulated/0/', 'Telefon/').replace('/storage/1A2B-3C4D/', 'SD/'))} · ${f.n} fajlova</div></div>
+        <button class="pick ${f.sec ? 'done' : 'none'}" data-act="sec" data-v="${i}">${f.sec || '?'}</button>
+      </div>`).join('') : `<div class="empty">Nema novih foldera.<br>Sve što je pronađeno je već uvezeno.</div>`}
+    </div>
+    <div class="note" style="padding:4px 18px 10px"><span>Dodir na red uključuje folder, dodir na oznaku menja sekciju</span></div>
+    <div style="padding:0 16px 6px"><button class="btn" style="height:44px" data-act="importfiles">Uvezi pojedinačne fajlove</button></div>
+    <div style="padding:0 16px 18px">
+      <button class="btn pri" style="height:48px;opacity:${inc.length ? 1 : .45}" data-act="doimport">${inc.length ? 'Uvezi ' + inc.length + ' ' + (inc.length === 1 ? 'folder' : inc.length < 5 ? 'foldera' : 'foldera') : 'Izaberi najmanje jedan folder'}</button>
+    </div>
+    <div class="center" style="padding:0 22px 24px;font-size:11.5px;text-align:left;color:var(--t3)">
+      Fajlovi ostaju gde jesu. Uvoz samo pamti koji folder pripada kojoj sekciji, pa ništa ne može da se izgubi ili obriše.
+      Prototip prikazuje izmišljene foldere; prava aplikacija čita tvoj telefon.
+    </div>
+  </div>`;
+}
+
+function moveName(m) {
+  if (m.type === 'track') { const { q } = folderQueue(m.id); return (q[m.idx] || {}).t || 'fajl'; }
+  if (m.type === 'book') return (BOOKS.find(b => b.id === m.id) || {}).t || 'knjiga';
+  if (m.type === 'series') return (SERIES.find(x => x.id === m.id) || {}).t || 'serija';
+  if (m.type === 'ep') { const sr = SERIES.find(x => x.id === m.id) || { eps:[] }; return (sr.eps[m.idx] || {}).n || 'epizoda'; }
+  return 'fajl';
+}
+function vMoveSheet() {
+  const m = S.move; if (!m) return '';
+  const name = m.name || moveName(m);
+  const secs = ['Knjige', 'Emisije', 'Muzika'].filter(x => x !== m.sec);
+  return `<div class="scrim" data-act="closesheet">
+    <div class="sheet" data-stop>
+      <h3 style="margin-bottom:4px">Prebaci u drugu sekciju</h3>
+      <div style="font-size:12.5px;color:var(--t2);margin-bottom:16px;line-height:1.5">${esc(name)}<br>
+        <span style="color:var(--t3)">trenutno u: ${esc(m.sec || '—')} · fajl ostaje na disku gde jeste</span></div>
+      <div class="presets" style="grid-template-columns:repeat(${secs.length},1fr)">
+        ${secs.map(x => `<button class="ps" style="font-size:15px;height:58px" data-act="moveTo" data-v="${x}">${x}</button>`).join('')}
+      </div>
+      <button class="btn" style="margin-top:10px;height:42px" data-act="moveDisk">Premesti i na disku…</button>
+      <p class="hint">Premeštanje menja samo pripadnost sekciji, pa je bezbedno. Pozicija i status ostaju sačuvani.</p>
+    </div>
+  </div>`;
+}
+
+function vMixed() {
+  const list = S.mixed;
+  return `${subHeader('Mešani fajlovi')}
+  <div class="note" style="padding-top:4px"><span>${list.length} sumnjivih</span><span>predlog, ne pravilo</span></div>
+  <div class="scroll"><div class="list">
+    ${list.length ? list.map(x => `<button class="row" data-act="mixedmove" data-v="${x.id}">
+      <span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span>
+      <div class="tx"><div class="t">${esc(x.name)}</div>
+        <div class="s">u folderu ${esc(x.where)} · ${fmtShort(x.dur)}</div></div>
+      <span class="pick done">→ ${x.looks}</span></button>`).join('') : `<div class="empty">Nema sumnjivih fajlova.</div>`}
+  </div>
+  <div class="center" style="padding:6px 20px 20px;font-size:11.5px;text-align:left;color:var(--t3)">
+    Aplikacija prati dužinu, ime i tagove. Fajl od 50 minuta u folderu muzike koji se zove „Glava 3“ verovatno je deo knjige.
+    Dodir premešta, dug pritisak otvara isti izbor kao u listama.
+  </div>
+  </div>`;
+}
+
+function vFilesSheet() {
+  return `<div class="scrim" data-act="closesheet">
+    <div class="sheet" data-stop>
+      <h3>Pojedinačni fajlovi</h3>
+      <p class="hint" style="margin-top:0">U pravoj aplikaciji otvara se izbor fajlova, pa biraš jedan ili više njih. Gde da ih smestim?</p>
+      <div class="presets" style="grid-template-columns:repeat(3,1fr);margin-top:14px">
+        <button class="ps" style="font-size:15px;height:60px" data-act="loose" data-v="Knjige">Knjige</button>
+        <button class="ps" style="font-size:15px;height:60px" data-act="loose" data-v="Emisije">Emisije</button>
+        <button class="ps" style="font-size:15px;height:60px" data-act="loose" data-v="Muzika">Muzika</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function vArrange() {
+  return `${subHeader('Rasporedi fajlove')}
+  <div class="acts"><button class="btn pri" data-act="acceptall">Prihvati predloge</button>
+    <button class="btn" data-act="resetfolders">Poništi</button></div>
+  <div class="note"><span>${S.set.folders.length} foldera, ${S.set.folders.filter(f => !f.sec).length} bez predloga</span><span>1 284 fajla</span></div>
+  <div class="scroll"><div class="list">
+    ${S.set.folders.map((f, i) => `<button class="row" data-act="foldersec" data-v="${i}">
+      <span class="fi"><svg class="ic"><use href="#i-folder"/></svg></span>
+      <div class="tx"><div class="t">${esc(f.p)}</div><div class="s">${f.n} fajlova</div></div>
+      <span class="pick ${f.sec ? 'done' : 'none'}">${f.sec || '?'}</span></button>`).join('')}
+  </div></div>
+  <div class="note" style="padding-top:8px"><span>Dodir na oznaku menja sekciju</span></div>`;
+}
+
+function vFeeds() {
+  return `${subHeader('Podkast feedovi')}
+  <div class="acts"><button class="btn pri" data-act="addfeed"><svg class="ic"><use href="#i-plus"/></svg>Dodaj feed</button>
+    <button class="btn" data-act="refreshfeeds"><svg class="ic"><use href="#i-refresh"/></svg>Osveži</button></div>
+  <div class="scroll"><div class="list">
+    ${FEEDS.map(f => `<button class="row" data-act="openfeed" data-v="${f.id}">
+      <div class="cv ${f.c}">${f.i}</div><div class="tx"><div class="t">${esc(f.t)}</div>
+      <div class="s">${f.unread ? '<span class="new">' + f.unread + ' nove</span> · ' : ''}${f.got} u telefonu · ${esc(f.a)}</div></div>
+      <svg class="ic go"><use href="#i-right"/></svg></button>`).join('')}
+  </div></div>`;
+}
+
+function vFeed(id) {
+  const f = FEEDS.find(x => x.id === id) || FEEDS[0];
+  const eps = Array.from({ length: 6 }, (_, i) => ({
+    n: 'Epizoda ' + (f.eps - i),
+    dur: rnd(1500, 3000),
+    got: i >= f.unread
+  }));
+  return `${subHeader(f.t)}
+  <div class="acts"><button class="btn pri" data-act="playep" data-v="feed:${id}:0"><svg class="ic f"><use href="#i-play"/></svg>Pusti poslednju</button>
+    <button class="btn" data-act="refreshfeeds"><svg class="ic"><use href="#i-refresh"/></svg>Osveži</button></div>
+  <div class="note"><span>${f.unread} nove · ${f.got} u telefonu</span><span>osveženo ${f.when}</span></div>
+  <div class="scroll"><div class="list">
+    ${eps.map((e, i) => `<button class="row" data-act="playep" data-v="feed:${id}:${i}">
+      <span class="fi">${e.got ? '<svg class="ic"><use href="#i-check"/></svg>' : '<svg class="ic"><use href="#i-down"/></svg>'}</span>
+      <div class="tx"><div class="t">${e.n}</div><div class="s">${e.got ? 'u telefonu' : 'nije preuzeto · dodir preuzima i pušta'}</div></div>
+      <span class="dur">${Math.round(e.dur / 60)} min</span></button>`).join('')}
+  </div></div>`;
+}
+
+function vCatalogItem(name) {
+  const c = CATALOG.find(x => x.t === name) || { t:name, a:'', g:'', d:'' };
+  const followed = FEEDS.some(f => f.t === c.t);
+  return `${subHeader(c.t)}
+  <div class="scroll">
+    <div style="padding:6px 20px 16px">
+      <div class="art ${'c3'}" style="width:132px;height:132px;margin:0 0 14px"><b style="font-size:17px">${esc(c.t)}</b><span>${esc(c.g)}</span></div>
+      <div style="font-size:12.5px;color:var(--t2)">${esc(c.a)} · ${esc(c.g)} · ${esc(c.d)}</div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn pri" data-act="follow" data-v="${esc(c.t)}">${followed ? 'Zapraćeno' : 'Zaprati'}</button>
+        <button class="btn" data-act="preview">Pregled epizoda</button>
+      </div>
+      <div class="sec-title" style="padding:18px 0 6px">Slično ovome</div>
+      ${CATALOG.filter(x => x.g === c.g && x.t !== c.t).slice(0, 3).map(x => `<button class="row" data-act="cat" data-v="${esc(x.t)}" style="padding-left:0">
+        <div class="cv ${'c2'}">${esc(x.t.slice(0, 1))}</div><div class="tx"><div class="t">${esc(x.t)}</div><div class="s">${esc(x.a)} · ${esc(x.d)}</div></div>
+        <svg class="ic go"><use href="#i-right"/></svg></button>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* ---------- render ---------- */
+function viewHtml() {
+  const c = cur();
+  switch (c.v) {
+    case 'books': return vBooks();
+    case 'series': return vSeries();
+    case 'seriesdetail': return vSeriesDetail(c.id);
+    case 'music': return vMusic();
+    case 'folder': return vFolder(c.id);
+    case 'player': return vPlayer();
+    case 'chapters': return vChapters();
+    case 'settings': return vSettings();
+    case 'arrange': return vArrange();
+    case 'import': return vImport();
+    case 'mixed': return vMixed();
+    case 'feeds': return vFeeds();
+    case 'feed': return vFeed(c.id);
+    case 'catitem': return vCatalogItem(c.id);
+    default: return vBooks();
+  }
+}
+function render() {
+  const v = $('#view');
+  v.innerHTML = viewHtml();
+  if (S.sheet === 'timer') v.insertAdjacentHTML('beforeend', vTimerSheet());
+  if (S.sheet === 'help') v.insertAdjacentHTML('beforeend', vHelpSheet());
+  if (S.sheet === 'files') v.insertAdjacentHTML('beforeend', vFilesSheet());
+  if (S.sheet === 'move') v.insertAdjacentHTML('beforeend', vMoveSheet());
+  if (!S.sheet && !S.night && !S.lock && ['books', 'series', 'music', 'folder', 'seriesdetail', 'feed', 'feeds', 'catitem', 'import'].includes(cur().v)) {
+    v.insertAdjacentHTML('beforeend', `<button class="helpbtn" data-act="help" aria-label="Pomoć">?</button>`);
+  }
+  if (S.night) v.insertAdjacentHTML('beforeend', vNight());
+  if (S.lock) v.insertAdjacentHTML('beforeend', vLock());
+  if (S.toast && !S.night && !S.lock && !S.sheet) {
+    const bottom = S.player && !S.night && !S.lock ? 132 : 74;
+    const t = el(`<div style="position:absolute;left:16px;right:16px;bottom:${bottom}px;z-index:25;background:#2b2420;color:#f0e6d6;font-size:12.5px;padding:10px 14px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);text-align:center">${esc(S.toast)}</div>`);
+    v.appendChild(t);
+  }
+  lastSig = sig();
+  const q = $('#q'); if (q) { q.addEventListener('input', e => { S.query = e.target.value; render(); const n = $('#q'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }); }
+}
+function renderMini() { /* mini se crta kroz glavni render; interval samo osvežava vreme */ }
+
+/* ---------- akcije ---------- */
+document.addEventListener('click', (ev) => {
+  /* klik na red neposredno posle dugog pritiska se ignoriše, ali klikovi u listu ne */
+  if (window.__lpFiredAt && Date.now() - window.__lpFiredAt < 700 && ev.target.closest('[data-long]')) return;
+  const t = ev.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.dataset.act, v = t.dataset.v;
+  if (t.dataset.stop !== undefined) ev.stopPropagation();
+  switch (act) {
+    case 'tab': tabHome(v); break;
+    case 'back': back(); break;
+    case 'settings': go('settings'); break;
+    case 'chips': S.chips = v; render(); break;
+    case 'musictab': S.musicTab = v; render(); break;
+    case 'seriestab': S.seriesTab = v; render(); break;
+    case 'openbook': {
+      const b = BOOKS.find(x => x.id === v);
+      go('player');
+      S.player = { key:b.t, kind:'book', title:b.t, sub:b.a, art:b.c, init:b.i, dur:b.dur, pos:b.pos, playing:true, rate:1, listInfo:'fajl 1 od ' + b.ch };
+      render(); save(); break;
+    }
+    case 'opendseries': go('seriesdetail', { id:v }); break;
+    case 'openfolder': go('folder', { id:v }); break;
+    case 'playep': {
+      let queue, qi, name, sub, art, init;
+      if (v.startsWith('feed:')) {
+        const [, fid, idx] = v.split(':');
+        const f = FEEDS.find(x => x.id === fid) || FEEDS[0];
+        queue = Array.from({ length: 6 }, (_, i) => ({ t:'Epizoda ' + (f.eps - i), dur: 1500 + ((i * 97) % 900) }));
+        qi = Number(idx); name = queue[qi].t; sub = f.t; art = f.c; init = f.i;
+      } else {
+        const [sid, i] = v.split(':');
+        const s = SERIES.find(x => x.id === sid) || SERIES[0];
+        queue = s.eps.map(e => ({ t:e.n, dur:e.dur, st:e.st, pos:e.pos || 0 }));
+        qi = Math.min(Number(i), queue.length - 1); name = queue[qi].t; sub = s.t; art = s.c; init = s.i;
+      }
+      const pos = queue[qi].pos || 0;
+      S.player = { key:sub + ':' + name, kind:'ep', qid:'e' + sub, queue, qi,
+        title:name, sub, art, init, dur:queue[qi].dur, pos, playing:true, rate:1,
+        listInfo:(qi + 1) + ' od ' + queue.length, artTitle:sub, artSub:'emisija' };
+      go('player'); save(); break;
+    }
+    case 'playtrack': {
+      const [mid, i] = v.split(':');
+      const { m, q } = folderQueue(mid);
+      const n = Number(i);
+      const it = q[n] || q[0];
+      S.player = { key:'t' + mid + n, kind:'track', qid:'m' + mid, queue:q, qi:n,
+        title:it.t, sub:m.t, art:m.c, init:it.t.slice(0, 1), dur:it.dur, pos:0,
+        playing:true, rate:1, listInfo:(n + 1) + ' od ' + q.length, artTitle:m.t, artSub:'album' };
+      go('player'); save(); break;
+    }
+    case 'player': go('player'); break;
+    case 'toggle': toggle(); break;
+    case 'bump': bump(Number(v)); break;
+    case 'undo': undo(); break;
+    case 'next': S.undo = null; advance(1); save(); render(); break;
+    case 'prev': S.undo = null; prevAction(); save(); render(); break;
+    case 'rate': {
+      if (!S.player) break;
+      const opts = [1, 1.25, 1.5, 1.75, 2, 0.75];
+      const i = opts.indexOf(S.player.rate);
+      S.player.rate = opts[(i + 1) % opts.length];
+      render(); break;
+    }
+    case 'chapters': go('chapters'); break;
+    case 'seekabs': S.undo = null; seekTo(Number(v)); back(); break;
+    case 'goto': toast('Idi na vreme: u pravoj aplikaciji otvara unos HH:MM:SS'); break;
+    case 'timer': S.sheet = 'timer'; render(); break;
+    case 'help': S.sheet = 'help'; render(); break;
+    case 'closesheet': if (ev.target.closest('[data-act="closesheet"]') === ev.target) { S.sheet = null; render(); } break;
+    case 'starttimer': startTimer(Number(v)); break;
+    case 'canceltimer': cancelTimer(); break;
+    case 'cyclefade': { const o = [30, 60, 90]; S.set.fade = o[(o.indexOf(S.set.fade) + 1) % 3]; if (S.timer) S.timer.fade = S.set.fade; save(); render(); break; }
+    case 'cycleextend': { const o = [5, 10, 15, 30]; S.set.extend = o[(o.indexOf(S.set.extend) + 1) % 4]; if (S.timer) S.timer.extend = S.set.extend; save(); render(); break; }
+    case 'cyclejump': { const o = [15, 30, 45, 60]; S.set.jump = o[(o.indexOf(S.set.jump) + 1) % 4]; save(); render(); break; }
+    case 'extend': extendTimer(); render(); break;
+    case 'closenight': S.night = false; render(); break;
+    case 'lock': S.lock = true; render(); break;
+    case 'closelock': S.lock = false; render(); break;
+    case 'tnextauto': S.set.nextAuto = !S.set.nextAuto; save(); render(); break;
+    case 'gshake': S.set.gShake = !S.set.gShake; save(); render(); break;
+    case 'gvol': S.set.gVol = !S.set.gVol; save(); render(); break;
+    case 'gscreen': S.set.gScreen = !S.set.gScreen; save(); render(); break;
+    case 'covers': S.set.covers = !(S.set.covers !== false); save(); toast(S.set.covers ? 'Omoti: prvo iz fajla, pa sa interneta' : 'Omoti: samo iz fajla i feeda'); render(); break;
+    case 'tautodl': S.set.autodl = !S.set.autodl; save(); render(); break;
+    case 'twifi': S.set.wifiOnly = !S.set.wifiOnly; save(); render(); break;
+    case 'speed': { const o = [1, 10, 30, 60]; S.speed = o[(o.indexOf(S.speed) + 1) % 4]; save(); toast('Ubrzano vreme ×' + S.speed); render(); break; }
+    case 'foldersec': {
+      const i = Number(v); const order = [null, 'Muzika', 'Knjige', 'Emisije'];
+      const cur2 = S.set.folders[i].sec;
+      S.set.folders[i].sec = order[(order.indexOf(cur2) + 1) % order.length];
+      save(); render(); break;
+    }
+    case 'arrange': go('arrange'); break;
+    case 'import': go('import'); break;
+    case 'mixed': go('mixed'); break;
+    case 'moveTo': doMove(S.move, v); break;
+    case 'moveDisk': S.sheet = null; toast('U pravoj aplikaciji bira se odredišni folder; fajl se tada stvarno premešta.'); render(); break;
+    case 'mixedmove': { const x = S.mixed.find(y => y.id === v); if (x) { S.mixed = S.mixed.filter(y => y.id !== v); toast('Premešteno u ' + x.looks + ': ' + x.name); render(); } break; }
+    case 'grantperm': S.perm = true; store.set('perm', true); S.scanning = true; render(); setTimeout(() => { S.scanning = false; render(); }, 1000); break;
+    case 'inc': { const i = Number(v); S.avail[i].inc = !S.avail[i].inc; render(); break; }
+    case 'sec': { const i = Number(v); const o = [null, 'Knjige', 'Emisije', 'Muzika']; S.avail[i].sec = o[(o.indexOf(S.avail[i].sec) + 1) % o.length]; render(); break; }
+    case 'importfiles': S.sheet = 'files'; render(); break;
+    case 'loose': S.sheet = null; addLoose(v); break;
+    case 'doimport': doImport(); break;
+    case 'acceptall': toast('Raspoređeno: ' + S.set.folders.filter(f => f.sec).length + ' foldera'); back(); break;
+    case 'resetfolders': S.set.folders = FOLDERS.map(f => ({ ...f })); save(); render(); break;
+    case 'feeds': go('feeds'); break;
+    case 'openfeed': go('feed', { id:v }); break;
+    case 'addfeed': {
+      const url = prompt('Adresa RSS feeda:', 'https://example.com/feed.xml');
+      if (!url) break;
+      const name = prompt('Naziv emisije (demo):', 'Nova emisija') || 'Nova emisija';
+      FEEDS.push({ id:'f' + (FEEDS.length + 1), t:name, a:url.replace(/^https?:\/\//, '').split('/')[0], c:'c5', i:name.slice(0, 2).toUpperCase(), unread:0, eps:1, got:0, when:'upravo sad' });
+      toast('Feed dodat. U pravoj aplikaciji ovde se čita RSS i slika.'); render(); break;
+    }
+    case 'refreshfeeds': toast('Osvežavanje traje samo na telefona; u prototipu ništa ne dolazi sa mreže'); break;
+    case 'cat': go('catitem', { id:v }); break;
+    case 'follow': {
+      if (!FEEDS.some(f => f.t === v)) FEEDS.push({ id:'f' + (FEEDS.length + 1), t:v, a:'katalog', c:'c3', i:v.slice(0, 2).toUpperCase(), unread:3, eps:24, got:0, when:'upravo sad' });
+      toast('Zapraćeno: ' + v); render(); break;
+    }
+    case 'preview': toast('Pregled epizoda stiže sa feeda; u prototipu nije dostupan'); break;
+    case 'shuffleall': {
+      if (S.player && S.player.queue) { const i = Math.floor(Math.random() * S.player.queue.length); loadQueueItem(S.player, i); save(); render(); }
+      break;
+    }
+    case 'random': {
+      const s = SERIES.find(x => x.id === cur().id);
+      if (s && s.eps.length) {
+        const pool = s.eps.map((e, i) => ({ e, i })).filter(x => x.e.st !== 'done');
+        const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : { i:0 };
+        const ev = new Event('click');
+        document.querySelector(`[data-act="playep"][data-v="${s.id}:${pick.i}"]`)?.click();
+      }
+      break;
+    }
+    case 'log': toast('Dnevnik u pravoj aplikaciji beleži puštanja, pauze i greške'); break;
+    case 'battery': toast('Vodič kroz Samsung podešavanja baterije'); break;
+  }
+});
+
+/* seek: klik i vučenje po traci */
+document.addEventListener('pointerdown', (ev) => {
+  const bar = ev.target.closest('[data-seek]');
+  if (!bar || !S.player) return;
+  const startPos = S.player.pos;
+  const move = (e) => {
+    const r = bar.getBoundingClientRect();
+    const f = clamp((e.clientX - r.left) / r.width, 0, 1);
+    S.player.pos = f * S.player.dur;
+    const fill = bar.querySelector('.fill'), knob = bar.querySelector('.knob');
+    if (fill) fill.style.width = (f * 100).toFixed(2) + '%';
+    if (knob) knob.style.left = (f * 100).toFixed(2) + '%';
+  };
+  window.__dragSeek = true;
+  move(ev);
+  const up = () => {
+    window.__dragSeek = false;
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+    if (Math.abs(S.player.pos - startPos) > 2) setSeekUndo(startPos);
+    render(); save();
+  };
+  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+  ev.preventDefault();
+}, { passive:false });
+
+/* dug pritisak na red: premeštanje u drugu sekciju */
+let lpTimer = null, lpOrigin = null;
+function clearLP() { clearTimeout(lpTimer); lpTimer = null; lpOrigin = null; }
+document.addEventListener('pointerdown', (ev) => {
+  const row = ev.target.closest('[data-long]');
+  if (!row) return;
+  lpOrigin = { x: ev.clientX, y: ev.clientY };
+  clearTimeout(lpTimer);
+  lpTimer = setTimeout(() => {
+    const type = row.dataset.long, id = row.dataset.lid, idx = Number(row.dataset.lidx || 0);
+    S.move = { type, id, idx, sec: type === 'track' ? 'Muzika' : type === 'book' ? 'Knjige' : 'Emisije' };
+    S.sheet = 'move';
+    window.__lpFiredAt = Date.now();
+    if (navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { } }
+    render();
+  }, 450);
+}, { passive:true });
+document.addEventListener('pointerup', clearLP);
+document.addEventListener('pointercancel', clearLP);
+document.addEventListener('pointermove', (ev) => {
+  if (!lpOrigin) return;
+  if (Math.abs(ev.clientX - lpOrigin.x) > 12 || Math.abs(ev.clientY - lpOrigin.y) > 12) clearLP();
+}, { passive:true });
+
+/* tastatura: prostor, strelice; ↑/↓ i protresanje produžavaju tajmer */
+document.addEventListener('keydown', (ev) => {
+  const typing = ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA');
+  if (typing) return;
+  if (ev.key === ' ' && S.player) { ev.preventDefault(); toggle(); }
+  else if (ev.key === 'ArrowRight' && S.player) { bump(S.set.jump); }
+  else if (ev.key === 'ArrowLeft' && S.player) { bump(-S.set.jump); }
+  else if (ev.key === 'ArrowUp' && S.timer && S.set.gVol) { ev.preventDefault(); extendTimer(); render(); }
+  else if (ev.key === 'ArrowDown' && S.timer) { ev.preventDefault(); extendTimer(); render(); }
+  else if (ev.key === 'Escape') { if (S.night) { S.night = false; render(); } else if (S.lock) { S.lock = false; render(); } else if (S.sheet) { S.sheet = null; render(); } }
+});
+
+/* protresanje (ako pregledač dozvoli) */
+let lastShake = 0;
+window.addEventListener('devicemotion', (e) => {
+  if (!S.timer || !S.set.gShake) return;
+  const a = e.accelerationIncludingGravity || e.acceleration;
+  if (!a) return;
+  const m = Math.abs(a.x || 0) + Math.abs(a.y || 0) + Math.abs(a.z || 0);
+  const now = Date.now();
+  if (m > 28 && now - lastShake > 1200) { lastShake = now; extendTimer(); render(); }
+});
+
+/* dugme "protresi" u toku produžavanja — dodato kroz tastaturu ↑, ovde i preko klika na traku */
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-shake]');
+  if (b) { extendTimer(); render(); }
+});
+
+/* sat u statusnoj traci */
+setInterval(() => {
+  const c = $('#clock');
+  if (c) c.textContent = new Date().toTimeString().slice(0, 5);
+}, 10000);
+
+/* start */
+S.stack = [{ v: 'books' }];
+render();
+</script>
+</body>
+</html>
