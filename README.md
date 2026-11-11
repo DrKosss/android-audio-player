@@ -2,8 +2,8 @@
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.420.458 bajtova  
-SHA-256: `9a51af95f0d035c83a599084ef8426681681e4c1e14da0fa9ab7d4dbbd582d66`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.427.866 bajtova  
+SHA-256: `c6382082d02bf0045ae1fcd012d2fb287ba9d8d3870e35634a546a757d55dc41`
 
 Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom, ikonom iz prototipa, svih 11 ekrana prototipa i novim ekranom četvrte sekcije „Stand up“.
 
