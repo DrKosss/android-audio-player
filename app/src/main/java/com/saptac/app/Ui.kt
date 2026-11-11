@@ -94,15 +94,30 @@ fun iconBox(ctx: Context, resId: Int, color: Int = C_T2, sizeDp: Int = 22,
         click(action)
     }
 
-fun cover(ctx: Context, index: Int, initial: String, sizeDp: Int, radiusDp: Float): FrameLayout =
+fun cover(ctx: Context, index: Int, initial: String, sizeDp: Int, radiusDp: Float,
+          groupKey: String? = null, onEdit: (() -> Unit)? = null): FrameLayout =
     FrameLayout(ctx).apply {
         layoutParams = LinearLayout.LayoutParams(ctx.dp(sizeDp), ctx.dp(sizeDp))
         background = gradientCover(index, radiusDp, ctx)
-        val t = text(ctx, initial, if (sizeDp >= 60) 16f else 16f,
-            Color.argb(180, 255, 255, 255), serif = true)
-        t.typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
-        t.gravity = Gravity.CENTER
-        addView(t, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
+        val bmp = groupKey?.let { Bus.covers[it] ?: LibraryManager.customCoverBitmap(ctx, it) }
+        if (bmp != null) {
+            addView(ImageView(ctx).apply {
+                setImageBitmap(bmp)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }, FrameLayout.LayoutParams(-1, -1))
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, ctx.dp(radiusDp).toFloat())
+                }
+            }
+            clipToOutline = true
+        } else {
+            val t = text(ctx, initial, 16f, Color.argb(180, 255, 255, 255), serif = true)
+            t.typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
+            t.gravity = Gravity.CENTER
+            addView(t, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
+        }
+        if (onEdit != null) longClick { onEdit(); true }
     }
 
 fun rowView(ctx: Context, action: (View) -> Unit, longAction: ((View) -> Boolean)? = null): LinearLayout =
@@ -154,19 +169,27 @@ fun circleButton(ctx: Context, sizeDp: Int, bg: Int, iconRes: Int, iconColor: In
         click(action)
     }
 
-fun jumpButton(ctx: Context, sizeDp: Int, forward: Boolean, action: (View) -> Unit): FrameLayout =
+/** Prototipska i-b30 / i-f30 ikona: kružna strelica + "30" u njenom središtu. */
+fun jumpIcon(ctx: Context, forward: Boolean, sizeDp: Int, color: Int): FrameLayout =
     FrameLayout(ctx).apply {
         layoutParams = LinearLayout.LayoutParams(ctx.dp(sizeDp), ctx.dp(sizeDp))
         val iv = ImageView(ctx).apply {
             setImageResource(if (forward) R.drawable.ic_f30 else R.drawable.ic_b30)
-            setColorFilter(C_T1); scaleType = ImageView.ScaleType.FIT_CENTER
+            setColorFilter(color); scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        addView(iv, FrameLayout.LayoutParams(ctx.dp(40), ctx.dp(40), Gravity.CENTER))
-        val n = text(ctx, Store.settings.jump.toString(), 7f, C_T1, bold = true)
+        addView(iv, FrameLayout.LayoutParams(-1, -1))
+        // SVG u prototipu ima font-size:7 u viewBox-u 24 -> razmera 7/24.
+        val n = text(ctx, Store.settings.jump.toString(), sizeDp * 7f / 24f, color, bold = true)
         n.gravity = Gravity.CENTER
-        addView(n, FrameLayout.LayoutParams(ctx.dp(20), ctx.dp(12), Gravity.CENTER).apply {
-            topMargin = ctx.dp(5)
-        })
+        addView(n, FrameLayout.LayoutParams(ctx.dp(sizeDp * 0.6f), ctx.dp(sizeDp * 0.4f),
+            Gravity.CENTER).apply { topMargin = ctx.dp(sizeDp * 0.05f) })
+    }
+
+fun jumpButton(ctx: Context, sizeDp: Int, forward: Boolean, action: (View) -> Unit): FrameLayout =
+    FrameLayout(ctx).apply {
+        layoutParams = LinearLayout.LayoutParams(ctx.dp(sizeDp), ctx.dp(sizeDp))
+        addView(jumpIcon(ctx, forward, 40, C_T1),
+            FrameLayout.LayoutParams(ctx.dp(40), ctx.dp(40), Gravity.CENTER))
         click(action)
     }
 

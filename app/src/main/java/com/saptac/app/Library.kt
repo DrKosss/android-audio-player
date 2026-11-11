@@ -304,6 +304,23 @@ object LibraryManager {
         return out
     }
 
+    /** Ručno izabran omot (slika iz sistemskog izbora fajlova), keširan po grupi. */
+    fun customCoverBitmap(ctx: Context, groupKey: String): Bitmap? {
+        val uriString = Store.customCover(groupKey) ?: return null
+        Bus.covers[groupKey]?.let { return it }
+        return try {
+            val uri = Uri.parse(uriString)
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            var sample = 1
+            while (bounds.outWidth / sample > 512 || bounds.outHeight / sample > 512) sample *= 2
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample.coerceAtLeast(1) }
+            val bmp = ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
+            if (bmp != null) Bus.covers[groupKey] = bmp
+            bmp
+        } catch (_: Exception) { null }
+    }
+
     /** Omot iz samog fajla (ID3/MP4 slika). */
     fun embeddedCover(ctx: Context, item: AudioItem): Bitmap? {
         Bus.covers[item.id]?.let { return it }

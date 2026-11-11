@@ -612,6 +612,7 @@ class PlayerService : Service(), SensorEventListener {
         val p = state ?: return null
         val cached = Bus.covers[p.groupKey]
         if (cached != null) return cached
+        LibraryManager.customCoverBitmap(this, p.groupKey)?.let { return it }
         val embedded = LibraryManager.embeddedCover(this, p.current)
         if (embedded != null) { Bus.covers[p.groupKey] = embedded; return embedded }
         return null

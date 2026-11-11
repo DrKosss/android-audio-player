@@ -67,9 +67,10 @@ object Nav {
     var pendingTree: String? = null
     var filesTarget: String = "loose"
     var focusSearch: Boolean = false
+    var coverTarget: String = ""
 }
 
-/** Tanki napredak u mini-plejeru i na skici zaključanog ekrana. */
+/** Tanki napredak u mini-plejeru. */
 class MiniProgress(ctx: Context) : View(ctx) {
     var fraction = 0f
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -94,7 +95,6 @@ class MainActivity : android.app.Activity() {
     private var wholeRef: TextView? = null
     private var titleRef: TextView? = null
     private var miniProgressRef: MiniProgress? = null
-    private var lockProgressRef: MiniProgress? = null
     private var timerToolRef: TextView? = null
     private var timerToastRef: TextView? = null
     private var nightTimeRef: TextView? = null
@@ -219,14 +219,12 @@ class MainActivity : android.app.Activity() {
         else Nav.stack.add(Screen(v, id))
         Nav.sheet = null
         Bus.night = false
-        Bus.lockPreview = false
         render()
     }
     private fun onBack() {
         if (Nav.stack.size > 1) Nav.stack.removeAt(Nav.stack.lastIndex)
         Nav.sheet = null
         Bus.night = false
-        Bus.lockPreview = false
         render()
     }
     private fun tabHome(sec: Section) {
@@ -238,12 +236,11 @@ class MainActivity : android.app.Activity() {
             Section.STANDUP -> "standup"
             else -> "books"
         }))
-        Nav.sheet = null; Bus.night = false; Bus.lockPreview = false
+        Nav.sheet = null; Bus.night = false
         render()
     }
     override fun onBackPressed() {
         when {
-            Bus.lockPreview -> Bus.lockPreview = false
             Bus.night -> Bus.night = false
             Nav.sheet != null -> Nav.sheet = null
             Nav.stack.size > 1 -> Nav.stack.removeAt(Nav.stack.lastIndex)
@@ -334,7 +331,7 @@ class MainActivity : android.app.Activity() {
             Nav.standupChips,
             Nav.sheet ?: "", Nav.feedId, Nav.catalog.size, Nav.catalogItem?.title ?: "",
             Nav.importSelection.size, Nav.scanning, Nav.moveName, Nav.moveFrom.name,
-            Bus.night, Bus.lockPreview, Bus.libraryVersion, Bus.toast ?: "",
+            Bus.night, Bus.libraryVersion, Bus.toast ?: "",
             p?.playing, p?.groupKey, p?.index, p?.rate, p?.durationMs,
             t?.phase?.name ?: "off", Bus.undo != null,
             st.jump, st.fade, st.extend, st.gShake, st.gVol, st.gScreen,
@@ -364,7 +361,7 @@ class MainActivity : android.app.Activity() {
     private fun render() {
         val c = this
         seekRef = null; timeLeftRef = null; timeRightRef = null; wholeRef = null
-        titleRef = null; miniProgressRef = null; lockProgressRef = null
+        titleRef = null; miniProgressRef = null
         timerToolRef = null; timerToastRef = null; nightTimeRef = null; searchRef = null
 
         val keyBefore = scrollKey()
@@ -381,10 +378,9 @@ class MainActivity : android.app.Activity() {
 
         if (Nav.sheet != null) root.addView(sheetOverlay(), FrameLayout.LayoutParams(-1, -1))
         if (Bus.night) root.addView(nightOverlay(), FrameLayout.LayoutParams(-1, -1))
-        if (Bus.lockPreview) root.addView(lockOverlay(), FrameLayout.LayoutParams(-1, -1))
         Bus.toast?.let {
             if (System.currentTimeMillis() < Bus.toastUntil) {
-                val bottom = (if (Bus.player != null && !Bus.night && !Bus.lockPreview) c.dp(132) else c.dp(74)) + bottomInsetPx
+                val bottom = (if (Bus.player != null && !Bus.night) c.dp(132) else c.dp(74)) + bottomInsetPx
                 root.addView(toastView(it), FrameLayout.LayoutParams(-1, -2,
                     Gravity.BOTTOM).apply { leftMargin = c.dp(16); rightMargin = c.dp(16); bottomMargin = bottom })
             } else Bus.toast = null
@@ -431,7 +427,6 @@ class MainActivity : android.app.Activity() {
         else "ukupno ${fmtShort(dur)}"
         titleRef?.text = p.current.title
         miniProgressRef?.set(f)
-        lockProgressRef?.set(f)
         Bus.timer?.let { t ->
             val left = if (t.phase == TPhase.GRACE) t.graceMs else t.leftMs
             timerToolRef?.text = fmtTime(left)
@@ -564,7 +559,7 @@ class MainActivity : android.app.Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(c.dp(9), 0, c.dp(9), 0)
         }
-        card.addView(cover(c, p.cover, p.initial, 38, 9f))
+        card.addView(cover(c, p.cover, p.initial, 38, 9f, p.groupKey))
         val tx = vertical(c).apply {
             layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(10) }
             addView(text(c, p.groupTitle, 14f, C_T1))
@@ -685,7 +680,7 @@ class MainActivity : android.app.Activity() {
             val row = rowView(c, { openBook(g) }, {
                 moveDialog(g.title, Section.BOOKS, g.items); true
             })
-            row.addView(cover(c, g.cover, g.initial, 48, 11f))
+            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
                 addView(text(c, g.title, 14.5f, C_T1))
@@ -723,7 +718,7 @@ class MainActivity : android.app.Activity() {
                     val row = rowView(c, { go("seriesdetail", g.key) }, {
                         moveDialog(g.title, Section.SERIES, g.items); true
                     })
-                    row.addView(cover(c, g.cover, g.initial, 48, 11f))
+                    row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
                     val tx = vertical(c).apply {
                         layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
                         addView(text(c, g.title, 14.5f, C_T1))
@@ -831,7 +826,7 @@ class MainActivity : android.app.Activity() {
             val row = rowView(c, { openStandup(g) }, {
                 moveDialog(g.title, Section.STANDUP, g.items); true
             })
-            row.addView(cover(c, g.cover, g.initial, 48, 11f))
+            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
                 addView(text(c, g.title, 14.5f, C_T1))
@@ -997,7 +992,7 @@ class MainActivity : android.app.Activity() {
             val row = rowView(c, { go("folder", g.key) }, {
                 moveDialog(g.title, Section.MUSIC, g.items); true
             })
-            row.addView(cover(c, g.cover, g.initial, 48, 11f))
+            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
                 addView(text(c, g.title, 14.5f, C_T1))
@@ -1068,7 +1063,7 @@ class MainActivity : android.app.Activity() {
             addView(text(c, p.sectionLabel, 10.5f, C_T2, bold = true).apply {
                 letterSpacing = 0.16f; gravity = Gravity.CENTER
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(iconBox(c, R.drawable.ic_lock, C_T2, 22, 4) { Bus.lockPreview = true; render() })
+            addView(View(c), LinearLayout.LayoutParams(c.dp(30), c.dp(30)))
         }
         body.addView(top)
         body.addView(playerArt(p))
@@ -1201,9 +1196,10 @@ class MainActivity : android.app.Activity() {
             }
             clipToOutline = true
         }
-        val bmp = Bus.covers[p.groupKey] ?: LibraryManager.embeddedCover(c, p.current)?.also {
-            Bus.covers[p.groupKey] = it
-        }
+        val bmp = Bus.covers[p.groupKey] ?: LibraryManager.customCoverBitmap(c, p.groupKey)
+            ?: LibraryManager.embeddedCover(c, p.current)?.also {
+                Bus.covers[p.groupKey] = it
+            }
         if (bmp != null) {
             frame.addView(android.widget.ImageView(c).apply {
                 setImageBitmap(bmp)
@@ -1226,6 +1222,29 @@ class MainActivity : android.app.Activity() {
             })
         }
         frame.addView(labels, FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM))
+        val edit = FrameLayout(c).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(150, 0x1B, 0x18, 0x14))
+            }
+            val iv = icon(c, R.drawable.ic_edit, Color.WHITE, 13)
+            addView(iv, FrameLayout.LayoutParams(c.dp(13), c.dp(13), Gravity.CENTER))
+            contentDescription = "Promeni omot"
+            isClickable = true
+            click { pickCover(p.groupKey) }
+        }
+        frame.addView(edit, FrameLayout.LayoutParams(c.dp(28), c.dp(28),
+            Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, c.dp(10), c.dp(10)) })
+        // Dodir bira novi omot; dug dodir skida ručno izabran i vraća omot iz fajla/mreže.
+        frame.click { pickCover(p.groupKey) }
+        frame.longClick {
+            Store.clearCustomCover(p.groupKey)
+            Bus.covers.remove(p.groupKey)
+            coverRequested.remove(p.groupKey)
+            cmd(PlayerService.ACTION_SYNC)
+            render()
+            true
+        }
         return frame
     }
 
@@ -1329,7 +1348,9 @@ class MainActivity : android.app.Activity() {
     private val coverRequested = HashSet<String>()
 
     private fun maybeFetchCover(p: PlayerState) {
-        if (!Store.settings.covers || Bus.covers.containsKey(p.groupKey)) return
+        if (Bus.covers.containsKey(p.groupKey)) return
+        if (Store.customCover(p.groupKey) != null) return
+        if (!Store.settings.covers) return
         val embedded = LibraryManager.embeddedCover(this, p.current)
         if (embedded != null) { Bus.covers[p.groupKey] = embedded; return }
         if (!coverRequested.add(p.groupKey)) return
@@ -1639,6 +1660,18 @@ class MainActivity : android.app.Activity() {
         startActivityForResult(i, 2001)
     }
 
+    private fun pickCover(groupKey: String) {
+        Nav.coverTarget = groupKey
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        try { startActivityForResult(i, 2003) }
+        catch (_: Exception) { Nav.coverTarget = "" }
+    }
+
     private fun importFiles() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -1675,6 +1708,21 @@ class MainActivity : android.app.Activity() {
                 Nav.pendingLoose = uris.distinct()
                 Nav.filesTarget = "loose"
                 Nav.sheet = "files"
+                render()
+            }
+            2003 -> {
+                val uri = data.data ?: return
+                val key = Nav.coverTarget
+                Nav.coverTarget = ""
+                if (key.isBlank()) return
+                try {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (_: Exception) { }
+                Store.setCustomCover(key, uri.toString())
+                Bus.covers.remove(key)
+                coverRequested.remove(key)
+                LibraryManager.customCoverBitmap(this, key)
+                cmd(PlayerService.ACTION_SYNC)
                 render()
             }
         }
@@ -2194,7 +2242,10 @@ class MainActivity : android.app.Activity() {
             vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -1, if (res == R.drawable.ic_play || res == R.drawable.ic_pause) 1.3f else 1f)
                 gravity = Gravity.CENTER
-                addView(icon(c, res, C_NIGHT, iconSize))
+                if (res == R.drawable.ic_b30 || res == R.drawable.ic_f30) {
+                    addView(jumpIcon(c, res == R.drawable.ic_f30, iconSize, C_NIGHT),
+                        LinearLayout.LayoutParams(c.dp(iconSize), c.dp(iconSize)))
+                } else addView(icon(c, res, C_NIGHT, iconSize))
                 if (label.isNotBlank()) addView(text(c, label, 12.5f, C_NIGHT))
                 click(action)
             }
@@ -2231,70 +2282,6 @@ class MainActivity : android.app.Activity() {
             addView(plus)
         }
         root.addView(bottom)
-        return root
-    }
-
-    private fun lockOverlay(): View {
-        val c = this
-        val p = Bus.player
-        val root = FrameLayout(c).apply {
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(0x1D, 0x25, 0x37), Color.rgb(0x0A, 0x0C, 0x12), Color.rgb(0x05, 0x06, 0x08)))
-        }
-        val body = vertical(c).apply { setPadding(0, 0, 0, bottomInsetPx) }
-        body.addView(text(c, SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
-            64f, Color.rgb(0xD5, 0xD9, 0xE2)).apply {
-            gravity = Gravity.CENTER; setPadding(0, c.dp(54), 0, 0)
-        })
-        body.addView(text(c, SimpleDateFormat("EEEE, d. MMMM", Locale("sr")).format(Date()),
-            13f, Color.rgb(0x9A, 0xA1, 0xB0)).apply {
-            gravity = Gravity.CENTER; setPadding(0, c.dp(8), 0, 0)
-        })
-        val card = vertical(c).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                setMargins(c.dp(12), c.dp(34), c.dp(12), 0)
-            }
-            background = rounded(Color.argb(24, 255, 255, 255), 24f, c)
-            setPadding(c.dp(14), c.dp(14), c.dp(14), c.dp(13))
-            val hd = horizontal(c).apply { gravity = Gravity.CENTER_VERTICAL }
-            hd.addView(cover(c, p?.cover ?: 0, p?.initial ?: "Š", 40, 9f))
-            hd.addView(vertical(c).apply {
-                layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(11) }
-                addView(text(c, "ŠAPTAČ", 10f, Color.rgb(0x9A, 0xA1, 0xB0)))
-                addView(text(c, p?.current?.title ?: "—", 14.5f, Color.rgb(0xD5, 0xD9, 0xE2)))
-                addView(text(c, p?.groupTitle ?: "", 12f, Color.rgb(0x9A, 0xA1, 0xB0)))
-            })
-            addView(hd)
-            val mp = MiniProgress(c)
-            addView(mp, LinearLayout.LayoutParams(-1, c.dp(3)).apply { topMargin = c.dp(15) })
-            lockProgressRef = mp
-            val ctl = horizontal(c).apply {
-                layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = c.dp(13) }
-                gravity = Gravity.CENTER_VERTICAL
-                addView(iconBox(c, R.drawable.ic_b30, Color.rgb(0xE7, 0xEA, 0xF1), 30, 6) { bump(-30) })
-                addView(iconBox(c, if (p?.playing == true) R.drawable.ic_pause else R.drawable.ic_play,
-                    Color.rgb(0xE7, 0xEA, 0xF1), 30, 6) { toggle() },
-                    LinearLayout.LayoutParams(0, -2, 1f))
-                addView(iconBox(c, R.drawable.ic_f30, Color.rgb(0xE7, 0xEA, 0xF1), 30, 6) { bump(30) })
-                addView(text(c, "+${Store.settings.extend}", 12.5f, Color.rgb(0xE7, 0xEA, 0xF1), bold = true).apply {
-                    click { extendTimer() }
-                }, LinearLayout.LayoutParams(0, -2, 1f))
-            }
-            addView(ctl)
-        }
-        body.addView(card)
-        body.addView(text(c, "Skica sistemskih kontrola · prave kontrole daje MediaSession",
-            11f, Color.rgb(0x6F, 0x76, 0x86)).apply {
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
-            setPadding(0, 0, 0, c.dp(16))
-        })
-        root.addView(body, FrameLayout.LayoutParams(-1, -1))
-        root.addView(iconBox(c, R.drawable.ic_x, Color.rgb(0x8B, 0x93, 0xA3), 22, 10) {
-            Bus.lockPreview = false; render()
-        }, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
-            topMargin = c.dp(10); rightMargin = c.dp(10)
-        })
         return root
     }
 

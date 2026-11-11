@@ -372,6 +372,16 @@ object Store {
     fun lastPlayer(): JSONObject = obj("lastPlayer")
     fun saveLastPlayer(o: JSONObject) = put("lastPlayer", o)
 
+    /** Ručno izabran omot: SAF URI slike po grupi (knjizi/seriji/albumu). */
+    fun customCover(key: String): String? =
+        obj("covers").optString(key, "").takeIf { it.isNotEmpty() }
+    fun setCustomCover(key: String, uri: String) {
+        val o = obj("covers"); o.put(key, uri); put("covers", o)
+    }
+    fun clearCustomCover(key: String) {
+        val o = obj("covers"); o.remove(key); put("covers", o)
+    }
+
     fun rateForGroup(key: String): Float = obj("rates").optDouble(key, 1.0).toFloat()
     fun setRateForGroup(key: String, rate: Float) {
         val o = obj("rates"); o.put(key, rate.toDouble()); put("rates", o)
@@ -396,7 +406,6 @@ object Bus {
     var player: PlayerState? = null
     var timer: TimerState? = null
     var night: Boolean = false
-    var lockPreview: Boolean = false
     var toast: String? = null
     var toastUntil: Long = 0L
     var playRequest: PlayRequest? = null
