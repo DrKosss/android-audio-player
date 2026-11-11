@@ -60,8 +60,18 @@ jobs:
               [ -d "$d" ] || continue
               echo "$d: $(grep AndroidVersion.ApiLevel "$d/source.properties" 2>/dev/null || true)"
             done
-            if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
-              "$SDKM" "platforms;android-37" 2>&1 || true
+            if [ -f "$ANDROID_HOME/platforms/android-37.2/source.properties" ]; then
+              echo "--- android-37.2 source.properties ---"
+              cat "$ANDROID_HOME/platforms/android-37.2/source.properties"
+            fi
+            # AGP resolves compileSdk=37 to the canonical path platforms/android-37.
+            # The runner ships API 37 as android-37.2; make a canonical, patched copy.
+            if [ ! -d "$ANDROID_HOME/platforms/android-37" ] && [ -d "$ANDROID_HOME/platforms/android-37.2" ]; then
+              cp -a "$ANDROID_HOME/platforms/android-37.2" "$ANDROID_HOME/platforms/android-37"
+              sed -i 's/^AndroidVersion\.ApiLevel=.*/AndroidVersion.ApiLevel=37/' "$ANDROID_HOME/platforms/android-37/source.properties"
+              sed -i 's/^AndroidVersion\.CodeName=.*/AndroidVersion.CodeName=REL/' "$ANDROID_HOME/platforms/android-37/source.properties"
+              echo "--- canonical android-37 source.properties ---"
+              cat "$ANDROID_HOME/platforms/android-37/source.properties"
             fi
             echo "===== SIGNING KEY ====="
             mkdir -p signing
@@ -91,6 +101,7 @@ jobs:
         if: always()
         run: |
           mkdir -p dist
+          rm -f dist/Saptac-v1.0.apk dist/Saptac-v1.0.apk.sha256
           APK=$(find app/build/outputs/apk -type f -name '*.apk' ! -name '*unsigned*' | head -1 || true)
           if [ -n "$APK" ]; then cp "$APK" dist/Saptac-v1.0.apk; fi
           if [ -f dist/Saptac-v1.0.apk ]; then
@@ -126,7 +137,8 @@ jobs:
         run: |
           git config user.name "arena-ai-coding-agent[bot]"
           git config user.email "298482267+arena-ai-coding-agent[bot]@users.noreply.github.com"
-          for f in build.log dist/Saptac-v1.0.apk dist/Saptac-v1.0.apk.sha256 signing/saptac.jks .gitignore gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties; do
+          git add -A dist
+          for f in build.log signing/saptac.jks .gitignore gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties; do
             if [ -f "$f" ]; then git add -f "$f"; fi
           done
           git commit -m "CI: APK i log izgradnje [skip ci]" || echo "nothing new to commit"
