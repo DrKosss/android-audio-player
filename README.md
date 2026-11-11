@@ -1,26 +1,32 @@
-# Šaptač — Android v1.0.3
+# Šaptač — Android v1.0.4
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.422.846 bajtova  
-SHA-256: `044000f92a1cab54c2c96c9be40239ea2474403c447b5e6f0faad83c54152130`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.424.798 bajtova  
+SHA-256: `4db8990e87b14c8c705e621d4d56ad70786fcabeaf1ec5f103e7f027976817f0`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodatak je četvrta sekcija „Stand up“.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“ i ručna ispravka omota; skica zaključanog ekrana koja se otvarala na katanac je uklonjena.
 
-## Šta je u v1.0.3
+## Šta je novo u v1.0.4
 
-- **Ispravke u v1.0.3:** sistemski dugmići na dnu više ne prekrivaju dugmiće za reprodukciju (rezervisan je prostor za `WindowInsets` navigacione trake, uključujući i listiće, noćni ekran i skicu zaključanog ekrana); posle pauze reprodukcija se pouzdano nastavlja (jedan stalni `AudioFocusRequest` umesto novog pri svakom `resume()`, koji je slao `AUDIOFOCUS_LOSS` i odmah pauzirao, plus obnova stanja ako je servis ponovo pokrenut); izbor foldera više ne flickeruje na vrh — oznaka sekcije i dugme za potvrdu ažuriraju se u mestu, a kada se ekran ipak ponovo nacrta, skrol se vraća pre prvog crtanja (`OnPreDrawListener`).
+- **Ikone kao u prototipu:** ispravljeni su oštećeni `pathData` vektori za `prethodno/na početak`, `30 s nazad` i `30 s napred`, kao i za play, check, strelice, refresh i shuffle. `i-prev`/`i-next` sada imaju puni trougao i popunjenu crtu, a `i-b30`/`i-f30` kružnu strelicu, popunjen vrh i centrirani broj `30` u tačnoj razmeri iz SVG `viewBox`-a. Broj je sada vidljiv i na noćnom ekranu.
+- **Ručna ispravka omota:** dodir na omot u plejeru (ili mala olovka u uglu) otvara sistemski izbor slike; izbor se trajno pamti po grupi, ima prednost nad ugrađenim i automatski preuzetim omotom, prikazuje se u listama, mini-plejeru, `MediaSession` i obaveštenju. Dug dodir na omot skida ručni izbor i vraća automatski. Dug dodir na sličicu grupe u listi takođe otvara izbor slike.
+- **Bez prozora na katanac:** uklonjeni su dugme sa katancem, `lockOverlay()`, `Bus.lockPreview` i `ic_lock.xml`. Sistemske kontrole preko `MediaSession` ostaju; nema više internog ekrana „zaključanog prikaza“.
+
+## Ranije ispravke (v1.0.3)
+
+- **Ispravke u v1.0.3:** sistemski dugmići na dnu više ne prekrivaju dugmiće za reprodukciju (rezervisan je prostor za `WindowInsets` navigacione trake, uključujući i listiće i noćni ekran); posle pauze reprodukcija se pouzdano nastavlja (jedan stalni `AudioFocusRequest` umesto novog pri svakom `resume()`, koji je slao `AUDIOFOCUS_LOSS` i odmah pauzirao, plus obnova stanja ako je servis ponovo pokrenut); izbor foldera više ne flickeruje na vrh — oznaka sekcije i dugme za potvrdu ažuriraju se u mestu, a kada se ekran ipak ponovo nacrta, skrol se vraća pre prvog crtanja (`OnPreDrawListener`).
 - **Vraćeno na prototip:** uklonjeni su dugme `?` i pomoć, ekrani za bateriju i dnevnik događaja, dodatne poruke, fusnota sa verzijom, uvećane ikonice i svi tekstovi kojih nema u `saptac-prototip.html`. Ikonice sekcija su vraćene na 21 dp, a redovi sa folderima na izgled iz prototipa.
-- **Jedina nova stvar — „Stand up“:** četvrti tab u donjoj traci i četvrta sekcija pri uvozu, raspoređivanju, mešanim fajlovima i prebacivanju. Koristi isti prikaz kao „Knjige“ (omot, `Sve / U toku / Nove / Završene`, pozicija, preostalo vreme, `PONIŠTI`) — bez novih tabova, filtera ili naziva. Folderi sa `stand up`, `standup`, `komedija`, `comedy` dobijaju automatski predlog sekcije.
+- **Četvrta sekcija — „Stand up“:** četvrti tab u donjoj traci i četvrta sekcija pri uvozu, raspoređivanju, mešanim fajlovima i prebacivanju. Koristi isti prikaz kao „Knjige“ (omot, `Sve / U toku / Nove / Završene`, pozicija, preostalo vreme, `PONIŠTI`) — bez novih tabova, filtera ili naziva. Folderi sa `stand up`, `standup`, `komedija`, `comedy` dobijaju automatski predlog sekcije.
 - **Potvrda izbora:** na ekranu „Uvoz“ uvek je vidljivo primarno dugme `Uvezi N foldera` (odnosno `Izaberi najmanje jedan folder`) koje potvrđuje izabrane foldere; za pojedinačne fajlove se posle izbora otvara listić sa sekcijama i tek tu se potvrđuje smeštanje.
 - **Skrol ostaje na mestu:** pri svakom izboru sekcije za folder lista se više ne vraća na vrh — `ScrollView` zadržava prethodnu poziciju pri ponovnom crtanju istog ekrana.
 - **Tri sekcije iz prototipa:** Knjige (pozicija po fajlu, 0,5–2×, preostalo vreme, `PONIŠTI`), Muzika (folderi/izvođači/albumi, uvek 1×, shuffle/repeat), Emisije (nove/započete/završene, `Nastavi`, `Nasumična`, automatski sledeća, brzina po seriji).
 - **Uvoz:** interna memorija i SD kartica, predlozi klasifikacije po imenu/obliku/tagovima, pojedinačni fajlovi, dug pritisak za prebacivanje sekcije, mešani fajlovi; fajlovi se ne pomeraju na disku.
-- **Lokalna reprodukcija:** MP3/M4A/M4B/OGG/Opus/FLAC/WAV preko sistemskog plejera u `PlayerService` foreground servisu; `MediaSession`, stalno obaveštenje i kontrole na zaključanom ekranu; audio-focus, wake-lock, čuvanje pozicije svakih 5 s i pri pauzi/seeku.
-- **Plejer:** ±30 s, prethodno/sledeće, liste/poglavlja, brzina, napredak, omot iz fajla ili opcioni internet-omot po albumu/knjizi.
+- **Lokalna reprodukcija:** MP3/M4A/M4B/OGG/Opus/FLAC/WAV preko sistemskog plejera u `PlayerService` foreground servisu; `MediaSession`, stalno obaveštenje i kontrole u sistemskom zaključanom ekranu; audio-focus, wake-lock, čuvanje pozicije svakih 5 s i pri pauzi/seeku.
+- **Plejer:** ±30 s, prethodno/sledeće, liste/poglavlja, brzina, napredak, omot iz fajla, opcioni internet-omot po albumu/knjizi ili ručno izabrana slika koja ima prednost nad oba.
 - **Tajmer za spavanje:** 15/30/45/60 min, utišavanje 30/60/90 s, 60 s „grace“ perioda, produžetak pomeranjem telefona, dugmetom za jačinu ili paljenjem ekrana, noćni ekran sa tri zone i `+15 min`, kratka vibracija.
 - **Podkasti:** ručno dodavanje i osvežavanje RSS feedova, preuzimanje epizode pre puštanja, broj novih, Apple iTunes Search katalog sa offline rezervom, samo HTTPS.
-- **Ostalo:** podešavanja, mini-plejer, skica noćnog i zaključanog ekrana. Podaci ostaju na telefonu; nema naloga, reklama, praćenja, streaminga bez preuzimanja, cloud sinhronizacije, Android Auto-a, EQ-a ni svetle teme. Pretraga, bekap, prepoznavanje preimenovanih fajlova, M4B poglavlja i markeri ostaju za v1.1.
+- **Ostalo:** podešavanja, mini-plejer, skica noćnog ekrana. Podaci ostaju na telefonu; nema naloga, reklama, praćenja, streaminga bez preuzimanja, cloud sinhronizacije, Android Auto-a, EQ-a ni svetle teme. Pretraga, bekap, prepoznavanje preimenovanih fajlova, M4B poglavlja i markeri ostaju za v1.1.
 
 ## Instalacija na Samsung Galaxy S25 / One UI 9
 
@@ -37,7 +43,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.3` (`versionCode 4`) |
+| Verzija | `1.0.4` (`versionCode 5`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
