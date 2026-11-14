@@ -5,75 +5,76 @@ OpenJDK 64-Bit Server VM Temurin-17.0.21+9 (build 17.0.21+9, mixed mode, sharing
 ANDROID_HOME=/usr/local/lib/android/sdk
 ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
 total 72
-drwxrwxrwx 11 root root  4096 Nov  1 21:34 .
-drwxr-xr-x  3 root root  4096 Nov  1 21:30 ..
--rw-r--r--  1 root root    16 Nov  1 21:34 .knownPackages
-drwxrwxrwx  2 root root  4096 Nov  1 21:34 .temp
-drwxrwxrwx  8 root root  4096 Nov  1 21:30 build-tools
-drwxrwxrwx  4 root root  4096 Nov  1 21:33 cmake
-drwxrwxrwx  3 root root  4096 Nov  1 21:30 cmdline-tools
-drwxrwxrwx  4 root root  4096 Nov  1 21:33 extras
-drwxrwxrwx  2 root root  4096 Nov  1 21:30 licenses
-drwxrwxrwx  5 root root  4096 Nov  1 21:33 ndk
--rw-r--r--  1 root root 22796 Nov  1 21:34 packages-list.txt
-drwxrwxrwx  3 root root  4096 Nov  1 21:30 platform-tools
-drwxrwxrwx 20 root root  4096 Nov  1 21:31 platforms
+drwxrwxrwx 11 root root  4096 Nov 11 11:00 .
+drwxr-xr-x  3 root root  4096 Nov 11 10:57 ..
+-rw-r--r--  1 root root    16 Nov 11 11:00 .knownPackages
+drwxrwxrwx  2 root root  4096 Nov 11 11:00 .temp
+drwxrwxrwx  8 root root  4096 Nov 11 10:57 build-tools
+drwxrwxrwx  4 root root  4096 Nov 11 11:00 cmake
+drwxrwxrwx  3 root root  4096 Nov 11 10:57 cmdline-tools
+drwxrwxrwx  4 root root  4096 Nov 11 11:00 extras
+drwxrwxrwx  2 root root  4096 Nov 11 10:57 licenses
+drwxrwxrwx  5 root root  4096 Nov 11 11:00 ndk
+-rw-r--r--  1 root root 24151 Nov 11 11:00 packages-list.txt
+drwxrwxrwx  3 root root  4096 Nov 11 10:57 platform-tools
+drwxrwxrwx 20 root root  4096 Nov 11 10:58 platforms
 total 80
-drwxrwxrwx 20 root root 4096 Nov  1 21:31 .
-drwxrwxrwx 11 root root 4096 Nov  1 21:34 ..
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-34
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-34-ext10
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-34-ext11
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-34-ext12
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-34-ext8
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-35
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-35-ext14
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-35-ext15
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-36
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-36-ext18
-drwxrwxrwx  6 root root 4096 Nov  1 21:31 android-36-ext19
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 android-36.1
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 android-37.0
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 android-37.1
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 android-37.2
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 android-37.2-beta1
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 android-37.2-beta2
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 android-37.2-beta3
+drwxrwxrwx 20 root root 4096 Nov 11 10:58 .
+drwxrwxrwx 11 root root 4096 Nov 11 11:00 ..
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-34
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-34-ext10
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-34-ext11
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-34-ext12
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-34-ext8
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-35
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-35-ext14
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-35-ext15
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-36
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-36-ext18
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-36-ext19
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-36.1
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-37.0
+drwxrwxrwx  6 root root 4096 Nov 11 10:58 android-37.1
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 android-37.2
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 android-37.2-beta1
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 android-37.2-beta2
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 android-37.2-beta3
 total 32
-drwxrwxrwx  8 root root 4096 Nov  1 21:30 .
-drwxrwxrwx 11 root root 4096 Nov  1 21:34 ..
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 34.0.0
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 35.0.0
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 35.0.1
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 36.0.0
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 36.1.0
-drwxrwxrwx  6 root root 4096 Nov  1 21:30 37.0.0
+drwxrwxrwx  8 root root 4096 Nov 11 10:57 .
+drwxrwxrwx 11 root root 4096 Nov 11 11:00 ..
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 34.0.0
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 35.0.0
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 35.0.1
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 36.0.0
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 36.1.0
+drwxrwxrwx  6 root root 4096 Nov 11 10:57 37.0.0
 sdkmanager: 
 gradle: /usr/bin/gradle
 
-Welcome to Gradle 9.8.2!
+Welcome to Gradle 9.9.1!
 
 Here are the highlights of this release:
- - Java 27 support
- - Maven mirror settings reuse
- - Linked problem locations in build output
+ - Performance improvements for Kotlin DSL compilation
+ - Test filtering for non-method JUnit Platform tests
+ - Wrapper settings preserved on upgrade
+ - Predefined groups in the Problems API
 
-For more details see https://docs.gradle.org/9.8.2/release-notes.html
+For more details see https://docs.gradle.org/9.9.1/release-notes.html
 
 
 ------------------------------------------------------------
-Gradle 9.8.2
+Gradle 9.9.1
 ------------------------------------------------------------
 
-Build time:    2026-10-19 16:29:26 UTC
-Revision:      8de7bcf76e785507ad92f0741ab9235a430c95e6
+Build time:    2026-11-10 16:22:15 UTC
+Revision:      47a96e4ed1822d6aa7fa32bed4461208e69077a6
 
-Kotlin:        2.4.10
+Kotlin:        2.4.21
 Groovy:        4.0.33
 Ant:           Apache Ant(TM) version 1.10.17 compiled on April 6 2026
 Launcher JVM:  17.0.21 (Eclipse Adoptium 17.0.21+9)
 Daemon JVM:    /usr/lib/jvm/temurin-17-jdk-amd64 (no Daemon JVM specified, using current Java home)
-OS:            Linux 7.0.0-1017-azure amd64
+OS:            Linux 7.0.0-1019-azure amd64
 
 ===== SDK COMPONENTS =====
 --- API 37 candidates ---
@@ -99,7 +100,10 @@ Layoutlib.Api=15
 Layoutlib.Revision=1
 Platform.MinToolsRev=22
 --- canonical android-37 package.xml identity ---
-January 16, 2019</license><localPackage path="platforms;android-37" obsolete="false"><type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns11:platformDetailsType"><api-level>37</api-level><codename></codename><extension-level>24</extension-level><base-extension>true</base-extension><layoutlib api="15"/></type-details><revision><major>2</major></revision><display-name>Android SDK Platform 37.2</display-name><uses-license ref="android-sdk-license"/></localPackage></ns2:repository>
+    <localPackage path="platforms;android-37" obsolete="false">
+            <api-level>37</api-level>
+        <display-name>Android SDK Platform 37.2</display-name>
+    </localPackage>
 --- canonical android-37 source.properties ---
 Pkg.Desc=Android SDK Platform ${PLATFORM_VERSION}
 Pkg.UserSrc=false
@@ -118,12 +122,9 @@ Platform.MinToolsRev=22
 ===== SIGNING KEY =====
 existing key reused
 ===== GRADLE WRAPPER =====
-To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.9.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
-
-> Configure project :app
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/build.gradle.kts:39:5: 'fun BaseAppModuleExtension.kotlinOptions(configure: Action<KotlinJvmOptions>): Unit' is deprecated. The kotlinOptions types are deprecated, please migrate to the compilerOptions types. More details are here: https://kotl.in/u1r8ln.
-
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/build.gradle.kts:43:5: 'fun BaseAppModuleExtension.kotlinOptions(configure: Action<KotlinJvmOptions>): Unit' is deprecated. The kotlinOptions types are deprecated, please migrate to the compilerOptions types. More details are here: https://kotl.in/u1r8ln.
 > Task :wrapper
 
 [Incubating] Problems report is available at: file:///home/runner/work/android-audio-player/android-audio-player/build/reports/problems/problems-report.html
@@ -132,11 +133,11 @@ Deprecated Gradle features were used in this build, making it incompatible with 
 
 You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
 
-For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+For more on this, please refer to https://docs.gradle.org/9.9.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 46s
+BUILD SUCCESSFUL in 58s
 1 actionable task: 1 executed
-Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.8.2/userguide/configuration_cache_enabling.html
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.9.1/userguide/configuration_cache_enabling.html
 ===== ASSEMBLE RELEASE =====
 Fetching distribution.
 Downloading https://services.gradle.org/distributions/gradle-8.9-bin.zip
@@ -157,6 +158,7 @@ Daemon will be stopped at the end of the build
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:generateReleaseBuildConfig
 > Task :app:generateReleaseResValues
 > Task :app:checkReleaseAarMetadata
 > Task :app:mapReleaseSourceSetPaths
@@ -173,15 +175,15 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeReleaseJniLibFolders
 > Task :app:mergeReleaseNativeLibs NO-SOURCE
 > Task :app:stripReleaseDebugSymbols NO-SOURCE
+> Task :app:processReleaseManifestForPackage
 > Task :app:extractReleaseNativeSymbolTables NO-SOURCE
 > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:processReleaseManifestForPackage
-> Task :app:checkReleaseDuplicateClasses
 > Task :app:desugarReleaseFileDependencies
 > Task :app:mergeReleaseStartupProfile
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:mergeReleaseArtProfile
 > Task :app:processReleaseResources
 > Task :app:mergeExtDexRelease
-> Task :app:mergeReleaseArtProfile
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
@@ -196,21 +198,21 @@ Daemon will be stopped at the end of the build
 > Task :app:optimizeReleaseResources
 
 > Task :app:compileReleaseKotlin
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:122:52 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:122:96 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:123:16 'var statusBarColor: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:124:16 'var navigationBarColor: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:242:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Please add the '@Deprecated' annotation or suppress the diagnostic.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:248:29 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:127:52 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:127:96 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:128:16 'var statusBarColor: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:129:16 'var navigationBarColor: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:306:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Please add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:312:29 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/Net.kt:45:20 'val activeNetworkInfo: NetworkInfo?' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/Net.kt:46:18 'val isConnected: Boolean' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/Net.kt:46:35 'val type: Int' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/Net.kt:46:63 'static field TYPE_WIFI: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/PlayerService.kt:155:35 'static field FLAG_HANDLES_MEDIA_BUTTONS: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/PlayerService.kt:155:78 'static field FLAG_HANDLES_TRANSPORT_CONTROLS: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/PlayerService.kt:640:67 'constructor(p0: Context!): Notification.Builder' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/PlayerService.kt:156:35 'static field FLAG_HANDLES_MEDIA_BUTTONS: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/PlayerService.kt:156:78 'static field FLAG_HANDLES_TRANSPORT_CONTROLS: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/PlayerService.kt:665:67 'constructor(p0: Context!): Notification.Builder' is deprecated. Deprecated in Java.
 
-> Task :app:compileReleaseJavaWithJavac NO-SOURCE
+> Task :app:compileReleaseJavaWithJavac
 > Task :app:generateReleaseLintVitalReportModel
 > Task :app:dexBuilderRelease
 > Task :app:mergeReleaseGlobalSynthetics
@@ -225,8 +227,8 @@ w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/ma
 > Task :app:lintVitalRelease
 > Task :app:assembleRelease
 
-BUILD SUCCESSFUL in 1m 21s
-45 actionable tasks: 45 executed
+BUILD SUCCESSFUL in 1m 57s
+47 actionable tasks: 47 executed
 ASSEMBLE_EXIT=0
 ===== done =====
 ===== APK VERIFICATION =====
@@ -248,7 +250,7 @@ Signer #1 public key SHA-256 digest: 5f8d6bae70e6de0c709e55fbd0ffa1065e24438df0a
 Signer #1 public key SHA-1 digest: b4b1ff008a2f4d714b91a77f1578f626561fda61
 Signer #1 public key MD5 digest: 738b8f79c159c9eaba5ac8e9f18867a0
 --- aapt badging ---
-package: name='com.saptac.app' versionCode='5' versionName='1.0.4' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+package: name='com.saptac.app' versionCode='6' versionName='1.0.5' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
 sdkVersion:'30'
 targetSdkVersion:'37'
 uses-permission: name='android.permission.READ_MEDIA_AUDIO'
@@ -273,6 +275,6 @@ launchable-activity: name='com.saptac.app.MainActivity'  label='' icon=''
 feature-group: label=''
   uses-feature-not-required: name='android.hardware.sensor.accelerometer'
 --- sha256 ---
-4db8990e87b14c8c705e621d4d56ad70786fcabeaf1ec5f103e7f027976817f0  dist/Saptac-v1.0.apk
+e742f20d710d1c5e3b2e47b3b9b167ce2a8fd7270312eda851f2c906aa7f21b8  dist/Saptac-v1.0.apk
 --- size ---
-2424798 bytes
+2436638 bytes
