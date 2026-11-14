@@ -199,28 +199,38 @@ object LibraryManager {
         items.forEach { map.getOrPut(it.folderKey) { ArrayList() }.add(it) }
         return map.map { (key, list) ->
             val name = key.substringAfterLast('/').ifEmpty { "Telefon" }
-            FolderInfo(key, name, list.size, suggest(name, list), Store.folderSection(key))
+            FolderInfo(key, name, list.size, suggest(key, list), Store.folderSection(key))
         }.sortedWith(compareByDescending<FolderInfo> { it.count }.thenBy { it.name.lowercase(Locale.ROOT) })
     }
 
-    fun suggest(name: String, items: List<AudioItem>): Section? {
-        val n = name.lowercase(Locale.ROOT)
-        return when {
-            Regex("audio.?book|knjig|book|čitan|roman|pric[eae]").containsMatchIn(n) -> Section.BOOKS
-            Regex("podcast|podkast|radio|emisij|epizod|serij").containsMatchIn(n) -> Section.SERIES
-            Regex("music|muzik|mp3|album|pesm|soundtrack").containsMatchIn(n) -> Section.MUSIC
-            Regex("stand.?up|standup|komedij|comedy|humor|komič|komic").containsMatchIn(n) -> Section.STANDUP
+    /** Pravila za ime foldera; redosled odlučuje ako jedan segment sadrži više pojmova. */
+    private val PATH_RULES = listOf(
+        Regex("stand.?up|standup|komedij|comedy|humor|komič|komic", RegexOption.IGNORE_CASE) to Section.STANDUP,
+        Regex("audio.?book|knjig|book|čitan|roman|pric[eae]", RegexOption.IGNORE_CASE) to Section.BOOKS,
+        Regex("podcast|podkast|radio|emisij|epizod|serij", RegexOption.IGNORE_CASE) to Section.SERIES,
+        Regex("music|muzik|mp3|album|pesm|soundtrack", RegexOption.IGNORE_CASE) to Section.MUSIC
+    )
+
+    /** Gleda celu putanju: folder najbliži fajlu pobeđuje. */
+    fun suggestPath(folderKey: String): Section? {
+        for (seg in pathSegments(folderKey).asReversed()) {
+            for ((rx, sec) in PATH_RULES) if (rx.containsMatchIn(seg)) return sec
+        }
+        return null
+    }
+
+    fun suggest(folderKey: String, items: List<AudioItem>): Section? =
+        suggestPath(folderKey) ?: when {
             items.size >= 3 && items.all { it.durationMs > 20 * 60_000L } -> Section.BOOKS
             items.size >= 4 && items.all { it.durationMs in 5 * 60_000L..75 * 60_000L } -> Section.SERIES
             else -> null
         }
-    }
 
     /** Kojoj sekciji fajl pripada: pojedinačna ispravka ima prednost nad folderom. */
     fun sectionOf(item: AudioItem): Section {
         val ov = Store.override(item.id)
         if (ov != null) return ov
-        return Store.folderSection(item.folderKey) ?: Section.NONE
+        return Store.folderSectionForPath(item.folderKey) ?: Section.NONE
     }
 
     private fun groupTitle(key: String, sec: Section, view: String, items: List<AudioItem>): String =

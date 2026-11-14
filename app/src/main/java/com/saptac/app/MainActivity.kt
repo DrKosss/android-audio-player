@@ -37,6 +37,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.concurrent.thread
 import kotlin.math.roundToInt
 
@@ -106,6 +108,9 @@ class MainActivity : android.app.Activity() {
     private var savedScrollY: Int = 0
     private var bottomInsetPx = 0
     private var baseRef: LinearLayout? = null
+    private var wasStopped = false
+    private var skipNextReturn = false
+    private var coldStartRestorePending = false
 
     private val uiTicker = object : Runnable {
         override fun run() {
@@ -131,28 +136,59 @@ class MainActivity : android.app.Activity() {
             if (extra != bottomInsetPx) {
                 bottomInsetPx = extra
                 baseRef?.setPadding(0, 0, 0, bottomInsetPx)
+                if (currentRoot != null) render()
             }
             insets
         }
         Store.init(this)
         requestNeededPermissions()
-        if (Bus.library.items.isEmpty()) rescan()
+        coldStartRestorePending = true
         restoreLastPlayer()
+        if (Bus.player != null) gotoLastPlayer()
+        rescan()
         Bus.log("Aplikacija pokrenuta")
         render()
     }
 
     override fun onResume() {
         super.onResume()
+        if (wasStopped) {
+            wasStopped = false
+            if (!skipNextReturn) {
+                restoreLastPlayer()
+                gotoLastPlayer()
+            }
+            skipNextReturn = false
+        } else if (skipNextReturn) skipNextReturn = false
         if (Bus.player != null) PlayerService.send(this, PlayerService.ACTION_SYNC)
         handler.removeCallbacks(uiTicker)
         handler.post(uiTicker)
         render()
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        skipNextReturn = false
+        restoreLastPlayer()
+        gotoLastPlayer()
+        render()
+    }
+
+    override fun onStop() {
+        wasStopped = true
+        super.onStop()
+    }
+
     override fun onPause() {
         handler.removeCallbacks(uiTicker)
         super.onPause()
+    }
+
+    /** Spoljašnji izbor fajla/foldera ne sme da se tumači kao povratak u aplikaciju. */
+    private fun startExternal(intent: Intent, requestCode: Int? = null) {
+        skipNextReturn = true
+        if (requestCode != null) startActivityForResult(intent, requestCode)
+        else startActivity(intent)
     }
 
     private fun requestNeededPermissions() {
@@ -185,6 +221,11 @@ class MainActivity : android.app.Activity() {
                 Bus.libraryVersion++
                 Nav.scanning = false
                 Bus.log("Pregledano ${lib.items.size} audio fajlova u ${lib.folders.size} foldera")
+                if (coldStartRestorePending) {
+                    if (Bus.player == null) restoreLastPlayer()
+                    if (Bus.player != null) gotoLastPlayer()
+                    coldStartRestorePending = false
+                }
                 render()
             }
         }
@@ -193,6 +234,13 @@ class MainActivity : android.app.Activity() {
     private fun restoreLastPlayer() {
         if (Bus.player != null) return
         val o = Store.lastPlayer()
+        // Novi format čuva ceo queue, pa ne zavisi od ponovnog skeniranja biblioteke.
+        playerStateFromJson(o)?.let {
+            Bus.player = it
+            Bus.playRequest = playRequestFromState(it)
+            return
+        }
+        // Stari format: potraži grupu u već očitanoj biblioteci.
         val key = o.optString("groupKey")
         if (key.isBlank()) return
         val kind = try { Kind.valueOf(o.optString("kind")) } catch (_: Exception) { Kind.BOOK }
@@ -210,6 +258,22 @@ class MainActivity : android.app.Activity() {
             o.optLong("pos", 0), false, o.optDouble("rate", 1.0).toFloat(),
             o.optBoolean("shuffle", false), o.optBoolean("repeat", false)
         )
+        Bus.playRequest = Bus.player?.let { playRequestFromState(it) }
+    }
+
+    /** Povratak u aplikaciju uvek otvara poslednji klip umesto prethodnog ekrana. */
+    private fun gotoLastPlayer() {
+        val p = Bus.player ?: return
+        Nav.sheet = null
+        Bus.night = false
+        Nav.stack = mutableListOf(Screen("player"))
+        Nav.tab = when (p.kind) {
+            Kind.BOOK -> Section.BOOKS
+            Kind.EPISODE -> Section.SERIES
+            Kind.TRACK -> Section.MUSIC
+            Kind.STANDUP -> Section.STANDUP
+        }
+        Bus.playRequest = playRequestFromState(p)
     }
 
     /* ------------------------------------------------------------ navigacija */
@@ -367,24 +431,32 @@ class MainActivity : android.app.Activity() {
         val keyBefore = scrollKey()
         val oldScroll = findMainScroll(currentRoot)?.scrollY ?: 0
 
+        val hideNav = cur().v == "player" || cur().v == "settings"
+        val navH = if (hideNav) 0 else c.dp(59) // 1 dp linija + 58 dp red
         val root = FrameLayout(c).apply { setBackgroundColor(C_BG) }
         val base = vertical(c)
         base.setPadding(0, 0, 0, bottomInsetPx)
         baseRef = base
         base.addView(statusBar())
-        base.addView(screenRoot(), LinearLayout.LayoutParams(-1, 0, 1f))
-        base.addView(homeIndicator())
+        val content = screenRoot()
+        if (!hideNav) content.setPadding(0, 0, 0, navH)
+        base.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(base, FrameLayout.LayoutParams(-1, -1))
 
         if (Nav.sheet != null) root.addView(sheetOverlay(), FrameLayout.LayoutParams(-1, -1))
         if (Bus.night) root.addView(nightOverlay(), FrameLayout.LayoutParams(-1, -1))
         Bus.toast?.let {
             if (System.currentTimeMillis() < Bus.toastUntil) {
-                val bottom = (if (Bus.player != null && !Bus.night) c.dp(132) else c.dp(74)) + bottomInsetPx
+                val bottom = (if (Bus.player != null && !Bus.night) c.dp(132) else c.dp(74)) +
+                    bottomInsetPx + navH
                 root.addView(toastView(it), FrameLayout.LayoutParams(-1, -2,
                     Gravity.BOTTOM).apply { leftMargin = c.dp(16); rightMargin = c.dp(16); bottomMargin = bottom })
             } else Bus.toast = null
         }
+        // Navigacija je iznad listića i noćnog ekrana: uvek vidljiva osim na playeru/settings-u.
+        if (!hideNav) root.addView(navBar(), FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply {
+            bottomMargin = bottomInsetPx
+        })
 
         val keyAfter = scrollKey()
         savedScrollY = if (lastScrollKey == keyBefore && keyBefore == keyAfter) oldScroll else 0
@@ -462,15 +534,6 @@ class MainActivity : android.app.Activity() {
             addView(fill, FrameLayout.LayoutParams(c.dp(12), c.dp(6), Gravity.CENTER_VERTICAL).apply {
                 leftMargin = c.dp(2)
             })
-        }
-    }
-
-    private fun homeIndicator(): View {
-        val c = this
-        return FrameLayout(c).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, c.dp(18))
-            val bar = View(c).apply { background = rounded(Color.rgb(0x3A, 0x36, 0x32), 2f, c) }
-            addView(bar, FrameLayout.LayoutParams(c.dp(96), c.dp(4), Gravity.CENTER))
         }
     }
 
@@ -581,7 +644,10 @@ class MainActivity : android.app.Activity() {
 
     private fun navBar(): View {
         val c = this
-        val wrap = vertical(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
+        val wrap = vertical(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setBackgroundColor(C_BG)
+        }
         wrap.addView(View(c).apply { background = rounded(C_LINE, 0f, c) },
             LinearLayout.LayoutParams(-1, c.dp(1)))
         val row = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, c.dp(58)) }
@@ -697,7 +763,7 @@ class MainActivity : android.app.Activity() {
             header("Knjige"),
             chipsBar(listOf("sve" to "Sve", "tok" to "U toku", "nove" to "Nove", "zav" to "Završene"),
                 Nav.chips) { Nav.chips = it },
-            scroll(c, list), miniPlayer(), navBar()
+            scroll(c, list), miniPlayer()
         )
     }
 
@@ -794,7 +860,7 @@ class MainActivity : android.app.Activity() {
                 }
             }
         }
-        return page(header("Emisije"), tabs, scroll(c, list), miniPlayer(), navBar())
+        return page(header("Emisije"), tabs, scroll(c, list), miniPlayer())
     }
 
     /* ------------------------------------------------------------ Četvrta sekcija: Stand up */
@@ -839,7 +905,7 @@ class MainActivity : android.app.Activity() {
             if (done) row.alpha = 0.42f
             list.addView(row)
         }
-        return page(header("Stand up"), chips, scroll(c, list), miniPlayer(), navBar())
+        return page(header("Stand up"), chips, scroll(c, list), miniPlayer())
     }
 
     private fun feedActions(feeds: List<Feed>): View {
@@ -1011,7 +1077,7 @@ class MainActivity : android.app.Activity() {
             toast(if (s.repeat) "Ponavljanje uključeno" else "Ponavljanje isključeno")
         }
         list.addView(shuffleRow); list.addView(repeatRow)
-        return page(header("Muzika"), tabs, actions, scroll(c, list), miniPlayer(), navBar())
+        return page(header("Muzika"), tabs, actions, scroll(c, list), miniPlayer())
     }
 
     private fun folderScreen(id: String): View {
@@ -1051,7 +1117,7 @@ class MainActivity : android.app.Activity() {
         val c = this
         val p = Bus.player
         if (p == null) return page(header("Plejer", plus = false, gear = false),
-            emptyState("Ništa se ne pušta.\nOtvori knjigu, epizodu ili numeru."), navBar())
+            emptyState("Ništa se ne pušta.\nOtvori knjigu, epizodu ili numeru."))
         val body = vertical(c).apply {
             layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
             setPadding(c.dp(22), 0, c.dp(22), c.dp(6))
@@ -1442,16 +1508,13 @@ class MainActivity : android.app.Activity() {
             saveSettings { it.wifiOnly = !it.wifiOnly }
         })
 
+        body.addView(sectionLabelView("IZVOZ"))
+        body.addView(settingRow(c, "Izvezi listu uvezenih fajlova", "JSON · svi detalji") { exportLibrary() })
+
         body.addView(sectionLabelView("RAD U POZADINI"))
-        body.addView(settingRow(c, "Baterija bez ograničenja", ok = true) {
-            toast("Vodič kroz Samsung podešavanja baterije")
-        })
-        body.addView(settingRow(c, "Izuzeta od uspavljivanja", ok = true) {
-            toast("Vodič kroz Samsung podešavanja baterije")
-        })
-        body.addView(settingRow(c, "Dnevnik događaja", "—") {
-            toast("Dnevnik u pravoj aplikaciji beleži puštanja, pauze i greške")
-        })
+        body.addView(settingRow(c, "Baterija bez ograničenja", ok = true) { })
+        body.addView(settingRow(c, "Izuzeta od uspavljivanja", ok = true) { })
+        body.addView(settingRow(c, "Dnevnik događaja", "—") { })
         body.addView(text(c,
             "Prototip. Postavke se pamte u pregledaču; u pravoj aplikaciji ove prečice vode u sistemske ekrane.",
             11.5f, C_T3).apply { setPadding(0, c.dp(18), c.dp(4), c.dp(6)) })
@@ -1652,12 +1715,153 @@ class MainActivity : android.app.Activity() {
         else onBack()
     }
 
+    /** JSON sa svim podacima o uvezenim fajlovima — format pogodan za analizu na Areni. */
+    private fun buildExportJson(): JSONObject {
+        fun segArray(key: String) = JSONArray().apply { pathSegments(key).forEach { put(it) } }
+        fun secText(sec: Section?) = if (sec == null || sec == Section.NONE) "Nije raspoređeno" else sectionName(sec)
+        fun secOrNull(sec: Section?): Any = sec?.let { sectionName(it) } ?: JSONObject.NULL
+
+        val stampUtc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(Date())
+
+        val views = linkedMapOf(
+            Section.BOOKS to listOf("folderi"),
+            Section.SERIES to listOf("folderi"),
+            Section.MUSIC to listOf("folderi", "izvodjaci", "albumi"),
+            Section.STANDUP to listOf("folderi")
+        )
+        val members = HashMap<String, JSONArray>()
+        val groupsArr = JSONArray()
+        views.forEach { (sec, list) ->
+            list.forEach { view ->
+                LibraryManager.groups(sec, view).forEach { g ->
+                    val ids = JSONArray().apply { g.items.forEach { put(it.id) } }
+                    val go = JSONObject().apply {
+                        put("section", sectionName(sec)); put("view", view)
+                        put("groupKey", g.key); put("groupTitle", g.title)
+                        put("groupSubtitle", g.subtitle); put("coverIndex", g.cover)
+                        put("initial", g.initial); put("durationMs", g.durationMs)
+                        put("fileCount", g.items.size); put("itemIds", ids)
+                        put("lastGroupTime", Store.lastGroupTime(g.key))
+                        put("customCover", Store.customCover(g.key) ?: JSONObject.NULL)
+                    }
+                    groupsArr.put(go)
+                    g.items.forEachIndexed { idx, item ->
+                        val m = JSONObject().apply {
+                            put("section", sectionName(sec)); put("view", view)
+                            put("groupKey", g.key); put("groupTitle", g.title)
+                            put("indexInGroup", idx)
+                        }
+                        members.getOrPut(item.id) { JSONArray() }.put(m)
+                    }
+                }
+            }
+        }
+
+        val mixedMap = HashMap<String, Section>()
+        LibraryManager.mixed().forEach { (item, looks) -> mixedMap[item.id] = looks }
+        val mixedArr = JSONArray()
+        mixedMap.forEach { (id, looks) ->
+            mixedArr.put(JSONObject().apply { put("itemId", id); put("looksLike", sectionName(looks)) })
+        }
+
+        val filesArr = JSONArray()
+        Bus.library.items.forEach { item ->
+            val fo = audioItemToJson(item)
+            fo.put("folderPathSegments", segArray(item.folderKey))
+            fo.put("nearestFolderHint", secOrNull(LibraryManager.suggestPath(item.folderKey)))
+            val sec = LibraryManager.sectionOf(item)
+            fo.put("section", secText(sec))
+            fo.put("sectionSource", when {
+                Store.override(item.id) != null -> "override"
+                Store.folderSectionForPath(item.folderKey) != null -> "folder"
+                LibraryManager.suggestPath(item.folderKey) != null -> "pathSuggestion"
+                else -> "none"
+            })
+            fo.put("positionMs", Store.position(item.id))
+            fo.put("done", Store.isDone(item.id))
+            fo.put("groups", members[item.id] ?: JSONArray())
+            fo.put("mixedSuggestion", mixedMap[item.id]?.let { sectionName(it) } ?: JSONObject.NULL)
+            filesArr.put(fo)
+        }
+
+        val foldersArr = JSONArray()
+        Bus.library.folders.forEach { f ->
+            foldersArr.put(JSONObject().apply {
+                put("key", f.key); put("name", f.name); put("fileCount", f.count)
+                put("pathSegments", segArray(f.key))
+                put("suggested", secOrNull(f.suggested))
+                put("nearestPathHint", secOrNull(LibraryManager.suggestPath(f.key)))
+                put("assigned", secOrNull(Store.folderSection(f.key)))
+                put("effective", secText(Store.folderSectionForPath(f.key) ?: f.suggested))
+            })
+        }
+
+        val raw = JSONObject().apply {
+            put("settings", Store.rawObject("settings"))
+            put("positions", Store.rawObject("positions"))
+            put("done", Store.rawObject("done"))
+            put("overrides", Store.rawObject("overrides"))
+            put("folderSections", Store.rawObject("folders"))
+            put("rates", Store.rawObject("rates"))
+            put("recentGroups", Store.rawObject("recent"))
+            put("customCovers", Store.rawObject("covers"))
+            put("looseFiles", Store.rawObject("loose"))
+            put("lastPlayer", Store.lastPlayer())
+            put("feeds", Store.rawArray("feeds"))
+            put("treeUris", Store.rawArray("trees"))
+            put("logs", Store.rawArray("log"))
+            put("importedOnce", Store.importedOnce)
+        }
+
+        return JSONObject().apply {
+            put("format", "saptac-library-export-v1")
+            put("exportedAtUtc", stampUtc)
+            put("app", JSONObject().apply {
+                put("package", packageName)
+                put("versionName", BuildConfig.VERSION_NAME)
+                put("versionCode", BuildConfig.VERSION_CODE)
+            })
+            put("device", JSONObject().apply {
+                put("manufacturer", Build.MANUFACTURER); put("model", Build.MODEL)
+                put("androidRelease", Build.VERSION.RELEASE); put("sdk", Build.VERSION.SDK_INT)
+                put("locale", Locale.getDefault().toString())
+                put("timeZone", java.util.TimeZone.getDefault().id)
+            })
+            put("counts", JSONObject().apply {
+                put("files", Bus.library.items.size)
+                put("folders", Bus.library.folders.size)
+                put("groups", groupsArr.length())
+                put("mixed", mixedArr.length())
+                put("feeds", Store.rawArray("feeds").length())
+                put("treeUris", Store.rawArray("trees").length())
+            })
+            put("files", filesArr)
+            put("folders", foldersArr)
+            put("groups", groupsArr)
+            put("mixed", mixedArr)
+            put("rawStores", raw)
+        }
+    }
+
+    private fun exportLibrary() {
+        val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
+        val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "saptac-fajlovi-$stamp.json")
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        try { startExternal(i, 2004) } catch (_: Exception) { }
+    }
+
     private fun importTree() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
                 Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
-        startActivityForResult(i, 2001)
+        startExternal(i, 2001)
     }
 
     private fun pickCover(groupKey: String) {
@@ -1668,7 +1872,7 @@ class MainActivity : android.app.Activity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
                 Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
-        try { startActivityForResult(i, 2003) }
+        try { startExternal(i, 2003) }
         catch (_: Exception) { Nav.coverTarget = "" }
     }
 
@@ -1680,7 +1884,7 @@ class MainActivity : android.app.Activity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
                 Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
-        startActivityForResult(i, 2002)
+        startExternal(i, 2002)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -1725,6 +1929,21 @@ class MainActivity : android.app.Activity() {
                 cmd(PlayerService.ACTION_SYNC)
                 render()
             }
+            2004 -> {
+                val uri = data.data ?: return
+                val json = buildExportJson()
+                val count = Bus.library.items.size
+                thread {
+                    try {
+                        contentResolver.openOutputStream(uri)?.use {
+                            it.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                        }
+                        Bus.log("Izvezena lista fajlova: $count fajlova")
+                    } catch (e: Exception) {
+                        Bus.log("Izvoz nije uspeo: ${e.javaClass.simpleName}")
+                    }
+                }
+            }
         }
     }
 
@@ -1742,7 +1961,7 @@ class MainActivity : android.app.Activity() {
 
     private fun openAllFilesAccess() {
         try {
-            if (Build.VERSION.SDK_INT >= 30) startActivity(
+            if (Build.VERSION.SDK_INT >= 30) startExternal(
                 Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                     Uri.parse("package:$packageName"))
             )
@@ -1750,7 +1969,7 @@ class MainActivity : android.app.Activity() {
         } catch (_: Exception) { openAppSettings() }
     }
     private fun openAppSettings() {
-        try { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        try { startExternal(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:$packageName"))) } catch (_: Exception) { }
     }
     /* ------------------------------------------------------------ mešani fajlovi */
@@ -2066,7 +2285,8 @@ class MainActivity : android.app.Activity() {
                 )
                 setStroke(c.dp(1), C_LINE)
             }
-            setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(26) + bottomInsetPx)
+            val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(59)
+            setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(8) + navH + bottomInsetPx)
             click { }
             addView(View(c).apply { background = rounded(Color.rgb(0x3A, 0x36, 0x32), 2f, c) },
                 LinearLayout.LayoutParams(c.dp(36), c.dp(4)).apply {
@@ -2217,14 +2437,15 @@ class MainActivity : android.app.Activity() {
             android.os.VibrationEffect.DEFAULT_AMPLITUDE))
     }
 
-    /* ------------------------------------------------------------ noćni ekran i skica zaključanog ekrana */
+    /* ------------------------------------------------------------ noćni ekran */
     private fun nightOverlay(): View {
         val c = this
         val p = Bus.player
         val t = Bus.timer
+        val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(59)
         val root = vertical(c).apply {
             setBackgroundColor(Color.rgb(0x05, 0x04, 0x03))
-            setPadding(0, 0, 0, bottomInsetPx)
+            setPadding(0, 0, 0, navH + bottomInsetPx)
         }
         val top = horizontal(c).apply {
             layoutParams = LinearLayout.LayoutParams(-1, -2)

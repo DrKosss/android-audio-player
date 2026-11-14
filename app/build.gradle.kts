@@ -11,8 +11,8 @@ android {
         applicationId = "com.saptac.app"
         minSdk = 30
         targetSdk = 37
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.0.5"
     }
 
     signingConfigs {
@@ -30,6 +30,10 @@ android {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("saptac")
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {

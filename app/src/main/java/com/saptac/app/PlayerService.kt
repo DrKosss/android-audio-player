@@ -33,6 +33,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
+import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
 
@@ -169,10 +170,17 @@ class PlayerService : Service(), SensorEventListener {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "saptac:playback")
 
+        // Poslednji klip se vraća i kada je proces ubijen prethodnog dana.
+        playerStateFromJson(Store.lastPlayer())?.let {
+            state = it
+            Bus.playRequest = playRequestFromState(it)
+        }
+
         startForeground(NOTIF_ID, buildNotification())
         started = true
         handler.post(ticker)
-        updateSession()
+        // Ako je stari format bez queue-a, UI je već obnovio stanje; ne briši ga.
+        if (state != null) publish() else updateSession()
         Bus.log("Servis za reprodukciju pokrenut")
     }
 
@@ -192,7 +200,15 @@ class PlayerService : Service(), SensorEventListener {
             ACTION_TIMER_CANCEL -> cancelTimer()
             ACTION_TIMER_EXTEND -> extendTimer()
             ACTION_STOP -> stopPlayback()
-            ACTION_SYNC -> publish()
+            ACTION_SYNC -> {
+                // Ako je UI obnovio stari format, uskladi servis pre objave.
+                if (state == null) Bus.player?.let {
+                    val restored = it.copy(playing = false)
+                    state = restored
+                    Bus.playRequest = playRequestFromState(restored)
+                }
+                publish()
+            }
         }
         return START_STICKY
     }
@@ -404,11 +420,20 @@ class PlayerService : Service(), SensorEventListener {
         val o = JSONObject()
         o.put("kind", p.kind.name)
         o.put("groupKey", p.groupKey)
+        o.put("groupTitle", p.groupTitle)
+        o.put("sub", p.sub)
         o.put("index", p.index)
         o.put("pos", p.positionMs)
         o.put("rate", p.rate.toDouble())
         o.put("shuffle", p.shuffle)
         o.put("repeat", p.repeat)
+        o.put("cover", p.cover)
+        o.put("initial", p.initial)
+        o.put("durationMs", p.durationMs)
+        val q = JSONArray()
+        p.queue.forEach { q.put(audioItemToJson(it)) }
+        o.put("queue", q)
+        o.put("savedAt", now)
         Store.saveLastPlayer(o)
     }
 

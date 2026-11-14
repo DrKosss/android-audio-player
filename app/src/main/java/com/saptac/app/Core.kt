@@ -39,6 +39,10 @@ fun coverIndex(key: String): Int {
     for (ch in key) h = h * 31 + ch.code
     return (h and 0x7fffffff) % COVERS.size
 }
+/** Folderi i podfolderi, od korena ka fajlu. */
+fun pathSegments(key: String): List<String> =
+    key.split('/', '\\').map { it.trim() }.filter { it.isNotEmpty() }
+
 
 /* ------------------------------------------------------------------ *
  * Model
@@ -165,6 +169,52 @@ data class PlayRequest(
     val repeat: Boolean = false
 )
 
+/* ------------------------------------------------------------------ *
+ * Serijalizacija stanja plejera (da poslednji klip preživi dane)
+ * ------------------------------------------------------------------ */
+fun audioItemToJson(a: AudioItem): JSONObject = JSONObject().apply {
+    put("id", a.id); put("uri", a.uri); put("title", a.title)
+    put("artist", a.artist); put("album", a.album)
+    put("durationMs", a.durationMs); put("folderKey", a.folderKey)
+    put("folderName", a.folderName); put("size", a.size)
+    put("added", a.added); put("track", a.track)
+}
+
+fun audioItemFromJson(o: JSONObject): AudioItem = AudioItem(
+    id = o.optString("id"), uri = o.optString("uri"),
+    title = o.optString("title"), artist = o.optString("artist"),
+    album = o.optString("album"), durationMs = o.optLong("durationMs"),
+    folderKey = o.optString("folderKey"), folderName = o.optString("folderName"),
+    size = o.optLong("size"), added = o.optLong("added"), track = o.optInt("track")
+)
+
+fun playerStateFromJson(o: JSONObject): PlayerState? {
+    val q = o.optJSONArray("queue") ?: return null
+    val queue = ArrayList<AudioItem>()
+    for (i in 0 until q.length()) q.optJSONObject(i)?.let { queue.add(audioItemFromJson(it)) }
+    if (queue.isEmpty()) return null
+    val key = o.optString("groupKey")
+    if (key.isBlank()) return null
+    val kind = try { Kind.valueOf(o.optString("kind")) } catch (_: Exception) { Kind.BOOK }
+    val idx = o.optInt("index", 0).coerceIn(0, queue.lastIndex)
+    val groupTitle = o.optString("groupTitle").ifBlank { key.substringAfterLast('/') }
+    return PlayerState(
+        kind = kind, groupKey = key, groupTitle = groupTitle,
+        sub = o.optString("sub"), queue = queue, index = idx,
+        cover = o.optInt("cover", coverIndex(key)),
+        initial = o.optString("initial").ifBlank { groupTitle.take(1).uppercase(Locale.ROOT) },
+        durationMs = o.optLong("durationMs", queue[idx].durationMs).coerceAtLeast(1L),
+        positionMs = o.optLong("pos", 0L).coerceAtLeast(0L),
+        playing = false,
+        rate = o.optDouble("rate", 1.0).toFloat(),
+        shuffle = o.optBoolean("shuffle", false), repeat = o.optBoolean("repeat", false)
+    )
+}
+
+fun playRequestFromState(p: PlayerState, startMs: Long = p.positionMs): PlayRequest =
+    PlayRequest(p.kind, p.groupKey, p.groupTitle, p.sub, p.queue, p.index,
+        startMs, p.rate, p.shuffle, p.repeat)
+
 data class FeedEpisode(
     val title: String,
     val url: String,
@@ -278,6 +328,17 @@ object Store {
     fun folderSection(key: String): Section? = sectionOf(obj("folders").optString(key, "").takeIf { it.isNotEmpty() }).let {
         if (it == Section.NONE) null else it
     }
+    /** Najbliži roditeljski folder sa ručno dodeljenom sekcijom pobeđuje. */
+    fun folderSectionForPath(key: String): Section? {
+        var path = key.trimEnd('/', '\\')
+        while (path.isNotEmpty()) {
+            folderSection(path)?.let { return it }
+            val cut = maxOf(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+            if (cut <= 0) break
+            path = path.substring(0, cut).trimEnd('/', '\\')
+        }
+        return null
+    }
     fun setFolderSection(key: String, sec: Section?) {
         val o = obj("folders")
         if (sec == null || sec == Section.NONE) o.remove(key) else o.put(key, sectionName(sec))
@@ -368,6 +429,10 @@ object Store {
         return out
     }
     fun clearLog() = put("log", "[]")
+
+    /** Sirovi JSON za izvoz / dijagnostiku. */
+    fun rawObject(key: String): JSONObject = obj(key)
+    fun rawArray(key: String): JSONArray = try { JSONArray(str(key)) } catch (_: Exception) { JSONArray() }
 
     fun lastPlayer(): JSONObject = obj("lastPlayer")
     fun saveLastPlayer(o: JSONObject) = put("lastPlayer", o)
