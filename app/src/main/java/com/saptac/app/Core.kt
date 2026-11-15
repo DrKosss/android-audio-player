@@ -539,6 +539,11 @@ object Store {
     }
     fun normalizationSnapshot(): JSONObject = obj("normalizationSnapshot")
 
+    /** Rotira kroz sve jedinstvene internet upite kroz više pokretanja (Faza 2). */
+    var onlineCursor: Int
+        get() = prefs.getInt("normalizationOnlineCursor", 0)
+        set(v) = prefs.edit().putInt("normalizationOnlineCursor", v).apply()
+
     /** Keš jednog malog omota po seriji/albumu, sa ETag i vremenom preuzimanja. */
     fun artCacheEntry(key: String): JSONObject? = obj("normalizationArtCache").optJSONObject(key)
     fun artCache(): JSONObject = obj("normalizationArtCache")

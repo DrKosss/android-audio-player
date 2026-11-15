@@ -290,9 +290,13 @@ object OnlineEnricher {
             val key = kind + "|" + query.lowercase(Locale.ROOT)
             targets.getOrPut(key) { Target(key, kind, query) }.items.add(item)
         }
-        val ordered = targets.values
+        val all = targets.values
             .sortedWith(compareByDescending<Target> { it.kind == "series" }.thenBy { it.key })
-            .take(MAX_TARGETS)
+        if (all.isEmpty()) return 0
+        // Svako pokretanje obradi sledećih MAX_TARGETS; posle nekoliko uvoza pokrivena je cela biblioteka.
+        val start = Store.onlineCursor % all.size
+        val ordered = (all.drop(start) + all.take(start)).take(MAX_TARGETS)
+        Store.onlineCursor = (start + ordered.size) % all.size
         var made = 0
         ordered.forEach { t ->
             val hits = try { hitsFor(t) } catch (_: Exception) { emptyList() }

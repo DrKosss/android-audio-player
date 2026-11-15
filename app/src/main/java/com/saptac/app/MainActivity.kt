@@ -2069,6 +2069,7 @@ class MainActivity : android.app.Activity() {
             put("normalizationDismissed", Store.allDismissed())
             put("normalizationSnapshot", Store.normalizationSnapshot())
             put("normalizationArtCache", Store.artCache())
+            put("normalizationOnlineCursor", Store.onlineCursor)
             put("importedOnce", Store.importedOnce)
         }
 
