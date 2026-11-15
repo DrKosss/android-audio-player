@@ -1,13 +1,17 @@
-# Šaptač — Android v1.0.6
+# Šaptač — Android v1.0.7
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.436.558 bajtova  
-SHA-256: `7b0cb84a13e9fcb3f1da33df59da36ac43c077022b11cdb0cf97833f2a11f4f7`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.437.454 bajtova  
+SHA-256: `01176731e42695adc0f1fc582fbfb306d057596b054bcb355c5ad53d5f0eb3c1`
 
 Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota i izvoz liste fajlova; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na svim ekranima osim plejera i podešavanja.
 
-## Šta je novo u v1.0.6
+## Šta je novo u v1.0.7
+
+- **Dugme za minimiziranje plejera radi:** strelica nadole sada zaista zatvara veliki plejer. Ako je plejer otvoren iz nekog ekrana, vraća se na taj ekran; ako je otvoren samostalno posle povratka u aplikaciju, odlazi na početni ekran odgovarajuće sekcije (`Knjige / Emisije / Muzika / Stand up`) gde ostaju mini-plejer i donja navigacija. Sistemsko `Back` dugme radi isto. Rotacija ekrana više ne vraća minimizirani plejer nazad, a ako Android ubije proces dok je plejer bio otvoren, i dalje se vraća u poslednji klip.
+
+## Ranije ispravke (v1.0.6)
 
 - **Uklonjena je i poslednja linija na dnu:** obrisana je tanka `border-top` linija iznad `Muzika / Knjige / Emisije / Stand up`. Prototip je rađen za iPhone; na Androidu ispod navigacije sada ostaje samo čista tamna pozadina. Visina rezervisanog prostora je sa 59 dp smanjena na 58 dp, pa sadržaj, listići, noćni ekran i toast ponovo tačno naležu na navigaciju bez viška piksela.
 
@@ -55,7 +59,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.6` (`versionCode 7`) |
+| Verzija | `1.0.7` (`versionCode 8`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
