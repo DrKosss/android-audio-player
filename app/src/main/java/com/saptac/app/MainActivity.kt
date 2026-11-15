@@ -240,7 +240,7 @@ class MainActivity : android.app.Activity() {
                 Bus.log("Pregledano ${lib.items.size} audio fajlova u ${lib.folders.size} foldera")
                 if (Nav.normalizeAfterScan) {
                     Nav.normalizeAfterScan = false
-                    Normalizer.run()
+                    runNormalizationPipeline()
                 }
                 if (coldStartRestorePending) {
                     if (Bus.player == null) restoreLastPlayer()
@@ -447,6 +447,7 @@ class MainActivity : android.app.Activity() {
             t?.phase?.name ?: "off", Bus.undo != null,
             st.jump, st.fade, st.extend, st.gShake, st.gVol, st.gScreen,
             st.nextAuto, st.covers, st.autodl, st.wifiOnly, st.timeSpeed,
+            st.normalizeOnline, st.podcastIndexKey.isNotBlank(), st.podcastIndexSecret.isNotBlank(),
             Store.feeds().size, Store.hasAnyFolder()
         ).joinToString("|")
     }
@@ -1369,6 +1370,7 @@ class MainActivity : android.app.Activity() {
             ?: LibraryManager.embeddedCover(c, p.current)?.also {
                 Bus.covers[ck] = it
             }
+            ?: LibraryManager.cachedOnlineCover(c, ck)
         if (bmp != null) {
             frame.addView(android.widget.ImageView(c).apply {
                 setImageBitmap(bmp)
@@ -1458,6 +1460,39 @@ class MainActivity : android.app.Activity() {
         if (p.index + 1 < p.queue.size) "Sledeće: ${LibraryManager.displayTitle(p.queue[p.index + 1])} · ${(p.queue[p.index + 1].durationMs / 60000)} min"
         else "Poslednje u redu"
 
+    /** Posle svakog uvoza: offline parser, pa (po odobrenju) internet obogaćivanje. */
+    private fun runNormalizationPipeline() {
+        Normalizer.run()
+        maybeStartOnlineEnrichment()
+    }
+
+    /** Wi-Fi podrazumevano; na mobilnom se korisnik pita SVAKI PUT kada zatreba. */
+    private fun maybeStartOnlineEnrichment() {
+        if (!Store.settings.normalizeOnline) return
+        if (Net.onWifi(this)) { startOnlineEnrichment(); return }
+        AlertDialog.Builder(this)
+            .setTitle("Mobilni internet")
+            .setMessage("Koristi mobilni internet za ovu proveru?")
+            .setPositiveButton("Da") { _, _ -> startOnlineEnrichment() }
+            .setNegativeButton("Ne") { _, _ ->
+                Bus.log("Internet sređivanje preskočeno: odbijen mobilni internet")
+            }
+            .show()
+    }
+
+    private fun startOnlineEnrichment() {
+        thread {
+            val n = OnlineEnricher.enrich(this)
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                Bus.normalizationVersion++
+                Bus.libraryVersion++
+                Bus.log("Internet sređivanje: $n predloga")
+                render()
+            }
+        }
+    }
+
     /* ------------------------------------------------------------ sređivanje biblioteke (Faza 1) */
     private fun normalizeScreen(): View {
         val c = this
@@ -1487,7 +1522,9 @@ class MainActivity : android.app.Activity() {
                 addView(text(c, "Pre: ${m.rawTitle}", 11.5f, C_T3))
                 addView(text(c, m.displayTitle, 14f, C_T1, bold = true))
                 val sec = m.proposedSection?.let { " · ${sectionName(it)}" } ?: ""
-                addView(text(c, "${m.reason} · ${m.confidence}% · ${m.source}$sec", 11f, C_T2))
+                val online = m.onlineSource?.let { " · ${it}" } ?: ""
+                val art = if (!m.artworkUrl.isNullOrBlank()) " · omot" else ""
+                addView(text(c, "${m.reason} · ${m.confidence}% · ${m.source}$online$art$sec", 11f, C_T2))
             }
             body.addView(box)
         }
@@ -1505,7 +1542,9 @@ class MainActivity : android.app.Activity() {
                 addView(text(c, "Pre: ${m.rawTitle}", 11.5f, C_T3))
                 addView(text(c, "Posle: ${m.displayTitle}", 14f, C_T1, bold = true))
                 val sec = m.proposedSection?.let { " · predlog: ${sectionName(it)}" } ?: ""
-                addView(text(c, "${m.reason} · ${m.confidence}% · ${m.source}$sec", 11f, C_T2))
+                val online = m.onlineSource?.let { " · ${it}" } ?: ""
+                val art = if (!m.artworkUrl.isNullOrBlank()) " · omot" else ""
+                addView(text(c, "${m.reason} · ${m.confidence}% · ${m.source}$online$art$sec", 11f, C_T2))
                 val btns = horizontal(c).apply {
                     gravity = Gravity.END
                     layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = c.dp(8) }
@@ -1524,6 +1563,9 @@ class MainActivity : android.app.Activity() {
         }
 
         body.addView(sectionLabelView("RADNJE"))
+        val check = actionButton(c, "Proveri na internetu", true) { maybeStartOnlineEnrichment() }
+        check.layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply { topMargin = c.dp(8) }
+        body.addView(check)
         val reset = actionButton(c, "Vrati sve", false) {
             if (Normalizer.restoreAll()) { Bus.libraryVersion++; render() }
         }
@@ -1600,6 +1642,7 @@ class MainActivity : android.app.Activity() {
         if (!Store.settings.covers) return
         val embedded = LibraryManager.embeddedCover(this, p.current)
         if (embedded != null) { Bus.covers[ck] = embedded; return }
+        if (Store.artCacheEntry(ck) != null) return
         if (!coverRequested.add(ck)) return
         val query = "${p.groupTitle} ${p.sub}".trim()
         thread {
@@ -1697,6 +1740,18 @@ class MainActivity : android.app.Activity() {
         val normWait = Store.allProposals().size
         body.addView(settingRow(c, "Sređivanje biblioteke",
             "$normDone sređeno · $normWait čeka potvrdu") { go("normalize") })
+
+        body.addView(sectionLabelView("SREĐIVANJE · INTERNET"))
+        body.addView(settingRow(c, "Koristi internet za sređivanje", null, s.normalizeOnline) {
+            saveSettings { it.normalizeOnline = !it.normalizeOnline }
+        })
+        body.addView(settingRow(c, "Mreža", "Wi-Fi · mobilni uz potvrdu") { })
+        val pk = s.podcastIndexKey
+        val ps = s.podcastIndexSecret
+        body.addView(settingRow(c, "Podcast Index ključ",
+            if (pk.isBlank()) "nije unet" else "••••${pk.takeLast(4)}") { askPodcastCredential(false) })
+        body.addView(settingRow(c, "Podcast Index tajna",
+            if (ps.isBlank()) "nije uneta" else "••••") { askPodcastCredential(true) })
 
         body.addView(sectionLabelView("RAD U POZADINI"))
         body.addView(settingRow(c, "Baterija bez ograničenja", ok = true) { })
@@ -1892,7 +1947,7 @@ class MainActivity : android.app.Activity() {
         if (Nav.importSelection.isEmpty()) { toast("Izaberi najmanje jedan folder"); return }
         Nav.importSelection.forEach { key -> Store.setFolderSection(key, Nav.importSections[key]) }
         Store.importedOnce = true
-        Normalizer.run()
+        runNormalizationPipeline()
         Bus.libraryVersion++
         val count = Nav.importSelection.size
         val wait = Nav.importSelection.count { Nav.importSections[it] == null }
@@ -1992,7 +2047,11 @@ class MainActivity : android.app.Activity() {
         }
 
         val raw = JSONObject().apply {
-            put("settings", Store.rawObject("settings"))
+            // API ključ/tajna ostaju samo na telefonu: iz izvoza ih uklanjamo.
+            val safeSettings = JSONObject(Store.rawObject("settings").toString())
+            safeSettings.remove("podcastIndexKey")
+            safeSettings.remove("podcastIndexSecret")
+            put("settings", safeSettings)
             put("positions", Store.rawObject("positions"))
             put("done", Store.rawObject("done"))
             put("overrides", Store.rawObject("overrides"))
@@ -2009,6 +2068,7 @@ class MainActivity : android.app.Activity() {
             put("normalizationProposals", Store.rawObject("normalizationProposals"))
             put("normalizationDismissed", Store.allDismissed())
             put("normalizationSnapshot", Store.normalizationSnapshot())
+            put("normalizationArtCache", Store.artCache())
             put("importedOnce", Store.importedOnce)
         }
 
@@ -2157,6 +2217,29 @@ class MainActivity : android.app.Activity() {
         Nav.sheet = null
         Nav.normalizeAfterScan = true
         rescan()
+    }
+
+    /** Ključ/tajna se unose SAMO u aplikaciji; nikad se ne traže u chatu ni upisuju u repozitorijum. */
+    private fun askPodcastCredential(secret: Boolean) {
+        val c = this
+        val current = if (secret) Store.settings.podcastIndexSecret else Store.settings.podcastIndexKey
+        val input = EditText(c).apply {
+            inputType = if (secret)
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            else InputType.TYPE_CLASS_TEXT
+            setText(current)
+            setSelection(text.length)
+        }
+        AlertDialog.Builder(c)
+            .setTitle(if (secret) "Podcast Index tajna" else "Podcast Index ključ")
+            .setMessage("Unesi svoj besplatni API ključ/tajnu. Ostaje samo na telefonu; ne šalje se u chat ni u izvoz.")
+            .setView(input)
+            .setPositiveButton("Sačuvaj") { _, _ ->
+                val v = input.text.toString().trim()
+                saveSettings { if (secret) it.podcastIndexSecret = v else it.podcastIndexKey = v }
+            }
+            .setNegativeButton("Otkaži", null)
+            .show()
     }
 
     private fun openAllFilesAccess() {

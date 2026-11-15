@@ -33,6 +33,53 @@ object Net {
         } finally { c.disconnect() }
     }
 
+    data class Reply(val body: String?, val etag: String?, val notModified: Boolean)
+    data class DownloadResult(val ok: Boolean, val notModified: Boolean, val etag: String?)
+
+    /** JSON/tekst sa proizvoljnim zaglavljima i ETag/304 podrškom. */
+    fun request(url: String, headers: Map<String, String> = emptyMap(),
+                ifNoneMatch: String? = null): Reply {
+        val c = connection(url)
+        try {
+            headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
+            if (!ifNoneMatch.isNullOrBlank()) c.setRequestProperty("If-None-Match", ifNoneMatch)
+            val code = c.responseCode
+            val etag = c.getHeaderField("ETag")
+            if (code == 304) return Reply(null, ifNoneMatch ?: etag, true)
+            if (code !in 200..299) return Reply(null, etag, false)
+            return Reply(c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }, etag, false)
+        } catch (_: Exception) {
+            return Reply(null, null, false)
+        } finally { c.disconnect() }
+    }
+
+    /** Mali omot u privatni keš; 304 ne dira fajl, 200 ga osvežava i pamti novi ETag. */
+    fun downloadWithEtag(url: String, dest: File, ifNoneMatch: String?): DownloadResult {
+        val c = connection(url)
+        try {
+            if (!ifNoneMatch.isNullOrBlank()) c.setRequestProperty("If-None-Match", ifNoneMatch)
+            val code = c.responseCode
+            val etag = c.getHeaderField("ETag") ?: ifNoneMatch
+            if (code == 304) return DownloadResult(dest.exists(), true, etag)
+            if (code !in 200..299) return DownloadResult(false, false, etag)
+            dest.parentFile?.mkdirs()
+            val tmp = File(dest.absolutePath + ".part")
+            c.inputStream.use { input ->
+                FileOutputStream(tmp).use { out ->
+                    val buf = ByteArray(16 * 1024)
+                    var read: Int
+                    while (input.read(buf).also { read = it } > 0) out.write(buf, 0, read)
+                }
+            }
+            if (tmp.length() < 512) { tmp.delete(); return DownloadResult(false, false, etag) }
+            if (dest.exists()) dest.delete()
+            if (!tmp.renameTo(dest)) { tmp.delete(); return DownloadResult(false, false, etag) }
+            return DownloadResult(true, false, etag)
+        } catch (_: Exception) {
+            return DownloadResult(false, false, null)
+        } finally { c.disconnect() }
+    }
+
     fun bitmap(url: String): Bitmap? = try {
         val c = connection(url)
         try {

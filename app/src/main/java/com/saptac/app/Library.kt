@@ -352,6 +352,20 @@ object LibraryManager {
         } catch (_: Exception) { null }
     }
 
+    /** Omot skinut u Fazi 2, keširan po osnovnom folderu / albumu / izvođaču. */
+    fun cachedOnlineCover(ctx: Context, groupKey: String): Bitmap? {
+        Bus.onlineCovers[groupKey]?.let { return it }
+        val e = Store.artCacheEntry(groupKey) ?: return null
+        val path = e.optString("path").takeIf { it.isNotEmpty() } ?: return null
+        val f = File(path)
+        if (!f.exists()) return null
+        return try {
+            val bmp = BitmapFactory.decodeFile(f.absolutePath)
+            if (bmp != null) Bus.onlineCovers[groupKey] = bmp
+            bmp
+        } catch (_: Exception) { null }
+    }
+
     /** Omot iz samog fajla (ID3/MP4 slika). */
     fun embeddedCover(ctx: Context, item: AudioItem): Bitmap? {
         Bus.covers[item.id]?.let { return it }

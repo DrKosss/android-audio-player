@@ -123,7 +123,12 @@ data class NormalizedMetadata(
     val source: String = "local",
     val confidence: Int = 0,
     val reason: String = "",
-    val normalizedAt: Long = 0L
+    val normalizedAt: Long = 0L,
+    val artworkUrl: String? = null,
+    val onlineSource: String? = null,
+    val onlineConfidence: Int = 0,
+    val onlineReason: String? = null,
+    val onlineCheckedAt: Long = 0L
 )
 
 fun normalizedToJson(m: NormalizedMetadata): JSONObject = JSONObject().apply {
@@ -140,6 +145,11 @@ fun normalizedToJson(m: NormalizedMetadata): JSONObject = JSONObject().apply {
     put("proposedSection", m.proposedSection?.let { sectionName(it) } ?: JSONObject.NULL)
     put("source", m.source); put("confidence", m.confidence)
     put("reason", m.reason); put("normalizedAt", m.normalizedAt)
+    put("artworkUrl", m.artworkUrl ?: JSONObject.NULL)
+    put("onlineSource", m.onlineSource ?: JSONObject.NULL)
+    put("onlineConfidence", m.onlineConfidence)
+    put("onlineReason", m.onlineReason ?: JSONObject.NULL)
+    put("onlineCheckedAt", m.onlineCheckedAt)
 }
 
 fun normalizedFromJson(o: JSONObject): NormalizedMetadata = NormalizedMetadata(
@@ -160,7 +170,12 @@ fun normalizedFromJson(o: JSONObject): NormalizedMetadata = NormalizedMetadata(
     source = o.optString("source", "local").ifBlank { "local" },
     confidence = o.optInt("confidence", 0),
     reason = o.optString("reason"),
-    normalizedAt = o.optLong("normalizedAt", 0L)
+    normalizedAt = o.optLong("normalizedAt", 0L),
+    artworkUrl = o.optString("artworkUrl").takeIf { it.isNotEmpty() },
+    onlineSource = o.optString("onlineSource").takeIf { it.isNotEmpty() },
+    onlineConfidence = o.optInt("onlineConfidence", 0),
+    onlineReason = o.optString("onlineReason").takeIf { it.isNotEmpty() },
+    onlineCheckedAt = o.optLong("onlineCheckedAt", 0L)
 )
 
 /** Sintetički ključ sezone → osnovni folder, da ručni omot i dalje važi za sve sezone. */
@@ -210,7 +225,10 @@ data class Settings(
     var wifiOnly: Boolean = true,
     var timeSpeed: Int = 1,
     var shuffle: Boolean = false,
-    var repeat: Boolean = false
+    var repeat: Boolean = false,
+    var normalizeOnline: Boolean = true,
+    var podcastIndexKey: String = "",
+    var podcastIndexSecret: String = ""
 )
 
 data class TimerState(
@@ -392,7 +410,10 @@ object Store {
                 gScreen = o.optBoolean("gScreen", true), nextAuto = o.optBoolean("nextAuto", true),
                 covers = o.optBoolean("covers", true), autodl = o.optBoolean("autodl", true),
                 wifiOnly = o.optBoolean("wifiOnly", true), timeSpeed = o.optInt("timeSpeed", 1),
-                shuffle = o.optBoolean("shuffle", false), repeat = o.optBoolean("repeat", false)
+                shuffle = o.optBoolean("shuffle", false), repeat = o.optBoolean("repeat", false),
+                normalizeOnline = o.optBoolean("normalizeOnline", true),
+                podcastIndexKey = o.optString("podcastIndexKey", ""),
+                podcastIndexSecret = o.optString("podcastIndexSecret", "")
             )
         }
         set(v) {
@@ -402,6 +423,9 @@ object Store {
             o.put("nextAuto", v.nextAuto); o.put("covers", v.covers)
             o.put("autodl", v.autodl); o.put("wifiOnly", v.wifiOnly)
             o.put("timeSpeed", v.timeSpeed); o.put("shuffle", v.shuffle); o.put("repeat", v.repeat)
+            o.put("normalizeOnline", v.normalizeOnline)
+            o.put("podcastIndexKey", v.podcastIndexKey)
+            o.put("podcastIndexSecret", v.podcastIndexSecret)
             put("settings", o)
         }
 
@@ -514,6 +538,16 @@ object Store {
         return true
     }
     fun normalizationSnapshot(): JSONObject = obj("normalizationSnapshot")
+
+    /** Keš jednog malog omota po seriji/albumu, sa ETag i vremenom preuzimanja. */
+    fun artCacheEntry(key: String): JSONObject? = obj("normalizationArtCache").optJSONObject(key)
+    fun artCache(): JSONObject = obj("normalizationArtCache")
+    fun setArtCacheEntry(key: String, o: JSONObject) {
+        val all = obj("normalizationArtCache"); all.put(key, o); put("normalizationArtCache", all)
+    }
+    fun clearArtCacheEntry(key: String) {
+        val all = obj("normalizationArtCache"); all.remove(key); put("normalizationArtCache", all)
+    }
 
     fun lastGroupTime(key: String): Long = obj("recent").optLong(key, 0L)
     fun touchGroup(key: String) {
@@ -634,6 +668,7 @@ object Bus {
     var seeking: Boolean = false
     var undo: Pair<Long, Long>? = null   // stara pozicija, vreme
     var covers: HashMap<String, android.graphics.Bitmap> = HashMap()
+    var onlineCovers: HashMap<String, android.graphics.Bitmap> = HashMap()
 
     fun showToast(message: String, millis: Long = 2200) {
         toast = message; toastUntil = System.currentTimeMillis() + millis

@@ -38,6 +38,9 @@ object Normalizer {
         }.joinToString(" ")
     }
 
+    /** Ime serije iz foldera, za grupisanje internet upita. */
+    fun seriesTitleFor(item: AudioItem): String = folderSeries(item)
+
     private fun folderSeries(item: AudioItem): String {
         val seg = pathSegments(item.folderKey).lastOrNull() ?: item.folderName
         return canonicalSeries(seg)

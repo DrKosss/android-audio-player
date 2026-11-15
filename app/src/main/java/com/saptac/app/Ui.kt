@@ -99,7 +99,10 @@ fun cover(ctx: Context, index: Int, initial: String, sizeDp: Int, radiusDp: Floa
     FrameLayout(ctx).apply {
         layoutParams = LinearLayout.LayoutParams(ctx.dp(sizeDp), ctx.dp(sizeDp))
         background = gradientCover(index, radiusDp, ctx)
-        val bmp = groupKey?.let { Bus.covers[it] ?: LibraryManager.customCoverBitmap(ctx, it) }
+        val bmp = groupKey?.let { key ->
+            Bus.covers[key] ?: LibraryManager.customCoverBitmap(ctx, key)
+                ?: LibraryManager.cachedOnlineCover(ctx, key)
+        }
         if (bmp != null) {
             addView(ImageView(ctx).apply {
                 setImageBitmap(bmp)
