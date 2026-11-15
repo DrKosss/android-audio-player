@@ -432,7 +432,7 @@ class MainActivity : android.app.Activity() {
         val oldScroll = findMainScroll(currentRoot)?.scrollY ?: 0
 
         val hideNav = cur().v == "player" || cur().v == "settings"
-        val navH = if (hideNav) 0 else c.dp(59) // 1 dp linija + 58 dp red
+        val navH = if (hideNav) 0 else c.dp(58) // samo red sa dugmićima, bez linije
         val root = FrameLayout(c).apply { setBackgroundColor(C_BG) }
         val base = vertical(c)
         base.setPadding(0, 0, 0, bottomInsetPx)
@@ -648,8 +648,6 @@ class MainActivity : android.app.Activity() {
             layoutParams = LinearLayout.LayoutParams(-1, -2)
             setBackgroundColor(C_BG)
         }
-        wrap.addView(View(c).apply { background = rounded(C_LINE, 0f, c) },
-            LinearLayout.LayoutParams(-1, c.dp(1)))
         val row = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, c.dp(58)) }
         val items = listOf(
             Triple(Section.MUSIC, "Muzika", R.drawable.ic_music),
@@ -2285,7 +2283,7 @@ class MainActivity : android.app.Activity() {
                 )
                 setStroke(c.dp(1), C_LINE)
             }
-            val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(59)
+            val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(58)
             setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(8) + navH + bottomInsetPx)
             click { }
             addView(View(c).apply { background = rounded(Color.rgb(0x3A, 0x36, 0x32), 2f, c) },
@@ -2442,7 +2440,7 @@ class MainActivity : android.app.Activity() {
         val c = this
         val p = Bus.player
         val t = Bus.timer
-        val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(59)
+        val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(58)
         val root = vertical(c).apply {
             setBackgroundColor(Color.rgb(0x05, 0x04, 0x03))
             setPadding(0, 0, 0, navH + bottomInsetPx)
