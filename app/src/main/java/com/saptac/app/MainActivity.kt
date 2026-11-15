@@ -142,10 +142,18 @@ class MainActivity : android.app.Activity() {
         }
         Store.init(this)
         requestNeededPermissions()
-        coldStartRestorePending = true
+        val coldStart = savedInstanceState == null
+        val savedMinimized = savedInstanceState?.getBoolean("playerMinimized", false) ?: false
+        savedInstanceState?.getString("navTab")?.let {
+            try { Nav.tab = Section.valueOf(it) } catch (_: Exception) { }
+        }
+        coldStartRestorePending = coldStart
         restoreLastPlayer()
-        if (Bus.player != null) gotoLastPlayer()
-        rescan()
+        // Rotacija ne sme da poništi ručno minimiziran plejer; proces ubijen dok
+        // je plejer bio otvoren ipak treba da se vrati u poslednji klip.
+        if ((coldStart || !savedMinimized) && Bus.player != null) gotoLastPlayer()
+        else if (savedMinimized && cur().v == "player") tabHome(Nav.tab)
+        if (coldStart) rescan()
         Bus.log("Aplikacija pokrenuta")
         render()
     }
@@ -182,6 +190,12 @@ class MainActivity : android.app.Activity() {
     override fun onPause() {
         handler.removeCallbacks(uiTicker)
         super.onPause()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("playerMinimized", cur().v != "player")
+        outState.putString("navTab", Nav.tab.name)
     }
 
     /** Spoljašnji izbor fajla/foldera ne sme da se tumači kao povratak u aplikaciju. */
@@ -285,7 +299,29 @@ class MainActivity : android.app.Activity() {
         Bus.night = false
         render()
     }
+    /** Strelica nadole u plejeru: vrati se na ekran ispod, odnosno na tab sekcije. */
+    private fun minimizePlayer() {
+        val under = Nav.stack.size - 2
+        if (under >= 0 && Nav.stack[under].v != "player") {
+            Nav.stack = Nav.stack.take(under + 1).toMutableList()
+            Nav.sheet = null
+            Bus.night = false
+            render()
+            return
+        }
+        val sec = Bus.player?.let { p ->
+            when (p.kind) {
+                Kind.BOOK -> Section.BOOKS
+                Kind.EPISODE -> Section.SERIES
+                Kind.TRACK -> Section.MUSIC
+                Kind.STANDUP -> Section.STANDUP
+            }
+        } ?: Nav.tab
+        tabHome(sec)
+    }
+
     private fun onBack() {
+        if (cur().v == "player" && Nav.stack.size <= 1) { minimizePlayer(); return }
         if (Nav.stack.size > 1) Nav.stack.removeAt(Nav.stack.lastIndex)
         Nav.sheet = null
         Bus.night = false
@@ -307,6 +343,7 @@ class MainActivity : android.app.Activity() {
         when {
             Bus.night -> Bus.night = false
             Nav.sheet != null -> Nav.sheet = null
+            cur().v == "player" -> { minimizePlayer(); return }
             Nav.stack.size > 1 -> Nav.stack.removeAt(Nav.stack.lastIndex)
             Nav.tab != Section.BOOKS -> tabHome(Section.BOOKS)
             else -> { super.onBackPressed(); return }
@@ -1123,7 +1160,7 @@ class MainActivity : android.app.Activity() {
         val top = horizontal(c).apply {
             layoutParams = LinearLayout.LayoutParams(-1, c.dp(34))
             gravity = Gravity.CENTER_VERTICAL
-            addView(iconBox(c, R.drawable.ic_down, C_T2, 22, 4) { onBack() })
+            addView(iconBox(c, R.drawable.ic_down, C_T2, 22, 4) { minimizePlayer() })
             addView(text(c, p.sectionLabel, 10.5f, C_T2, bold = true).apply {
                 letterSpacing = 0.16f; gravity = Gravity.CENTER
             }, LinearLayout.LayoutParams(0, -2, 1f))
