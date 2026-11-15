@@ -1,13 +1,22 @@
-# Šaptač — Android v1.1.0
+# Šaptač — Android v1.1.0.1
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.471.206 bajtova  
-SHA-256: `2ceeee5a210988b39a149c60e4fdb57f78f1628f62978bfc1c388948016b2dda`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.474.554 bajtova  
+SHA-256: `ed09fffd79269ee0b8a995e7a05f5ae86cffaf36458168f3f5dc76b87e90b88f`
 
 Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova i virtuelno sređivanje biblioteke (skriveno u `Podešavanjima`); skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Šta je novo u v1.1.0 — Faza 1 sređivanja biblioteke
+## Ispravka u v1.1.0.1 — vodeće nule za sezone i epizode
+
+- **Grupe se sada zovu `Sezona 01`, `Sezona 02` … `Sezona 10`**, umesto `Sezona 1`, `Sezona 2` … `Sezona 10`. Jednocifrene sezone dobijaju vodeću nulu, pa se više ne dešava da `Sezona 10` stoji ispred `Sezona 2`.
+- **Sve S/E oznake su na dve cifre:** `S1E2` → `S01E02`, `TUT S2E3` → `S02E03`, `Series 2, Episode 3` → `S02E03`, goli `Episode 2` → `E02`, specijal `S2 · Christmas Special` → `S02 · Christmas Special`. Sort-ključ je `S01E02`, `S02E03` … `S10E12`.
+- **Ispravljen redosled virtuelnih sezona:** `LibraryManager.groups()` za `Emisije / Folderi` sada sortira po sintetičkom ključu `…|season|S01 / S02 / … / S10 / SPECIAL`, a ne po naslovu grupe. Ostale sekcije i prikazi zadržavaju raniji sort po naslovu.
+- **Migracija već upisanih metapodataka:** pri čitanju `NormalizedMetadata` se `displayTitle`, `sortKey`, `seasonGroupKey` i `seasonGroupTitle` automatski dopune nulama (`padSeLabel`, `padSeasonKey`, `padSeasonTitle`). Ne moraš ponovo da uvoziš fajlove da bi stare `Sezona 1` grupe postale `Sezona 01`.
+- **Faza 2 i dalje nije implementirana** — ovo je samo ispravka u okviru Faze 1; nema novih mrežnih poziva, nema API ključa, 45 + 115 i dalje čekaju tvoj klik.
+- **Verzija:** `versionCode 11`, `versionName 1.1.0.1`; CI `43667949820` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`).
+
+## Ranije ispravke (v1.1.0) — Faza 1 sređivanja biblioteke
 
 - **Automatski posle svakog uvoza:** čim se završi `Uvezi N foldera`, izbor SAF foldera ili izbor pojedinačnih fajlova, pokreće se offline parser. Ne čeka se ručno dugme. Pre svakog pokretanja pravi se snapshot, a `Vrati sve` vraća tačno stanje pre poslednjeg pokretanja.
 - **Isključivo virtuelno:** novi sloj `NormalizedMetadata` (`seriesTitle`, `season`, `episode`, `episodeTitle`, `special`, `displayTitle`, `sortKey`, `seasonGroupKey`, `source`, `confidence`, `reason`) piše se u `Store`. Originalni `AudioItem`, URI, ime fajla i lokacija na disku ostaju netaknuti — ništa se ne preimenuje, ne pomera, ne briše.
@@ -80,7 +89,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.1.0` (`versionCode 10`) |
+| Verzija | `1.1.0.1` (`versionCode 11`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
