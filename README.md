@@ -1,15 +1,19 @@
-# Šaptač — Android v1.0.5
+# Šaptač — Android v1.0.6
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.436.638 bajtova  
-SHA-256: `e742f20d710d1c5e3b2e47b3b9b167ce2a8fd7270312eda851f2c906aa7f21b8`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.436.558 bajtova  
+SHA-256: `7b0cb84a13e9fcb3f1da33df59da36ac43c077022b11cdb0cf97833f2a11f4f7`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota i izvoz liste fajlova; skica zaključanog ekrana koja se otvarala na katanac i kratka kućna linija na dnu su uklonjene, a donja navigacija je vidljiva na svim ekranima osim plejera i podešavanja.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota i izvoz liste fajlova; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na svim ekranima osim plejera i podešavanja.
 
-## Šta je novo u v1.0.5
+## Šta je novo u v1.0.6
 
-- **Bez linije na dnu:** uklonjena je kratka horizontalna „home“ linija ispod sadržaja; ostaje samo prototipska tanka linija iznad donje navigacije.
+- **Uklonjena je i poslednja linija na dnu:** obrisana je tanka `border-top` linija iznad `Muzika / Knjige / Emisije / Stand up`. Prototip je rađen za iPhone; na Androidu ispod navigacije sada ostaje samo čista tamna pozadina. Visina rezervisanog prostora je sa 59 dp smanjena na 58 dp, pa sadržaj, listići, noćni ekran i toast ponovo tačno naležu na navigaciju bez viška piksela.
+
+## Ranije ispravke (v1.0.5)
+
+- **Bez linije na dnu:** uklonjena je kratka horizontalna „home“ linija ispod sadržaja. Tanka prototipska linija iznad navigacije tada je još ostala, pa je uklonjena u v1.0.6.
 - **Povratak u poslednji klip:** pri svakom povratku u aplikaciju, pa i posle više sati/dana ili ubijenog procesa, otvara se plejer sa poslednjim fajlom i poslednjom pozicijom. Ceo queue, indeks, pozicija, brzina, shuffle/repeat i metapodaci se trajno upisuju u `lastPlayer`; `PlayerService` ih obnavlja pri pokretanju, a `onResume`/`onNewIntent` vraćaju ekran na plejer. Povratak iz sistemskog izbora fajlova/slike ne prekida taj tok.
 - **Sistematizacija po celoj putanji:** predlog sekcije više ne gleda samo ime poslednjeg foldera, nego sve foldere i podfoldere od korena do fajla. Pobeđuje onaj koji je najbliži fajlu: `/Muzika/Stand-up/fajl` → `Stand up`, `/Stand-up/Muzika/fajl` → `Muzika`. Isto pravilo važi i za ručno dodeljenu sekciju nekog roditelja. Prepoznaju se `stand up/standup/komedija/comedy`, `knjiga/book/audiobook`, `podkast/radio/emisija/serija` i `muzika/music/album/mp3`.
 - **Izvoz liste fajlova:** u `Podešavanja → IZVOZ` je dugme `Izvezi listu uvezenih fajlova`. Bira se lokacija i piše `saptac-fajlovi-YYYYMMDD-HHmm.json` (`saptac-library-export-v1`). JSON sadrži svaki `AudioItem` (id, URI, naslov, izvođač, album, trajanje, folder, veličinu, datum, track), sve segmente putanje, najbliži predlog sekcije, efektivnu sekciju i njen izvor, poziciju, status `done`, članstvo u svim grupama (folderi/izvođači/albumi), ručne omote, „mešane“ fajlove, foldere, feedove, SAF korene, podešavanja, pozicije, override, nedavne grupe i poslednji plejer. Format je namerno JSON jer se najlakše direktno dodaje na Arenu radi dalje obrade.
@@ -51,7 +55,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.5` (`versionCode 6`) |
+| Verzija | `1.0.6` (`versionCode 7`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
