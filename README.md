@@ -1,19 +1,31 @@
-# Šaptač — Android v1.1.0.1
+# Šaptač — Android v1.1.1
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.474.554 bajtova  
-SHA-256: `ed09fffd79269ee0b8a995e7a05f5ae86cffaf36458168f3f5dc76b87e90b88f`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.511.994 bajtova  
+SHA-256: `1be6c227d19516db045526a462da1d1cba80779f83a0d63eec077d103fd396be`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova i virtuelno sređivanje biblioteke (skriveno u `Podešavanjima`); skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova i virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem (skriveno u `Podešavanjima`); skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Ispravka u v1.1.0.1 — vodeće nule za sezone i epizode
+## Šta je novo u v1.1.1 — Faza 2 sređivanja biblioteke
+
+- **Svih pet odobrenih izvora:** `Apple/iTunes` (katalog + RSS sa originalnim engleskim naslovima epizoda), `Wikipedia` (wikitext spisak epizoda), `BBC` (programme guide, best-effort), `MusicBrainz` (muzika) i `Open Library` (knjige, sa URL-om omota), plus `Podcast Index` kada se unese besplatni ključ + tajna. Svi su HTTPS, bez hardkodovanih kredencijala.
+- **Podcast Index ključ/tajna se unose SAMO u aplikaciji:** `Podešavanja → SREĐIVANJE · INTERNET → Podcast Index ključ / tajna`. Ne traže se u chatu, ne upisuju se u repozitorijum i **brišu se iz izvezenog JSON-a**. Bez njih se taj jedan izvor preskače, ostali rade. Potpis zahteva je `HmacSHA1(key + timestamp)` sa `X-Auth-Key` / `X-Auth-Date` / `Authorization` zaglavljima.
+- **Wi-Fi podrazumevano, mobilni uz potvrdu svaki put:** kada posle uvoza (ili na `Proveri na internetu`) nema Wi-Fi, aplikacija prikaže `Koristi mobilni internet za ovu proveru?` → `Da / Ne`. Bez `Da` ne šalje ništa; na `Ne` ostaje čisti offline rezultat iz Faze 1. Nema tihog trošenja paketa. Prekidač `Koristi internet za sređivanje` može potpuno isključiti mrežu.
+- **Internet nikad ne primenjuje naslov automatski:** svaki pogodak postaje **predlog** u `Podešavanja → SREĐIVANJE → Sređivanje biblioteke`, sa izvorom, poverenjem, razlogom i oznakom `omot`. Tvoj klik `Primeni` i dalje odlučuje; 45 neraspoređenih + 115 mešanih i svi sumnjivi slučajevi ostaju „samo predlog, ja potvrdim“. Lokalni sigurniji predlog se ne gazi slabijim internet pogotkom.
+- **Keš omota sa ETag/TTL:** jedna mala slika po seriji/albumu/izvođaču u privatnom `filesDir/norm-art`, `If-None-Match` / `304` / 30-dnevni TTL u `normalizationArtCache`. Prioritet: **tvoja olovka > ugrađeni omot > keširani internet omot > generički gradijent**. `coverKeyOf()` i dalje deli ručni omot na sve virtuelne sezone.
+- **Rotirajući obilazak cele biblioteke:** po jednom pokretanju se pita najviše 20 jedinstvenih serija/albuma, a `normalizationOnlineCursor` pamti gde se stalo. Naredni uvoz ili `Proveri na internetu` nastavlja na sledećih 20, pa kroz nekoliko pokretanja bude pokrivena cela biblioteka bez stotina zahteva odjednom.
+- **Privatnost:** na mrežu ide samo normalizovani upit (ime serije / album / izvođač / `S##E##`), ne pune putanje, ne `AudioItem.uri`, ne imena tvojih foldera, ne ID uređaja ni podaci iz eksporta. `NormalizedMetadata` je proširen poljima `artworkUrl`, `onlineSource`, `onlineConfidence`, `onlineReason`, `onlineCheckedAt`; izvoz nosi i `normalizationArtCache` + `normalizationOnlineCursor`.
+- **Faza 3 (još nije urađena):** uvoz/ponovna primena izvezene mape normalizacije i napredniji batch pregled cele biblioteke ostaju za narednu verziju.
+- **Verzija:** `versionCode 12`, `versionName 1.1.1`; CI `43670276240` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`).
+
+## Ranije ispravke (v1.1.0.1) — vodeće nule za sezone i epizode
 
 - **Grupe se sada zovu `Sezona 01`, `Sezona 02` … `Sezona 10`**, umesto `Sezona 1`, `Sezona 2` … `Sezona 10`. Jednocifrene sezone dobijaju vodeću nulu, pa se više ne dešava da `Sezona 10` stoji ispred `Sezona 2`.
 - **Sve S/E oznake su na dve cifre:** `S1E2` → `S01E02`, `TUT S2E3` → `S02E03`, `Series 2, Episode 3` → `S02E03`, goli `Episode 2` → `E02`, specijal `S2 · Christmas Special` → `S02 · Christmas Special`. Sort-ključ je `S01E02`, `S02E03` … `S10E12`.
 - **Ispravljen redosled virtuelnih sezona:** `LibraryManager.groups()` za `Emisije / Folderi` sada sortira po sintetičkom ključu `…|season|S01 / S02 / … / S10 / SPECIAL`, a ne po naslovu grupe. Ostale sekcije i prikazi zadržavaju raniji sort po naslovu.
 - **Migracija već upisanih metapodataka:** pri čitanju `NormalizedMetadata` se `displayTitle`, `sortKey`, `seasonGroupKey` i `seasonGroupTitle` automatski dopune nulama (`padSeLabel`, `padSeasonKey`, `padSeasonTitle`). Ne moraš ponovo da uvoziš fajlove da bi stare `Sezona 1` grupe postale `Sezona 01`.
-- **Faza 2 i dalje nije implementirana** — ovo je samo ispravka u okviru Faze 1; nema novih mrežnih poziva, nema API ključa, 45 + 115 i dalje čekaju tvoj klik.
+- **Faza 2 je naknadno dodata u v1.1.1** — ova ispravka je bila samo u okviru Faze 1; tada još nije bilo mrežnih poziva ni API ključa.
 - **Verzija:** `versionCode 11`, `versionName 1.1.0.1`; CI `43667949820` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`).
 
 ## Ranije ispravke (v1.1.0) — Faza 1 sređivanja biblioteke
@@ -26,7 +38,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 - **Novi ekran `Sređivanje biblioteke`:** dostupan isključivo iz `Podešavanja → SREĐIVANJE`. Prikazuje `Pre → Posle`, izvor (`local`), poverenje i razlog, sa dugmadima `Primeni`, `Zadrži original` i `Vrati sve`. Četiri taba i prototipske liste nisu menjani; nema novih tekstova na glavnim ekranima ni novih toastova.
 - **Proširen izvoz:** `saptac-library-export-v1` sada uz svaki fajl nosi `normalized`, `normalizationProposal`, `displayTitle`; uz grupu `coverKey` i `isVirtualSeason`; u `rawStores` `normalizations`, `normalizationProposals`, `normalizationDismissed`, `normalizationSnapshot`; u `counts` `normalizedApplied` i `normalizationProposals`.
 - **Bez mreže u ovoj fazi:** sređivanje ne pravi nijedan internet poziv i ne šalje pune putanje, URI-je, imena foldera ni podatke uređaja. Postojeće opciono preuzimanje omota preko iTunes-a ostaje netaknuto.
-- **Odluke za Fazu 2 (još nisu implementirane):** odobreni izvori su Apple/iTunes + BBC/Wikipedia + MusicBrainz + Open Library + Podcast Index; Podcast Index traži besplatni API ključ koji se kasnije unosi u `Podešavanjima` aplikacije (ne u chatu). Mreža podrazumevano samo Wi-Fi; na mobilnom je dozvoljena samo uz prethodnu potvrdu korisnika **svaki put** kada je potrebna. 45 neraspoređenih i 115 mešanih ostaju „samo predlog, ja potvrdim“. Ovo ulazi u v1.1.1 / v1.1.2.
+- **Odluke za Fazu 2 (sada implementirane u v1.1.1):** odobreni izvori su Apple/iTunes + BBC/Wikipedia + MusicBrainz + Open Library + Podcast Index; Podcast Index traži besplatni API ključ koji se unosi u `Podešavanjima` aplikacije (ne u chatu). Mreža podrazumevano samo Wi-Fi; na mobilnom je dozvoljena samo uz prethodnu potvrdu korisnika **svaki put** kada je potrebna. 45 neraspoređenih i 115 mešanih ostaju „samo predlog, ja potvrdim“.
 - **Verzija:** `versionCode 10`, `versionName 1.1.0`; CI `43666127220` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`).
 
 ## Ranije ispravke (v1.0.8)
@@ -89,7 +101,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.1.0.1` (`versionCode 11`) |
+| Verzija | `1.1.1` (`versionCode 12`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
