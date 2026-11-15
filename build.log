@@ -135,7 +135,7 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.9.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 1m 7s
+BUILD SUCCESSFUL in 1m 4s
 1 actionable task: 1 executed
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.9.1/userguide/configuration_cache_enabling.html
 ===== ASSEMBLE RELEASE =====
@@ -183,6 +183,11 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeReleaseStartupProfile
 > Task :app:checkReleaseDuplicateClasses
 > Task :app:mergeReleaseArtProfile
+
+> Task :app:compileReleaseKotlin
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+    1. Kotlin compile daemon is ready
+
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
@@ -190,12 +195,13 @@ Daemon will be stopped at the end of the build
 > Task :app:compressReleaseAssets
 > Task :app:extractReleaseVersionControlInfo
 > Task :app:collectReleaseDependencies
-> Task :app:sdkReleaseDependencyData
 > Task :app:optimizeReleaseResources
+> Task :app:sdkReleaseDependencyData
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
 > Task :app:mergeExtDexRelease
+
 > Task :app:compileReleaseKotlin
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:130:52 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:130:96 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
@@ -226,7 +232,7 @@ w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/ma
 > Task :app:lintVitalRelease
 > Task :app:assembleRelease
 
-BUILD SUCCESSFUL in 2m 3s
+BUILD SUCCESSFUL in 2m
 47 actionable tasks: 47 executed
 ASSEMBLE_EXIT=0
 ===== done =====
@@ -249,7 +255,7 @@ Signer #1 public key SHA-256 digest: 5f8d6bae70e6de0c709e55fbd0ffa1065e24438df0a
 Signer #1 public key SHA-1 digest: b4b1ff008a2f4d714b91a77f1578f626561fda61
 Signer #1 public key MD5 digest: 738b8f79c159c9eaba5ac8e9f18867a0
 --- aapt badging ---
-package: name='com.saptac.app' versionCode='10' versionName='1.1.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+package: name='com.saptac.app' versionCode='11' versionName='1.1.0.1' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
 sdkVersion:'30'
 targetSdkVersion:'37'
 uses-permission: name='android.permission.READ_MEDIA_AUDIO'
@@ -274,6 +280,6 @@ launchable-activity: name='com.saptac.app.MainActivity'  label='' icon=''
 feature-group: label=''
   uses-feature-not-required: name='android.hardware.sensor.accelerometer'
 --- sha256 ---
-2ceeee5a210988b39a149c60e4fdb57f78f1628f62978bfc1c388948016b2dda  dist/Saptac-v1.0.apk
+ed09fffd79269ee0b8a995e7a05f5ae86cffaf36458168f3f5dc76b87e90b88f  dist/Saptac-v1.0.apk
 --- size ---
-2471206 bytes
+2474554 bytes
