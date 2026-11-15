@@ -1,13 +1,26 @@
-# Šaptač — Android v1.0.8
+# Šaptač — Android v1.1.0
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.437.334 bajtova  
-SHA-256: `e25aca11c786f7e250d4db75b12c1677125ec399522724b442b92d92cb80d9bb`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.471.206 bajtova  
+SHA-256: `2ceeee5a210988b39a149c60e4fdb57f78f1628f62978bfc1c388948016b2dda`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke) i izvoz liste fajlova; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova i virtuelno sređivanje biblioteke (skriveno u `Podešavanjima`); skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Šta je novo u v1.0.8
+## Šta je novo u v1.1.0 — Faza 1 sređivanja biblioteke
+
+- **Automatski posle svakog uvoza:** čim se završi `Uvezi N foldera`, izbor SAF foldera ili izbor pojedinačnih fajlova, pokreće se offline parser. Ne čeka se ručno dugme. Pre svakog pokretanja pravi se snapshot, a `Vrati sve` vraća tačno stanje pre poslednjeg pokretanja.
+- **Isključivo virtuelno:** novi sloj `NormalizedMetadata` (`seriesTitle`, `season`, `episode`, `episodeTitle`, `special`, `displayTitle`, `sortKey`, `seasonGroupKey`, `source`, `confidence`, `reason`) piše se u `Store`. Originalni `AudioItem`, URI, ime fajla i lokacija na disku ostaju netaknuti — ništa se ne preimenuje, ne pomera, ne briše.
+- **Originalni engleski naslov + `S##E##`:** kanonski prikaz je `The Unbelievable Truth · S02E03 · Cheese`, sort-ključ `S02E03`, specijali u `Specijali`. Parser prepoznaje šest obrazaca iz tvog eksporta: `... - S## - E##`, `TUT S##E##`, `Series ##, Episode #`, goli `Episode N`, `NNNN - naslov` i `S02 - ESP - Christmas Special`. Naslov epizode se ne prevodi.
+- **Sigurno odmah, sumnjivo na potvrdu:** jednoznačni `S/E` pogoci u već raspoređenim `Emisije` primenjuju se sami. Svih 45 neraspoređenih, 115 mešanih, 11 golih `Episode N`, duplikati `Episode 2/3/4/6`, specijali i `NNNN - naslov` dobijaju samo **predlog** — ništa se ne menja bez tvog klika `Primeni`. `Zadrži original` trajno sklanja predlog i ne vraća ga pri narednom uvozu.
+- **Virtuelne sezone:** `LibraryManager.groups()` sada deli potvrđene epizode u `Sezona 1 … Sezona N / Specijali` i sortira ih po `sortKey`. Sintetički ključ sezone preko `coverKeyOf()` i dalje koristi ručni omot celog foldera, pa olovka važi za sve sezone. Virtuelni naslov se prikazuje u listama, plejeru, mini-plejeru, `Sledeće`, noćnom ekranu i izvozu.
+- **Novi ekran `Sređivanje biblioteke`:** dostupan isključivo iz `Podešavanja → SREĐIVANJE`. Prikazuje `Pre → Posle`, izvor (`local`), poverenje i razlog, sa dugmadima `Primeni`, `Zadrži original` i `Vrati sve`. Četiri taba i prototipske liste nisu menjani; nema novih tekstova na glavnim ekranima ni novih toastova.
+- **Proširen izvoz:** `saptac-library-export-v1` sada uz svaki fajl nosi `normalized`, `normalizationProposal`, `displayTitle`; uz grupu `coverKey` i `isVirtualSeason`; u `rawStores` `normalizations`, `normalizationProposals`, `normalizationDismissed`, `normalizationSnapshot`; u `counts` `normalizedApplied` i `normalizationProposals`.
+- **Bez mreže u ovoj fazi:** sređivanje ne pravi nijedan internet poziv i ne šalje pune putanje, URI-je, imena foldera ni podatke uređaja. Postojeće opciono preuzimanje omota preko iTunes-a ostaje netaknuto.
+- **Odluke za Fazu 2 (još nisu implementirane):** odobreni izvori su Apple/iTunes + BBC/Wikipedia + MusicBrainz + Open Library + Podcast Index; Podcast Index traži besplatni API ključ koji se kasnije unosi u `Podešavanjima` aplikacije (ne u chatu). Mreža podrazumevano samo Wi-Fi; na mobilnom je dozvoljena samo uz prethodnu potvrdu korisnika **svaki put** kada je potrebna. 45 neraspoređenih i 115 mešanih ostaju „samo predlog, ja potvrdim“. Ovo ulazi u v1.1.1 / v1.1.2.
+- **Verzija:** `versionCode 10`, `versionName 1.1.0`; CI `43666127220` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`).
+
+## Ranije ispravke (v1.0.8)
 
 - **Fajl koji svira je označen na listi:** pri povratku sa plejera (strelica nadole, sistemsko `Back` ili donja navigacija) red sa trenutnim fajlom ima tamno-ćilibarsku pozadinu, ćilibarski naslov i mali `play` znak; grupa kojoj pripada je takođe označena. Lista se pre prvog crtanja pomeri na taj red, bez skoka na vrh. Oznaka se osvežava i ako se fajl u redu promeni dok je lista otvorena. Pokrivene su liste knjiga, emisija, `Stand up`, muzičkih foldera, epizoda, numera, poglavlja/liste, mešanih fajlova i feed epizoda.
 - **Menjanje omota samo na olovku:** dodir na celu sliku u plejeru više ne otvara birač slika. Birač se pokreće isključivo klikom na malu olovku u donjem desnom uglu omota; dug dodir na olovku skida ručni izbor i vraća ugrađeni/automatski omot. Uklonjen je i dugi dodir na sličice grupa u listama, koji je ranije isto otvarao birač.
@@ -67,7 +80,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.8` (`versionCode 9`) |
+| Verzija | `1.1.0` (`versionCode 10`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
