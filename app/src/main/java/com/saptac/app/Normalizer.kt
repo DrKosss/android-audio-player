@@ -49,6 +49,10 @@ object Normalizer {
     private fun seasonKey(item: AudioItem, season: Int, special: Boolean): String =
         item.folderKey + "|season|" + (if (special) "SPECIAL" else String.format(Locale.US, "S%02d", season))
 
+    /** Naslov virtuelne grupe uvek sa dve cifre: Sezona 01, Sezona 02 … Sezona 10. */
+    private fun seasonTitle(season: Int): String =
+        "Sezona " + String.format(Locale.US, "%02d", season)
+
     private data class Parsed(
         val series: String,
         val season: Int?,
@@ -74,7 +78,7 @@ object Normalizer {
             val label = seLabel(se, ep)
             return Parsed(series, se, ep, et, null,
                 "$series · $label" + (et?.let { " · $it" } ?: ""),
-                label, seasonKey(item, se, false), "Sezona $se", 95,
+                label, seasonKey(item, se, false), seasonTitle(se), 95,
                 "Prepoznat obrazac „S## - E##“ u imenu fajla")
         }
         RX_SERIES_EP.matchEntire(t)?.let { m ->
@@ -84,7 +88,7 @@ object Normalizer {
             val label = seLabel(se, ep)
             return Parsed(series, se, ep, et, null,
                 "$series · $label" + (et?.let { " · $it" } ?: ""),
-                label, seasonKey(item, se, false), "Sezona $se", 95,
+                label, seasonKey(item, se, false), seasonTitle(se), 95,
                 "Prepoznat obrazac „Series ##, Episode #“")
         }
         RX_COMPACT.matchEntire(t)?.let { m ->
@@ -95,7 +99,7 @@ object Normalizer {
             val label = seLabel(se, ep)
             return Parsed(series, se, ep, et, null,
                 "$series · $label" + (et?.let { " · $it" } ?: ""),
-                label, seasonKey(item, se, false), "Sezona $se", 95,
+                label, seasonKey(item, se, false), seasonTitle(se), 95,
                 "Prepoznat kompaktni obrazac „S##E##“")
         }
         RX_SPECIAL.matchEntire(t)?.let { m ->

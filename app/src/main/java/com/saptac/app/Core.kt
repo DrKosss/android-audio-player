@@ -151,10 +151,10 @@ fun normalizedFromJson(o: JSONObject): NormalizedMetadata = NormalizedMetadata(
     episode = o.optInt("episode", 0).takeIf { it > 0 },
     episodeTitle = o.optString("episodeTitle").takeIf { it.isNotEmpty() },
     special = o.optString("special").takeIf { it.isNotEmpty() },
-    displayTitle = o.optString("displayTitle").ifBlank { o.optString("rawTitle") },
-    sortKey = o.optString("sortKey").takeIf { it.isNotEmpty() },
-    seasonGroupKey = o.optString("seasonGroupKey").takeIf { it.isNotEmpty() },
-    seasonGroupTitle = o.optString("seasonGroupTitle").takeIf { it.isNotEmpty() },
+    displayTitle = padSeLabel(o.optString("displayTitle").ifBlank { o.optString("rawTitle") }),
+    sortKey = o.optString("sortKey").takeIf { it.isNotEmpty() }?.let { padSeLabel(it) },
+    seasonGroupKey = o.optString("seasonGroupKey").takeIf { it.isNotEmpty() }?.let { padSeasonKey(it) },
+    seasonGroupTitle = o.optString("seasonGroupTitle").takeIf { it.isNotEmpty() }?.let { padSeasonTitle(it) },
     proposedSection = o.optString("proposedSection").takeIf { it.isNotEmpty() }
         ?.let { sectionOf(it).let { s -> if (s == Section.NONE) null else s } },
     source = o.optString("source", "local").ifBlank { "local" },
@@ -165,6 +165,32 @@ fun normalizedFromJson(o: JSONObject): NormalizedMetadata = NormalizedMetadata(
 
 /** Sintetički ključ sezone → osnovni folder, da ručni omot i dalje važi za sve sezone. */
 fun coverKeyOf(key: String): String = key.substringBefore("|season|")
+
+/* Jednocifrene sezone/epizode dobijaju vodeću nulu: S1E2 → S01E02, Sezona 1 → Sezona 01. */
+private val SE_LABEL_RX = Regex("""S(\d{1,2})E(\d{1,2})""")
+private val SE_BARE_RX = Regex("""S(\d{1,2})(?!\d)""")
+private val E_BARE_RX = Regex("""E(\d{1,2})(?!\d)""")
+private val SEASON_KEY_RX = Regex("""\|season\|S(\d{1,2})""")
+private val SEASON_TITLE_RX = Regex("""^Sezona (\d{1,2})$""")
+
+/** Dopunjuje nule u S/E oznakama, uključujući specijale (S2 · …) i gole E2. */
+fun padSeLabel(value: String): String {
+    val se = SE_LABEL_RX.replace(value) { m ->
+        String.format(Locale.US, "S%02dE%02d", m.groupValues[1].toInt(), m.groupValues[2].toInt())
+    }
+    val s = SE_BARE_RX.replace(se) { m ->
+        "S" + String.format(Locale.US, "%02d", m.groupValues[1].toInt())
+    }
+    return E_BARE_RX.replace(s) { m ->
+        "E" + String.format(Locale.US, "%02d", m.groupValues[1].toInt())
+    }
+}
+fun padSeasonKey(value: String): String = SEASON_KEY_RX.replace(value) { m ->
+    "|season|S" + String.format(Locale.US, "%02d", m.groupValues[1].toInt())
+}
+fun padSeasonTitle(value: String): String = SEASON_TITLE_RX.find(value)?.let { m ->
+    "Sezona " + String.format(Locale.US, "%02d", m.groupValues[1].toInt())
+} ?: value
 
 data class Library(
     val items: List<AudioItem>,

@@ -279,7 +279,11 @@ object LibraryManager {
         }
         return out.sortedWith(
             compareByDescending<Group> { Store.lastGroupTime(it.key) }
-                .thenBy { it.title.lowercase(Locale.ROOT) }
+                .thenBy {
+                    // Sezone sortiramo po |season|S01/S02/…/S10, ne po "Sezona 1/10/2".
+                    if (sec == Section.SERIES && view == "folderi") it.key.lowercase(Locale.ROOT)
+                    else it.title.lowercase(Locale.ROOT)
+                }
         )
     }
 
