@@ -233,32 +233,49 @@ object LibraryManager {
         return Store.folderSectionForPath(item.folderKey) ?: Section.NONE
     }
 
+    /** Virtuelni naslov: normalizovan ako postoji, inače original iz fajla. */
+    fun displayTitle(item: AudioItem): String =
+        Store.normalization(item.id)?.displayTitle ?: item.title
+    /** Stabilan ključ za slaganje epizoda po sezoni/epizodi. */
+    fun sortKeyOf(item: AudioItem): String =
+        Store.normalization(item.id)?.sortKey ?: item.title.lowercase(Locale.ROOT)
+
     private fun groupTitle(key: String, sec: Section, view: String, items: List<AudioItem>): String =
         when {
             sec == Section.MUSIC && view == "izvodjaci" -> items.firstOrNull()?.artist?.takeIf { it.isNotBlank() } ?: "Nepoznat izvođač"
             sec == Section.MUSIC && view == "albumi" -> items.firstOrNull()?.album?.takeIf { it.isNotBlank() } ?: "Nepoznat album"
-            else -> key.substringAfterLast('/').ifEmpty { "Telefon" }
+            else -> coverKeyOf(key).substringAfterLast('/').ifEmpty { "Telefon" }
         }
 
     fun groups(sec: Section, view: String = "folderi"): List<Group> {
         val selected = Bus.library.items.filter { sectionOf(it) == sec }
         val buckets = LinkedHashMap<String, MutableList<AudioItem>>()
         selected.forEach { item ->
-            val key = when {
+            val baseKey = when {
                 sec == Section.MUSIC && view == "izvodjaci" -> "artist:" + item.artist.ifBlank { "?" }
                 sec == Section.MUSIC && view == "albumi" -> "album:" + item.album.ifBlank { "?" }
                 else -> item.folderKey
             }
+            // Virtuelna grupa po sezoni samo za potvrđene, već raspoređene epizode.
+            val meta = Store.normalization(item.id)
+            val key = if (sec == Section.SERIES && view == "folderi" && meta?.seasonGroupKey != null)
+                meta.seasonGroupKey else baseKey
             buckets.getOrPut(key) { ArrayList() }.add(item)
         }
         val out = buckets.map { (key, list) ->
-            val title = groupTitle(key, sec, view, list)
-            val artists = list.map { it.artist }.filter { it.isNotBlank() }
+            val meta = list.firstNotNullOfOrNull { Store.normalization(it.id) }
+            val title = if (sec == Section.SERIES && view == "folderi" && meta?.seasonGroupTitle != null)
+                meta.seasonGroupTitle else groupTitle(key, sec, view, list)
+            val items = list.sortedWith(compareBy({ sortKeyOf(it) }, { it.track },
+                { it.title.lowercase(Locale.ROOT) }))
+            val artists = items.map { it.artist }.filter { it.isNotBlank() }
             val subtitle = when {
-                sec == Section.MUSIC -> "${list.size} numera"
+                sec == Section.MUSIC -> "${items.size} numera"
                 else -> artists.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "Nepoznat autor"
             }
-            Group(key, title, subtitle, list, coverIndex(key), title.take(1).uppercase(Locale.ROOT))
+            val cKey = coverKeyOf(key)
+            Group(key, title, subtitle, items, coverIndex(cKey),
+                title.take(1).uppercase(Locale.ROOT), cKey)
         }
         return out.sortedWith(
             compareByDescending<Group> { Store.lastGroupTime(it.key) }

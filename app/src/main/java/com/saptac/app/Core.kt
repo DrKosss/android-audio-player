@@ -88,7 +88,8 @@ data class Group(
     val subtitle: String,
     val items: List<AudioItem>,
     val cover: Int,
-    val initial: String
+    val initial: String,
+    val coverKey: String = key
 ) {
     val durationMs: Long get() = items.sumOf { it.durationMs.coerceAtLeast(0) }
 }
@@ -100,6 +101,70 @@ data class FolderInfo(
     val suggested: Section?,
     val assigned: Section?
 )
+
+/**
+ * Virtuelni, reverzibilni sloj preko AudioItem-a. Fajl na disku se nikad ne dira.
+ * Faza 1: source je uvek "local" (nijedan mrežni poziv).
+ */
+data class NormalizedMetadata(
+    val itemId: String,
+    val rawTitle: String,
+    val rawFolder: String,
+    val seriesTitle: String? = null,
+    val season: Int? = null,
+    val episode: Int? = null,
+    val episodeTitle: String? = null,
+    val special: String? = null,
+    val displayTitle: String,
+    val sortKey: String? = null,
+    val seasonGroupKey: String? = null,
+    val seasonGroupTitle: String? = null,
+    val proposedSection: Section? = null,
+    val source: String = "local",
+    val confidence: Int = 0,
+    val reason: String = "",
+    val normalizedAt: Long = 0L
+)
+
+fun normalizedToJson(m: NormalizedMetadata): JSONObject = JSONObject().apply {
+    put("itemId", m.itemId); put("rawTitle", m.rawTitle); put("rawFolder", m.rawFolder)
+    put("seriesTitle", m.seriesTitle ?: JSONObject.NULL)
+    put("season", m.season ?: JSONObject.NULL)
+    put("episode", m.episode ?: JSONObject.NULL)
+    put("episodeTitle", m.episodeTitle ?: JSONObject.NULL)
+    put("special", m.special ?: JSONObject.NULL)
+    put("displayTitle", m.displayTitle)
+    put("sortKey", m.sortKey ?: JSONObject.NULL)
+    put("seasonGroupKey", m.seasonGroupKey ?: JSONObject.NULL)
+    put("seasonGroupTitle", m.seasonGroupTitle ?: JSONObject.NULL)
+    put("proposedSection", m.proposedSection?.let { sectionName(it) } ?: JSONObject.NULL)
+    put("source", m.source); put("confidence", m.confidence)
+    put("reason", m.reason); put("normalizedAt", m.normalizedAt)
+}
+
+fun normalizedFromJson(o: JSONObject): NormalizedMetadata = NormalizedMetadata(
+    itemId = o.optString("itemId"),
+    rawTitle = o.optString("rawTitle"),
+    rawFolder = o.optString("rawFolder"),
+    seriesTitle = o.optString("seriesTitle").takeIf { it.isNotEmpty() },
+    season = o.optInt("season", 0).takeIf { it > 0 },
+    episode = o.optInt("episode", 0).takeIf { it > 0 },
+    episodeTitle = o.optString("episodeTitle").takeIf { it.isNotEmpty() },
+    special = o.optString("special").takeIf { it.isNotEmpty() },
+    displayTitle = o.optString("displayTitle").ifBlank { o.optString("rawTitle") },
+    sortKey = o.optString("sortKey").takeIf { it.isNotEmpty() },
+    seasonGroupKey = o.optString("seasonGroupKey").takeIf { it.isNotEmpty() },
+    seasonGroupTitle = o.optString("seasonGroupTitle").takeIf { it.isNotEmpty() },
+    proposedSection = o.optString("proposedSection").takeIf { it.isNotEmpty() }
+        ?.let { sectionOf(it).let { s -> if (s == Section.NONE) null else s } },
+    source = o.optString("source", "local").ifBlank { "local" },
+    confidence = o.optInt("confidence", 0),
+    reason = o.optString("reason"),
+    normalizedAt = o.optLong("normalizedAt", 0L)
+)
+
+/** Sintetički ključ sezone → osnovni folder, da ručni omot i dalje važi za sve sezone. */
+fun coverKeyOf(key: String): String = key.substringBefore("|season|")
 
 data class Library(
     val items: List<AudioItem>,
@@ -360,6 +425,70 @@ object Store {
         put("overrides", o)
     }
 
+    /* ---------------- virtuelno sređivanje biblioteke (Faza 1) ---------------- */
+    fun normalization(id: String): NormalizedMetadata? =
+        obj("normalizations").optJSONObject(id)?.let { normalizedFromJson(it) }
+    fun allNormalizations(): Map<String, NormalizedMetadata> {
+        val o = obj("normalizations"); val out = LinkedHashMap<String, NormalizedMetadata>()
+        o.keys().forEach { k -> o.optJSONObject(k)?.let { out[k] = normalizedFromJson(it) } }
+        return out
+    }
+    fun setNormalization(m: NormalizedMetadata) {
+        val o = obj("normalizations"); o.put(m.itemId, normalizedToJson(m)); put("normalizations", o)
+    }
+    fun removeNormalization(id: String) {
+        val o = obj("normalizations"); o.remove(id); put("normalizations", o)
+    }
+    fun saveNormalizations(map: Map<String, NormalizedMetadata>) {
+        val o = JSONObject(); map.forEach { (k, v) -> o.put(k, normalizedToJson(v)) }
+        put("normalizations", o)
+    }
+
+    fun proposal(id: String): NormalizedMetadata? =
+        obj("normalizationProposals").optJSONObject(id)?.let { normalizedFromJson(it) }
+    fun allProposals(): Map<String, NormalizedMetadata> {
+        val o = obj("normalizationProposals"); val out = LinkedHashMap<String, NormalizedMetadata>()
+        o.keys().forEach { k -> o.optJSONObject(k)?.let { out[k] = normalizedFromJson(it) } }
+        return out
+    }
+    fun setProposal(m: NormalizedMetadata) {
+        val o = obj("normalizationProposals"); o.put(m.itemId, normalizedToJson(m)); put("normalizationProposals", o)
+    }
+    fun removeProposal(id: String) {
+        val o = obj("normalizationProposals"); o.remove(id); put("normalizationProposals", o)
+    }
+    fun saveProposals(map: Map<String, NormalizedMetadata>) {
+        val o = JSONObject(); map.forEach { (k, v) -> o.put(k, normalizedToJson(v)) }
+        put("normalizationProposals", o)
+    }
+
+    fun isDismissed(id: String): Boolean = obj("normalizationDismissed").optBoolean(id, false)
+    fun dismiss(id: String) {
+        val o = obj("normalizationDismissed"); o.put(id, true); put("normalizationDismissed", o)
+    }
+    fun undismiss(id: String) {
+        val o = obj("normalizationDismissed"); o.remove(id); put("normalizationDismissed", o)
+    }
+    fun allDismissed(): JSONObject = obj("normalizationDismissed")
+
+    /** Snapshot pre svakog automatskog pokretanja, za "Vrati sve". */
+    fun saveNormalizationSnapshot() {
+        val snap = JSONObject()
+        snap.put("normalizations", obj("normalizations"))
+        snap.put("proposals", obj("normalizationProposals"))
+        snap.put("dismissed", obj("normalizationDismissed"))
+        put("normalizationSnapshot", snap)
+    }
+    fun restoreNormalizationSnapshot(): Boolean {
+        val snap = obj("normalizationSnapshot")
+        if (snap.length() == 0) return false
+        put("normalizations", snap.optJSONObject("normalizations") ?: JSONObject())
+        put("normalizationProposals", snap.optJSONObject("proposals") ?: JSONObject())
+        put("normalizationDismissed", snap.optJSONObject("dismissed") ?: JSONObject())
+        return true
+    }
+    fun normalizationSnapshot(): JSONObject = obj("normalizationSnapshot")
+
     fun lastGroupTime(key: String): Long = obj("recent").optLong(key, 0L)
     fun touchGroup(key: String) {
         val o = obj("recent"); o.put(key, System.currentTimeMillis()); put("recent", o)
@@ -475,6 +604,7 @@ object Bus {
     var toastUntil: Long = 0L
     var playRequest: PlayRequest? = null
     var libraryVersion: Int = 0
+    var normalizationVersion: Int = 0
     var seeking: Boolean = false
     var undo: Pair<Long, Long>? = null   // stara pozicija, vreme
     var covers: HashMap<String, android.graphics.Bitmap> = HashMap()
