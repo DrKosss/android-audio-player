@@ -1,13 +1,21 @@
-# Šaptač — Android v1.0.7
+# Šaptač — Android v1.0.8
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.437.454 bajtova  
-SHA-256: `01176731e42695adc0f1fc582fbfb306d057596b054bcb355c5ad53d5f0eb3c1`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.437.334 bajtova  
+SHA-256: `e25aca11c786f7e250d4db75b12c1677125ec399522724b442b92d92cb80d9bb`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota i izvoz liste fajlova; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na svim ekranima osim plejera i podešavanja.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke) i izvoz liste fajlova; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Šta je novo u v1.0.7
+## Šta je novo u v1.0.8
+
+- **Fajl koji svira je označen na listi:** pri povratku sa plejera (strelica nadole, sistemsko `Back` ili donja navigacija) red sa trenutnim fajlom ima tamno-ćilibarsku pozadinu, ćilibarski naslov i mali `play` znak; grupa kojoj pripada je takođe označena. Lista se pre prvog crtanja pomeri na taj red, bez skoka na vrh. Oznaka se osvežava i ako se fajl u redu promeni dok je lista otvorena. Pokrivene su liste knjiga, emisija, `Stand up`, muzičkih foldera, epizoda, numera, poglavlja/liste, mešanih fajlova i feed epizoda.
+- **Menjanje omota samo na olovku:** dodir na celu sliku u plejeru više ne otvara birač slika. Birač se pokreće isključivo klikom na malu olovku u donjem desnom uglu omota; dug dodir na olovku skida ručni izbor i vraća ugrađeni/automatski omot. Uklonjen je i dugi dodir na sličice grupa u listama, koji je ranije isto otvarao birač.
+- **Navigacija uvek vidljiva:** `Muzika / Knjige / Emisije / Stand up` su sada i u samom plejeru i u `Podešavanjima`. Raniji izuzetak za ta dva ekrana je uklonjen; sadržaj, listići, noćni ekran i toast imaju rezervisanih 58 dp, bez linije iznad navigacije. Time je poništeno ranije pravilo „svuda osim plejera i podešavanja“.
+- **Uvoz automatski čekira već uvežene foldere:** pri ulasku u `Uvezi fajlove` svi folderi koji već imaju dodeljenu sekciju (ili je nasleđuju od najbližeg roditelja) unapred su čekirani, kao i `Pojedinačni fajlovi` ako su ranije uvezeni. Potvrda i dalje glasi `Uvezi N foldera` / `Izaberi najmanje jedan folder`, a ručno odčekiravanje se poštuje.
+- **Verzija:** `versionCode 9`, `versionName 1.0.8`; CI `43662151755` (`ASSEMBLE_EXIT=0`, `Verifies`, v2 `true`).
+
+## Ranije ispravke (v1.0.7)
 
 - **Dugme za minimiziranje plejera radi:** strelica nadole sada zaista zatvara veliki plejer. Ako je plejer otvoren iz nekog ekrana, vraća se na taj ekran; ako je otvoren samostalno posle povratka u aplikaciju, odlazi na početni ekran odgovarajuće sekcije (`Knjige / Emisije / Muzika / Stand up`) gde ostaju mini-plejer i donja navigacija. Sistemsko `Back` dugme radi isto. Rotacija ekrana više ne vraća minimizirani plejer nazad, a ako Android ubije proces dok je plejer bio otvoren, i dalje se vraća u poslednji klip.
 
@@ -21,12 +29,12 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 - **Povratak u poslednji klip:** pri svakom povratku u aplikaciju, pa i posle više sati/dana ili ubijenog procesa, otvara se plejer sa poslednjim fajlom i poslednjom pozicijom. Ceo queue, indeks, pozicija, brzina, shuffle/repeat i metapodaci se trajno upisuju u `lastPlayer`; `PlayerService` ih obnavlja pri pokretanju, a `onResume`/`onNewIntent` vraćaju ekran na plejer. Povratak iz sistemskog izbora fajlova/slike ne prekida taj tok.
 - **Sistematizacija po celoj putanji:** predlog sekcije više ne gleda samo ime poslednjeg foldera, nego sve foldere i podfoldere od korena do fajla. Pobeđuje onaj koji je najbliži fajlu: `/Muzika/Stand-up/fajl` → `Stand up`, `/Stand-up/Muzika/fajl` → `Muzika`. Isto pravilo važi i za ručno dodeljenu sekciju nekog roditelja. Prepoznaju se `stand up/standup/komedija/comedy`, `knjiga/book/audiobook`, `podkast/radio/emisija/serija` i `muzika/music/album/mp3`.
 - **Izvoz liste fajlova:** u `Podešavanja → IZVOZ` je dugme `Izvezi listu uvezenih fajlova`. Bira se lokacija i piše `saptac-fajlovi-YYYYMMDD-HHmm.json` (`saptac-library-export-v1`). JSON sadrži svaki `AudioItem` (id, URI, naslov, izvođač, album, trajanje, folder, veličinu, datum, track), sve segmente putanje, najbliži predlog sekcije, efektivnu sekciju i njen izvor, poziciju, status `done`, članstvo u svim grupama (folderi/izvođači/albumi), ručne omote, „mešane“ fajlove, foldere, feedove, SAF korene, podešavanja, pozicije, override, nedavne grupe i poslednji plejer. Format je namerno JSON jer se najlakše direktno dodaje na Arenu radi dalje obrade.
-- **Donja navigacija uvek vidljiva:** `Muzika / Knjige / Emisije / Stand up` su sada na svim ekranima, uključujući detalje, uvoz, raspoređivanje, listiće i noćni ekran. Skriva se samo u samom plejeru i u podešavanjima, kako je traženo. Sadržaj ima rezervisan prostor, a listići/noćni ekran su podignuti iznad navigacije.
+- **Donja navigacija uvek vidljiva:** `Muzika / Knjige / Emisije / Stand up` su sada na svim ekranima, uključujući detalje, uvoz, raspoređivanje, listiće i noćni ekran. U v1.0.5 je još važio izuzetak za sam plejer i podešavanja; od v1.0.8 navigacija više nije skrivena nigde. Sadržaj ima rezervisan prostor, a listići/noćni ekran su podignuti iznad navigacije.
 
 ## Ranije ispravke (v1.0.4)
 
 - **Ikone kao u prototipu:** ispravljeni su oštećeni `pathData` vektori za `prethodno/na početak`, `30 s nazad` i `30 s napred`, kao i za play, check, strelice, refresh i shuffle. `i-prev`/`i-next` sada imaju puni trougao i popunjenu crtu, a `i-b30`/`i-f30` kružnu strelicu, popunjen vrh i centrirani broj `30` u tačnoj razmeri iz SVG `viewBox`-a. Broj je sada vidljiv i na noćnom ekranu.
-- **Ručna ispravka omota:** dodir na omot u plejeru (ili mala olovka u uglu) otvara sistemski izbor slike; izbor se trajno pamti po grupi, ima prednost nad ugrađenim i automatski preuzetim omotom, prikazuje se u listama, mini-plejeru, `MediaSession` i obaveštenju. Dug dodir na omot skida ručni izbor i vraća automatski. Dug dodir na sličicu grupe u listi takođe otvara izbor slike.
+- **Ručna ispravka omota:** v1.0.4 je uvela trajni ručni omot po grupi, koji ima prednost nad ugrađenim i automatski preuzetim omotom i prikazuje se u listama, mini-plejeru, `MediaSession` i obaveštenju. U v1.0.8 je ulaz sužen samo na olovku: dodir na celu sliku i dug dodir na sličicu grupe više ne otvaraju birač; dug dodir na olovku skida ručni izbor i vraća automatski.
 - **Bez prozora na katanac:** uklonjeni su dugme sa katancem, `lockOverlay()`, `Bus.lockPreview` i `ic_lock.xml`. Sistemske kontrole preko `MediaSession` ostaju; nema više internog ekrana „zaključanog prikaza“.
 
 ## Ranije ispravke (v1.0.3)
@@ -59,7 +67,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.0.7` (`versionCode 8`) |
+| Verzija | `1.0.8` (`versionCode 9`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
