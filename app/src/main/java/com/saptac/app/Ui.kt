@@ -95,7 +95,7 @@ fun iconBox(ctx: Context, resId: Int, color: Int = C_T2, sizeDp: Int = 22,
     }
 
 fun cover(ctx: Context, index: Int, initial: String, sizeDp: Int, radiusDp: Float,
-          groupKey: String? = null, onEdit: (() -> Unit)? = null): FrameLayout =
+          groupKey: String? = null): FrameLayout =
     FrameLayout(ctx).apply {
         layoutParams = LinearLayout.LayoutParams(ctx.dp(sizeDp), ctx.dp(sizeDp))
         background = gradientCover(index, radiusDp, ctx)
@@ -117,16 +117,17 @@ fun cover(ctx: Context, index: Int, initial: String, sizeDp: Int, radiusDp: Floa
             t.gravity = Gravity.CENTER
             addView(t, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
         }
-        if (onEdit != null) longClick { onEdit(); true }
     }
 
-fun rowView(ctx: Context, action: (View) -> Unit, longAction: ((View) -> Boolean)? = null): LinearLayout =
+fun rowView(ctx: Context, action: (View) -> Unit, longAction: ((View) -> Boolean)? = null,
+            playing: Boolean = false): LinearLayout =
     horizontal(ctx).apply {
         gravity = Gravity.CENTER_VERTICAL
         setPadding(ctx.dp(10), ctx.dp(9), ctx.dp(10), ctx.dp(9))
         minimumHeight = ctx.dp(60)
         layoutParams = LinearLayout.LayoutParams(-1, -2)
-        background = ripple(rounded(C_TRANSPARENT, 14f, ctx))
+        background = ripple(rounded(if (playing) C_AMBER_D else C_TRANSPARENT, 14f, ctx))
+        if (playing) tag = "nowPlaying"
         click(action)
         if (longAction != null) longClick(longAction)
     }

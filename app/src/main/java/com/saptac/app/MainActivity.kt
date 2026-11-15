@@ -70,6 +70,8 @@ object Nav {
     var filesTarget: String = "loose"
     var focusSearch: Boolean = false
     var coverTarget: String = ""
+    var importSeededVersion: Int = -1
+    var scrollToPlaying: Boolean = false
 }
 
 /** Tanki napredak u mini-plejeru. */
@@ -301,6 +303,7 @@ class MainActivity : android.app.Activity() {
     }
     /** Strelica nadole u plejeru: vrati se na ekran ispod, odnosno na tab sekcije. */
     private fun minimizePlayer() {
+        Nav.scrollToPlaying = true
         val under = Nav.stack.size - 2
         if (under >= 0 && Nav.stack[under].v != "player") {
             Nav.stack = Nav.stack.take(under + 1).toMutableList()
@@ -322,12 +325,14 @@ class MainActivity : android.app.Activity() {
 
     private fun onBack() {
         if (cur().v == "player" && Nav.stack.size <= 1) { minimizePlayer(); return }
+        if (cur().v == "player") Nav.scrollToPlaying = true
         if (Nav.stack.size > 1) Nav.stack.removeAt(Nav.stack.lastIndex)
         Nav.sheet = null
         Bus.night = false
         render()
     }
     private fun tabHome(sec: Section) {
+        if (cur().v == "player") Nav.scrollToPlaying = true
         Nav.tab = sec
         Nav.stack = mutableListOf(Screen(when (sec) {
             Section.BOOKS -> "books"
@@ -433,7 +438,7 @@ class MainActivity : android.app.Activity() {
             Nav.sheet ?: "", Nav.feedId, Nav.catalog.size, Nav.catalogItem?.title ?: "",
             Nav.importSelection.size, Nav.scanning, Nav.moveName, Nav.moveFrom.name,
             Bus.night, Bus.libraryVersion, Bus.toast ?: "",
-            p?.playing, p?.groupKey, p?.index, p?.rate, p?.durationMs,
+            p?.playing, p?.groupKey, p?.index, p?.current?.id, p?.rate, p?.durationMs,
             t?.phase?.name ?: "off", Bus.undo != null,
             st.jump, st.fade, st.extend, st.gShake, st.gVol, st.gScreen,
             st.nextAuto, st.covers, st.autodl, st.wifiOnly, st.timeSpeed,
@@ -468,15 +473,34 @@ class MainActivity : android.app.Activity() {
         val keyBefore = scrollKey()
         val oldScroll = findMainScroll(currentRoot)?.scrollY ?: 0
 
-        val hideNav = cur().v == "player" || cur().v == "settings"
-        val navH = if (hideNav) 0 else c.dp(58) // samo red sa dugmićima, bez linije
+        val navH = c.dp(58) // donja navigacija je uvek tu, bez linije iznad
+        // Ulazak u Uvoz: već uvezeni folderi su automatski čekirani.
+        // Ako skeniranje završi dok smo na Uvozu, ponovi seed za novu verziju biblioteke.
+        if (cur().v == "import") {
+            if (Nav.importSeededVersion != Bus.libraryVersion) {
+                val hasLoose = Store.loose().isNotEmpty()
+                Bus.library.folders.forEach { f ->
+                    // folder je uvezen i ako sekciju nasleđuje od najbližeg roditelja
+                    val assigned = Store.folderSectionForPath(f.key)
+                    val imported = assigned != null ||
+                        (hasLoose && f.key == "Pojedinačni fajlovi")
+                    if (imported) {
+                        Nav.importSelection.add(f.key)
+                        if (!Nav.importSections.containsKey(f.key))
+                            Nav.importSections[f.key] = assigned ?: f.assigned ?: f.suggested
+                    }
+                }
+                Nav.importSeededVersion = Bus.libraryVersion
+            }
+        } else Nav.importSeededVersion = -1
+
         val root = FrameLayout(c).apply { setBackgroundColor(C_BG) }
         val base = vertical(c)
         base.setPadding(0, 0, 0, bottomInsetPx)
         baseRef = base
         base.addView(statusBar())
         val content = screenRoot()
-        if (!hideNav) content.setPadding(0, 0, 0, navH)
+        content.setPadding(0, 0, 0, navH)
         base.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(base, FrameLayout.LayoutParams(-1, -1))
 
@@ -490,8 +514,8 @@ class MainActivity : android.app.Activity() {
                     Gravity.BOTTOM).apply { leftMargin = c.dp(16); rightMargin = c.dp(16); bottomMargin = bottom })
             } else Bus.toast = null
         }
-        // Navigacija je iznad listića i noćnog ekrana: uvek vidljiva osim na playeru/settings-u.
-        if (!hideNav) root.addView(navBar(), FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply {
+        // Navigacija je uvek iznad sadržaja, listića i noćnog ekrana — i u plejeru i u podešavanjima.
+        root.addView(navBar(), FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply {
             bottomMargin = bottomInsetPx
         })
 
@@ -501,15 +525,24 @@ class MainActivity : android.app.Activity() {
         setContentView(root, ViewGroup.LayoutParams(-1, -1))
         currentRoot = root
         // Poziciju skrola vracamo PRE prvog crtanja, pa nema kratkog skoka na vrh.
+        // Posle minimiziranja plejera pomeramo se na označeni fajl koji svira, bez treptaja.
         val restoreY = savedScrollY
-        if (restoreY != 0) {
-            val sv = findMainScroll(root)
+        val scrollToPlaying = Nav.scrollToPlaying
+        Nav.scrollToPlaying = false
+        val sv = findMainScroll(root)
+        val marked = if (scrollToPlaying) root.findViewWithTag<View>("nowPlaying") else null
+        if (restoreY != 0 || (scrollToPlaying && marked != null && sv != null)) {
             sv?.scrollTo(0, restoreY)
-            sv?.viewTreeObserver?.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            val observer = sv?.viewTreeObserver
+            observer?.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
                 override fun onPreDraw(): Boolean {
-                    val obs = sv?.viewTreeObserver
-                    if (obs != null && obs.isAlive) obs.removeOnPreDrawListener(this)
-                    sv?.scrollTo(0, restoreY)
+                    val obs = observer ?: return true
+                    if (obs.isAlive) obs.removeOnPreDrawListener(this)
+                    val y = if (scrollToPlaying) marked?.let {
+                        (offsetInScroll(it, sv!!) - c.dp(12)).coerceAtLeast(0)
+                    } ?: restoreY else restoreY
+                    sv?.scrollTo(0, y)
+                    savedScrollY = y
                     return true
                 }
             })
@@ -733,6 +766,29 @@ class MainActivity : android.app.Activity() {
     /** Posle izmene u mestu: sprecava da uiTicker ponovo nacrta ekran. */
     private fun settleUi() { lastSig = signature() }
 
+    /** Visina child-a unutar ScrollView-a (za skok do fajla koji svira). */
+    private fun offsetInScroll(v: View, sv: ScrollView): Int {
+        var y = 0
+        var cur: View? = v
+        while (cur != null && cur !== sv) {
+            y += cur.top
+            cur = cur.parent as? View
+        }
+        return y
+    }
+
+    /** Da li se ovaj fajl trenutno pušta. */
+    private fun isPlayingItem(itemId: String): Boolean = Bus.player?.current?.id == itemId
+    /** Amber naslov za red koji svira. */
+    private fun rowTitle(c: Context, value: String, active: Boolean): TextView =
+        text(c, value, 14.5f, if (active) C_AMBER else C_T1, bold = active)
+    /** Mali amber trouglić u redu koji svira; prazan slot inače. */
+    private fun playingSlot(c: Context, active: Boolean): View = FrameLayout(c).apply {
+        layoutParams = LinearLayout.LayoutParams(c.dp(22), c.dp(22))
+        if (active) addView(icon(c, R.drawable.ic_play, C_AMBER, 12),
+            FrameLayout.LayoutParams(c.dp(12), c.dp(12), Gravity.CENTER))
+    }
+
     /* ------------------------------------------------------------ ekrani */
     private fun screenRoot(): View = when (cur().v) {
         "books" -> booksScreen()
@@ -780,11 +836,11 @@ class MainActivity : android.app.Activity() {
             }
             val row = rowView(c, { openBook(g) }, {
                 moveDialog(g.title, Section.BOOKS, g.items); true
-            })
-            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
+            }, playing = Bus.player?.groupKey == g.key)
+            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key))
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                addView(text(c, g.title, 14.5f, C_T1))
+                addView(rowTitle(c, g.title, Bus.player?.groupKey == g.key))
                 addView(text(c, sub, 12f, C_T2))
                 if (pos > 0 && !done && g.durationMs > 0)
                     addView(progressLine(c, pos.toFloat() / g.durationMs))
@@ -818,11 +874,11 @@ class MainActivity : android.app.Activity() {
                     val started = g.items.any { LibraryManager.episodeStatus(it) == "started" }
                     val row = rowView(c, { go("seriesdetail", g.key) }, {
                         moveDialog(g.title, Section.SERIES, g.items); true
-                    })
-                    row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
+                    }, playing = Bus.player?.groupKey == g.key)
+                    row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key))
                     val tx = vertical(c).apply {
                         layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                        addView(text(c, g.title, 14.5f, C_T1))
+                        addView(rowTitle(c, g.title, Bus.player?.groupKey == g.key))
                         addView(text(c, "${g.items.size} epizoda" +
                             (if (fresh > 0) " · $fresh nove" else "") + if (started) " · u toku" else "", 12f, C_T2))
                     }
@@ -926,11 +982,11 @@ class MainActivity : android.app.Activity() {
             }
             val row = rowView(c, { openStandup(g) }, {
                 moveDialog(g.title, Section.STANDUP, g.items); true
-            })
-            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
+            }, playing = Bus.player?.groupKey == g.key)
+            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key))
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                addView(text(c, g.title, 14.5f, C_T1))
+                addView(rowTitle(c, g.title, Bus.player?.groupKey == g.key))
                 addView(text(c, sub, 12f, C_T2))
                 if (pos > 0 && !done && g.durationMs > 0)
                     addView(progressLine(c, pos.toFloat() / g.durationMs))
@@ -1032,15 +1088,18 @@ class MainActivity : android.app.Activity() {
         val list = listHost()
         g.items.forEachIndexed { i, item ->
             val st = LibraryManager.episodeStatus(item)
+            val np = isPlayingItem(item.id)
             val row = rowView(c, { openEpisode(g, i) }, {
                 moveDialog(item.title, Section.SERIES, listOf(item), g); true
-            })
+            }, playing = np)
             val status = FrameLayout(c).apply {
                 layoutParams = LinearLayout.LayoutParams(c.dp(22), c.dp(22))
-                when (st) {
-                    "done" -> addView(icon(c, R.drawable.ic_check, C_T2, 16),
+                when {
+                    np -> addView(icon(c, R.drawable.ic_play, C_AMBER, 14),
+                        FrameLayout.LayoutParams(c.dp(14), c.dp(14), Gravity.CENTER))
+                    st == "done" -> addView(icon(c, R.drawable.ic_check, C_T2, 16),
                         FrameLayout.LayoutParams(c.dp(16), c.dp(16), Gravity.CENTER))
-                    "started" -> addView(View(c).apply {
+                    st == "started" -> addView(View(c).apply {
                         background = GradientDrawable().apply {
                             shape = GradientDrawable.OVAL; setColor(Color.TRANSPARENT)
                             setStroke(c.dp(2), C_AMBER)
@@ -1056,7 +1115,7 @@ class MainActivity : android.app.Activity() {
             row.addView(status)
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-                addView(text(c, item.title, 14.5f, C_T1))
+                addView(rowTitle(c, item.title, np))
                 if (st == "started") addView(progressLine(c,
                     Store.position(item.id).toFloat() / item.durationMs.coerceAtLeast(1)))
             }
@@ -1064,7 +1123,7 @@ class MainActivity : android.app.Activity() {
             val pos = Store.position(item.id)
             row.addView(text(c, if (st == "started") "još ${((item.durationMs - pos) / 60000)} min"
             else "${(item.durationMs / 60000)} min", 12f, C_T2))
-            if (st == "done") row.alpha = 0.42f
+            if (st == "done" && !np) row.alpha = 0.42f
             list.addView(row)
         }
         return page(header(g.title, plus = false, gear = false, back = true), actions, note,
@@ -1092,11 +1151,11 @@ class MainActivity : android.app.Activity() {
         groups.forEach { g ->
             val row = rowView(c, { go("folder", g.key) }, {
                 moveDialog(g.title, Section.MUSIC, g.items); true
-            })
-            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key) { pickCover(g.key) })
+            }, playing = Bus.player?.groupKey == g.key)
+            row.addView(cover(c, g.cover, g.initial, 48, 11f, g.key))
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                addView(text(c, g.title, 14.5f, C_T1))
+                addView(rowTitle(c, g.title, Bus.player?.groupKey == g.key))
                 addView(text(c, "${g.items.size} numera", 12f, C_T2))
             }
             row.addView(tx)
@@ -1131,12 +1190,14 @@ class MainActivity : android.app.Activity() {
         }
         val list = listHost()
         g.items.forEachIndexed { i, item ->
+            val np = isPlayingItem(item.id)
             val row = rowView(c, { openTrack(g, i) }, {
                 moveDialog(item.title, Section.MUSIC, listOf(item), g); true
-            })
+            }, playing = np)
+            row.addView(playingSlot(c, np))
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-                addView(text(c, item.title, 14.5f, C_T1))
+                addView(rowTitle(c, item.title, np))
                 addView(text(c, "${g.title} · ${fmtTime(item.durationMs)}", 12f, C_T2))
             }
             row.addView(tx)
@@ -1336,9 +1397,8 @@ class MainActivity : android.app.Activity() {
         }
         frame.addView(edit, FrameLayout.LayoutParams(c.dp(28), c.dp(28),
             Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, c.dp(10), c.dp(10)) })
-        // Dodir bira novi omot; dug dodir skida ručno izabran i vraća omot iz fajla/mreže.
-        frame.click { pickCover(p.groupKey) }
-        frame.longClick {
+        // Samo olovka menja omot: dodir bira sliku, dug dodir na olovku skida ručni izbor.
+        edit.longClick {
             Store.clearCustomCover(p.groupKey)
             Bus.covers.remove(p.groupKey)
             coverRequested.remove(p.groupKey)
@@ -1421,11 +1481,11 @@ class MainActivity : android.app.Activity() {
                 val row = rowView(c, {
                     playItems(p.kind, p.groupKey, p.groupTitle, p.sub, p.queue, i, 0L)
                     Nav.stack = mutableListOf(Screen("player")); render()
-                })
+                }, playing = here)
                 row.addView(statusDot(c, here))
                 row.addView(vertical(c).apply {
                     layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-                    addView(text(c, item.title, 14.5f, if (here) C_AMBER else C_T1))
+                    addView(rowTitle(c, item.title, here))
                     addView(text(c, fmtTime(offset), 12f, C_T2))
                 })
                 row.addView(text(c, fmtTime(item.durationMs), 12f, C_T2))
@@ -2014,12 +2074,13 @@ class MainActivity : android.app.Activity() {
         val items = LibraryManager.mixed()
         if (items.isEmpty()) list.addView(emptyState("Nema sumnjivih fajlova."))
         items.forEach { (item, looks) ->
+            val np = isPlayingItem(item.id)
             val row = rowView(c, {
                 Store.setOverride(item.id, looks)
                 Bus.libraryVersion++
                 Bus.log("Mešani fajl premešten: ${item.title} → ${sectionName(looks)}")
                 toast("Premešteno u ${sectionName(looks)}: ${item.title}")
-            })
+            }, playing = np)
             row.addView(FrameLayout(c).apply {
                 layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
                 background = rounded(C_S2, 11f, c)
@@ -2028,7 +2089,7 @@ class MainActivity : android.app.Activity() {
             })
             row.addView(vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                addView(text(c, item.title, 14.5f, C_T1))
+                addView(rowTitle(c, item.title, np))
                 addView(text(c, "u folderu ${item.folderName} · ${fmtShort(item.durationMs)}", 12f, C_T2))
             })
             val badge = text(c, "→ ${sectionName(looks)}", 11.5f, C_AMBER, bold = true)
@@ -2091,7 +2152,8 @@ class MainActivity : android.app.Activity() {
         if (f.episodes.isEmpty()) list.addView(emptyState("Nema epizoda. Osveži feed."))
         f.episodes.forEachIndexed { i, ep ->
             val local = ep.local.isNotBlank() && File(ep.local).exists()
-            val row = rowView(c, { playFeedEpisode(f, i) })
+            val np = local && Bus.player?.current?.uri == Uri.fromFile(File(ep.local)).toString()
+            val row = rowView(c, { playFeedEpisode(f, i) }, playing = np)
             row.addView(FrameLayout(c).apply {
                 layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
                 background = rounded(C_S2, 11f, c)
@@ -2100,7 +2162,7 @@ class MainActivity : android.app.Activity() {
             })
             row.addView(vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                addView(text(c, ep.title, 14.5f, C_T1))
+                addView(rowTitle(c, ep.title, np))
                 addView(text(c, if (local) "u telefonu" else "nije preuzeto · dodir preuzima i pušta", 12f, C_T2))
             })
             row.addView(text(c, if (ep.durationMs > 0) "${ep.durationMs / 60000} min" else "—", 12f, C_T2))
@@ -2320,7 +2382,7 @@ class MainActivity : android.app.Activity() {
                 )
                 setStroke(c.dp(1), C_LINE)
             }
-            val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(58)
+            val navH = c.dp(58)
             setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(8) + navH + bottomInsetPx)
             click { }
             addView(View(c).apply { background = rounded(Color.rgb(0x3A, 0x36, 0x32), 2f, c) },
@@ -2477,7 +2539,7 @@ class MainActivity : android.app.Activity() {
         val c = this
         val p = Bus.player
         val t = Bus.timer
-        val navH = if (cur().v == "player" || cur().v == "settings") 0 else c.dp(58)
+        val navH = c.dp(58)
         val root = vertical(c).apply {
             setBackgroundColor(Color.rgb(0x05, 0x04, 0x03))
             setPadding(0, 0, 0, navH + bottomInsetPx)
