@@ -1,14 +1,22 @@
-# Šaptač — Android v1.2.2
+# Šaptač — Android v1.2.3
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.561.534 bajtova
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.563.346 bajtova
 
-SHA-256: `ba8d1063ca768c82196d37fa60214836d3696fbc723f58575ee41e95c1825081`
+SHA-256: `4bd3d6bdca574fcda5362aaa437aadb4f2c501468892b41ec468d769abdb93b8`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), jedan `+` meni za uvoz, sređivanje, internet i izvoz, čista imena knjiga sa autorom ispod, izvođač numere ispod pesme, virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem, ručna virtuelna imena i sezone iz `S##E##`, pretraga cele biblioteke i čipovi za sortiranje; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), jedan `+` meni za uvoz, sređivanje, internet i izvoz, čista imena knjiga sa autorom ispod, izvođač numere ispod pesme u plejeru, `X` za isključivanje plejera, žuti balončići za tabove u `Emisijama`, virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem, ručna virtuelna imena i sezone iz `S##E##`, pretraga cele biblioteke i čipovi za sortiranje; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Šta je novo u v1.2.2 — tri ispravke prikaza i uvoza
+## Šta je novo u v1.2.3 — plejer i izgled Emisija
+
+- **Muzika u plejeru:** naslov je ime pesme, a red ispod njega više nije ime foldera nego `artist` tag, odnosno `Nepoznat izvođač` kada tag nedostaje. Isto važi za mini-plejer: prvi red je pesma, drugi izvođač. `MediaSession` i obaveštenje takođe nose ime pesme i izvođača; kod knjiga ostaje autor, a kod emisija i Stand upa ime grupe.
+- **`X` u gornjem desnom uglu plejera:** novo dugme zaustavlja reprodukciju, sklanja mini-plejer i obaveštenje, briše `lastPlayer` da se plejer ne bi sam vratio pri povratku u aplikaciju i vraća na odgovarajući tab. Strelica nadole i dalje samo minimizira plejer i pušta muziku / knjigu / emisiju u pozadini.
+- **Emisije kao ostale sekcije:** `Folderi / Feedovi / Katalog` sada su čipovi u istom vizuelnom jeziku kao `Knjige`, `Muzika` i `Stand up`. Aktivni `Folderi` je žuti balončić; uklonjeni su tekstualni tab sa crtom i dodatni razmak ispod čipova, pa lista počinje odmah ispod njih.
+- **Bez promene osnovnog ponašanja:** četiri taba, uvek vidljiva donja navigacija, reprodukcija u pozadini, omot samo preko olovke, virtuelno sređivanje, snapshot / `Vrati sve`, Wi-Fi podrazumevano, mobilni uz potvrdu svaki put i pravilo „samo predlog, ja potvrdim“ ostaju netaknuti. Faza 3 i dalje nije urađena.
+- **Verzija:** `versionCode 17`, `versionName 1.2.3`; izvorni commit `400ae6f`, CI `43806975217` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`), artifact commit `74820ab`.
+
+## Ranije ispravke (v1.2.2) — tri ispravke prikaza i uvoza
 
 - **Muzika po folderima:** ispod svake pesme više ne piše ime foldera, nego `artist` tag te pesme. Desno ostaje trajanje; kada tag nedostaje ili je `<unknown>` / jednak imenu foldera, prikazuje se `Nepoznat izvođač`. Grupisanje po folderima, `Loop`, `Shuffle` i ostali prikazi ostaju netaknuti.
 - **Emisije bez posebnog uvoza i bez foldera nepoznatih fajlova:** uklonjeni su posebni redovi / dugmad `Uvezi foldere i fajlove` i `Nepoznati / mešani fajlovi`, kao i ceo ekran mešanih fajlova i njegov link u `+ / Sređivanje`. Prazna stanja sada samo kažu da uvoz ide preko `+` menija; `+ / Uvoz` je jedino mesto za izbor foldera i pojedinačnih fajlova. Neuvezeni fajlovi se ne prikazuju kao virtuelna grupa u `Emisijama`. Predlozi za sređivanje i dalje postoje u `+ / Sređivanje`, bez posebnog foldera.
@@ -146,7 +154,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.2.2` (`versionCode 16`) |
+| Verzija | `1.2.3` (`versionCode 17`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
