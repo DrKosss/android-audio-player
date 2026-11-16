@@ -25,6 +25,8 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.WindowInsets
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
@@ -823,6 +825,12 @@ class MainActivity : android.app.Activity() {
         render()
     }
 
+    private fun hideKeyboard(v: View) {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        imm?.hideSoftInputFromWindow(v.windowToken, 0)
+        v.clearFocus()
+    }
+
     private fun openInfoDialog(item: AudioItem? = null, group: Group? = null, from: Section) {
         Nav.infoItem = item
         Nav.infoGroup = group
@@ -840,7 +848,7 @@ class MainActivity : android.app.Activity() {
         Bus.libraryVersion++
         Bus.log("Ručno ime: ${draft.ifBlank { original }}")
         Bus.showToast("Ime sačuvano")
-        closeInfo()
+        render()
     }
 
     private fun restoreInfoTitle() {
@@ -849,7 +857,7 @@ class MainActivity : android.app.Activity() {
         Bus.libraryVersion++
         Bus.log("Vraćeno originalno ime: ${infoDisplayName()}")
         Bus.showToast("Vraćeno originalno ime")
-        closeInfo()
+        render()
     }
 
     private fun applyInfoSection(sec: Section?) {
@@ -859,49 +867,9 @@ class MainActivity : android.app.Activity() {
         Bus.libraryVersion++
         Bus.log("Ručno raspoređeno: ${infoDisplayName()} → ${infoSectionLabel(sec)}")
         Bus.showToast(if (sec == null) "Sekcija uklonjena" else "Premešteno u ${infoSectionLabel(sec)}")
-        closeInfo()
+        render()
     }
 
-    /** Poseban dijalog za ime: Android sam podiže polje iznad tastature. */
-    private fun renameDialog() {
-        val c = this
-        if (Nav.infoItem == null && Nav.infoGroup == null) return
-        infoKey() ?: return
-        val current = currentInfoTitle()
-        val edit = EditText(c).apply {
-            setText(current)
-            setSelection(text.length)
-            setTextColor(C_T1)
-            setHintTextColor(C_T3)
-            textSize = 15f
-            inputType = InputType.TYPE_CLASS_TEXT
-            isSingleLine = true
-            background = rounded(C_S2, 10f, c)
-            setPadding(c.dp(14), c.dp(12), c.dp(14), c.dp(12))
-        }
-        val box = FrameLayout(c).apply {
-            setPadding(c.dp(20), c.dp(6), c.dp(20), c.dp(6))
-            addView(edit, FrameLayout.LayoutParams(-1, -2))
-        }
-        val dlg = AlertDialog.Builder(c)
-            .setTitle("Ručno ime")
-            .setMessage("Ime je samo u aplikaciji; fajl na disku ostaje netaknut.")
-            .setView(box)
-            .setPositiveButton("Sačuvaj") { _, _ -> saveInfoTitle(edit.text.toString()) }
-            .setNegativeButton("Otkaži") { _, _ -> }
-            .setNeutralButton("Vrati original") { _, _ -> restoreInfoTitle() }
-            .create()
-        dlg.setOnShowListener {
-            edit.requestFocus()
-            dlg.window?.setSoftInputMode(
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-            )
-        }
-        dlg.show()
-    }
-
-    /** Dugi klik na fajl ili grupu: podaci, virtuelno ime i ručna sekcija. */
     /** Dugi klik na fajl ili grupu: podaci, virtuelno ime i ručna sekcija. */
     private fun infoSheet(sheet: LinearLayout) {
         val c = this
@@ -915,18 +883,31 @@ class MainActivity : android.app.Activity() {
         fun line(label: String, value: String) {
             body.addView(text(c, "$label: $value", 11.5f, C_T2))
         }
-        body.addView(text(c, if (item != null) "Podaci o fajlu" else "Podaci o grupi",
-            17f, C_T1, bold = true))
+        fun pathLine(target: AudioItem?) {
+            val value = target?.let { diskPathOf(it) } ?: "—"
+            body.addView(text(c, "Puna putanja: $value", 10.5f, C_T2).apply {
+                setPadding(0, c.dp(2), 0, c.dp(2))
+                setTextIsSelectable(true)
+            })
+        }
+
+        val head = horizontal(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        head.addView(text(c, if (item != null) "Podaci o fajlu" else "Podaci o grupi",
+            17f, C_T1, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
+        head.addView(iconBox(c, R.drawable.ic_x, C_T2, 20, 4) { closeInfo() })
+        body.addView(head)
         body.addView(miniSectionLabel("DOSTUPNI PODACI"))
+
         if (item != null) {
             line("Original", item.title)
             line("Prikaz", current)
             line("Izvođač", item.artist.ifBlank { "—" })
             line("Album", item.album.ifBlank { "—" })
-            line("Žanr", item.genre.ifBlank { "—" })
             line("Trajanje", fmtTime(item.durationMs))
-            line("Folder", item.folderName)
-            line("Sekcija", infoSectionLabel(LibraryManager.sectionOf(item)))
+            pathLine(item)
             LibraryManager.manualSeasonOf(item)?.let { ms ->
                 line("Sezona iz imena", "S" + String.format(Locale.US, "%02d", ms.season))
                 ms.episode?.let { line("Epizoda iz imena", "E" + String.format(Locale.US, "%02d", it)) }
@@ -942,10 +923,8 @@ class MainActivity : android.app.Activity() {
             line("Fajlova", group.items.size.toString())
             line("Izvođač", first?.artist?.takeIf { it.isNotBlank() } ?: "—")
             line("Album", first?.album?.takeIf { it.isNotBlank() } ?: "—")
-            line("Žanr", first?.genre?.takeIf { it.isNotBlank() } ?: "—")
             line("Trajanje", fmtTime(group.items.sumOf { it.durationMs }))
-            line("Folder", first?.folderName ?: "—")
-            line("Sekcija", infoSectionLabel(Nav.infoFrom))
+            pathLine(first)
             if (Nav.infoFrom == Section.STANDUP && first != null) {
                 line("Izvođač iz imena", LibraryManager.standupArtist(first).ifBlank { "—" })
                 line("Show iz imena", LibraryManager.standupShow(first).ifBlank { "—" })
@@ -956,24 +935,49 @@ class MainActivity : android.app.Activity() {
         Store.normalization(probeId)?.let { m ->
             line("Sređeno", "${m.displayTitle} · ${m.source} · ${m.confidence}%")
         }
-        Store.proposal(probeId)?.let { m ->
-            line("Predlog", "${m.displayTitle} · ${m.source} · ${m.confidence}%")
-            m.onlineSource?.let { line("Internet", "$it · ${m.onlineConfidence}%") }
-        }
-        body.addView(miniSectionLabel("RUČNO IME · VIRTUELNO"))
-        body.addView(text(c, current, 14f, C_T1, bold = true).apply {
+
+        val edit = EditText(c).apply {
+            setText(current)
+            setSelection(text.length)
+            hint = "Ručno ime"
+            setTextColor(C_T1)
+            setHintTextColor(C_T3)
+            textSize = 14f
+            inputType = InputType.TYPE_CLASS_TEXT
+            isSingleLine = true
+            imeOptions = EditorInfo.IME_ACTION_DONE
             background = rounded(C_S2, 10f, c)
             setPadding(c.dp(12), c.dp(10), c.dp(12), c.dp(10))
-            click { renameDialog() }
-        })
-        val saveRow = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
-        saveRow.addView(actionButton(c, "Promeni ime", true) { renameDialog() },
-            LinearLayout.LayoutParams(0, c.dp(42), 1f))
-        saveRow.addView(actionButton(c, "Vrati original", false) { restoreInfoTitle() },
-            LinearLayout.LayoutParams(0, c.dp(42), 1f).apply { marginStart = c.dp(8) })
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = c.dp(14)
+                bottomMargin = c.dp(12)
+            }
+        }
+        body.addView(edit)
+        val saveRow = horizontal(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = c.dp(10) }
+        }
+        saveRow.addView(actionButton(c, "Sačuvaj ime", true) {
+            hideKeyboard(edit)
+            saveInfoTitle(edit.text.toString())
+        }, LinearLayout.LayoutParams(0, c.dp(42), 1f))
+        saveRow.addView(actionButton(c, "Vrati original", false) {
+            hideKeyboard(edit)
+            restoreInfoTitle()
+        }, LinearLayout.LayoutParams(0, c.dp(42), 1f).apply { marginStart = c.dp(8) })
         body.addView(saveRow)
+        edit.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                hideKeyboard(edit)
+                saveInfoTitle(edit.text.toString())
+                true
+            } else false
+        }
+
         body.addView(miniSectionLabel("RASPOREDI U SEKCIJU"))
-        val secRow = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
+        val secRow = horizontal(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = c.dp(10) }
+        }
         listOf(Section.BOOKS, Section.SERIES, Section.MUSIC, Section.STANDUP).forEach { sec ->
             val active = sec == Nav.infoFrom
             val cell = text(c, sectionName(sec), 11.5f, if (active) C_INK else C_T1, bold = active).apply {
@@ -989,14 +993,14 @@ class MainActivity : android.app.Activity() {
             gravity = Gravity.CENTER
             background = rounded(C_S2, 10f, c)
             setPadding(c.dp(8), c.dp(9), c.dp(8), c.dp(9))
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = c.dp(4) }
             click { applyInfoSection(null) }
         })
         body.addView(text(c, "Ime je samo u aplikaciji; fajl na disku ostaje netaknut.",
             11.5f, C_T3).apply { setPadding(0, c.dp(12), 0, 0) })
-        val maxH = (resources.displayMetrics.heightPixels - c.dp(180))
-            .coerceAtLeast(c.dp(280)).coerceAtMost(c.dp(480))
+
         val sc = ScrollView(c).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, maxH)
+            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
         }
@@ -2534,6 +2538,7 @@ class MainActivity : android.app.Activity() {
             fo.put("normalizationProposal", Store.proposal(item.id)?.let { normalizedToJson(it) } ?: JSONObject.NULL)
             fo.put("manualTitle", Store.manualTitle("item:" + item.id) ?: JSONObject.NULL)
             fo.put("displayTitle", LibraryManager.displayTitle(item))
+            fo.put("diskPath", diskPathOf(item))
             val ms = LibraryManager.manualSeasonOf(item)
             fo.put("manualSeason", ms?.let { String.format(Locale.US, "S%02d", it.season) } ?: JSONObject.NULL)
             fo.put("manualEpisode", ms?.episode?.let { String.format(Locale.US, "E%02d", it) } ?: JSONObject.NULL)
@@ -2869,7 +2874,8 @@ class MainActivity : android.app.Activity() {
             title = ep.title, artist = f.author, album = f.title,
             durationMs = if (ep.durationMs > 0) ep.durationMs else file.length() * 8_000L / 128_000L,
             folderKey = "feed:${f.id}", folderName = f.title,
-            size = file.length(), added = file.lastModified(), track = 0
+            size = file.length(), added = file.lastModified(), track = 0,
+            path = file.absolutePath
         )
         playItems(Kind.EPISODE, "feed:${f.id}", f.title, ep.title, listOf(item), 0)
     }
@@ -3033,26 +3039,31 @@ class MainActivity : android.app.Activity() {
     /* ------------------------------------------------------------ listići (sheet) */
     private fun sheetOverlay(): View {
         val c = this
+        val isInfo = Nav.sheet == "info"
+        val navH = c.dp(58)
         val scrim = FrameLayout(c).apply {
             background = android.graphics.drawable.ColorDrawable(Color.argb(184, 0, 0, 0))
             click { Nav.sheet = null; render() }
         }
+        val radius = c.dp(26).toFloat()
         val sheet = vertical(c).apply {
             background = GradientDrawable().apply {
                 setColor(C_S1)
-                cornerRadii = floatArrayOf(
-                    c.dp(26).toFloat(), c.dp(26).toFloat(), c.dp(26).toFloat(), c.dp(26).toFloat(),
-                    0f, 0f, 0f, 0f
-                )
+                cornerRadii = if (isInfo)
+                    floatArrayOf(radius, radius, radius, radius, radius, radius, radius, radius)
+                else
+                    floatArrayOf(radius, radius, radius, radius, 0f, 0f, 0f, 0f)
                 setStroke(c.dp(1), C_LINE)
             }
-            val navH = c.dp(58)
-            setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(8) + navH + bottomInsetPx)
+            setPadding(c.dp(18), c.dp(10), c.dp(18),
+                if (isInfo) c.dp(12) else c.dp(8) + navH + bottomInsetPx)
             click { }
-            addView(View(c).apply { background = rounded(Color.rgb(0x3A, 0x36, 0x32), 2f, c) },
-                LinearLayout.LayoutParams(c.dp(36), c.dp(4)).apply {
-                    gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = c.dp(16)
-                })
+            if (!isInfo) {
+                addView(View(c).apply { background = rounded(Color.rgb(0x3A, 0x36, 0x32), 2f, c) },
+                    LinearLayout.LayoutParams(c.dp(36), c.dp(4)).apply {
+                        gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = c.dp(16)
+                    })
+            }
         }
         when (Nav.sheet) {
             "timer" -> timerSheet(sheet)
@@ -3060,7 +3071,12 @@ class MainActivity : android.app.Activity() {
             "move" -> moveSheet(sheet)
             "info" -> infoSheet(sheet)
         }
-        scrim.addView(sheet, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+        val lp = if (isInfo)
+            FrameLayout.LayoutParams(-1, -1, Gravity.TOP).apply {
+                setMargins(0, c.dp(32), 0, navH + bottomInsetPx)
+            }
+        else FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM)
+        scrim.addView(sheet, lp)
         return scrim
     }
 

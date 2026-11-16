@@ -25,6 +25,15 @@ private fun estimateDuration(sizeBytes: Long): Long =
 private fun cleanTitle(name: String): String =
     name.substringBeforeLast('.', name).trim().ifEmpty { "Bez naziva" }
 
+/** Ako MediaStore ne vrsti _data, složimo apsolutnu putanju iz RELATIVE_PATH + imena. */
+private fun storagePath(relative: String, displayName: String): String {
+    val root = Environment.getExternalStorageDirectory().absolutePath.trimEnd('/')
+    val raw = relative.replace('\\', '/').trim()
+    if (raw.startsWith("/")) return raw.trimEnd('/') + "/" + displayName
+    val rel = raw.trim('/')
+    return if (rel.isBlank()) "$root/$displayName" else "$root/$rel/$displayName"
+}
+
 /** Žanr iz ID3/MediaStore-a, uz blagi fallback na ime foldera kad taga nema. */
 private val GENRE_WORDS = listOf(
     "rock" to "Rock", "pop" to "Pop", "jazz" to "Jazz", "blues" to "Blues",
@@ -196,15 +205,23 @@ object LibraryManager {
                 MediaStore.MediaColumns.RELATIVE_PATH,
                 MediaStore.Audio.Media.TRACK
             )
-            val projection = baseProjection + MediaStore.Audio.Media.GENRE
+            val projection = baseProjection + MediaStore.Audio.Media.GENRE +
+                MediaStore.Audio.Media.DATA
             val cursor = try {
                 ctx.contentResolver.query(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, null, null, null
                 )
             } catch (_: Exception) {
-                ctx.contentResolver.query(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, baseProjection, null, null, null
-                )
+                try {
+                    ctx.contentResolver.query(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                        baseProjection + MediaStore.Audio.Media.GENRE, null, null, null
+                    )
+                } catch (_: Exception) {
+                    ctx.contentResolver.query(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, baseProjection, null, null, null
+                    )
+                }
             }
             cursor?.use { c ->
                 val iId = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -219,6 +236,7 @@ object LibraryManager {
                 val iRel = c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
                 val iTrack = c.getColumnIndex(MediaStore.Audio.Media.TRACK)
                 val iGenre = c.getColumnIndex(MediaStore.Audio.Media.GENRE)
+                val iData = c.getColumnIndex(MediaStore.Audio.Media.DATA)
                 while (c.moveToNext()) {
                     val id = c.getLong(iId)
                     val name = c.getString(iName) ?: "audio"
@@ -236,6 +254,13 @@ object LibraryManager {
                     val uri = ContentUris.withAppendedId(
                         MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
                     ).toString()
+                    val rawData = if (iData >= 0) c.getString(iData) ?: "" else ""
+                    val diskPath = when {
+                        rawData.isBlank() -> storagePath(rel, name)
+                        rawData.startsWith("/") -> rawData
+                        else -> Environment.getExternalStorageDirectory().absolutePath
+                            .trimEnd('/') + "/" + rawData.trimStart('/')
+                    }
                     val artistVal = (if (iArtist >= 0) c.getString(iArtist) else null)
                         ?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: ""
                     val albumVal = (if (iAlbum >= 0) c.getString(iAlbum) else null)
@@ -253,7 +278,7 @@ object LibraryManager {
                         size = if (iSize >= 0) c.getLong(iSize) else 0L,
                         added = if (iDate >= 0) c.getLong(iDate) * 1000L else 0L,
                         track = if (iTrack >= 0) c.getInt(iTrack) else 0,
-                        genre = genreVal
+                        genre = genreVal, path = diskPath
                     )
                     byId[item.uri] = item
                 }
@@ -300,7 +325,7 @@ object LibraryManager {
                     durationMs = estimateDuration(doc.length()),
                     folderKey = "Pojedinačni fajlovi", folderName = "Pojedinačni fajlovi",
                     size = doc.length(), added = doc.lastModified(), track = 0,
-                    genre = guessGenre(name, "Pojedinačni fajlovi")
+                    genre = guessGenre(name, "Pojedinačni fajlovi"), path = uri
                 )
                 byId[uri] = item
                 Store.setOverride(item.id, sec)
@@ -331,7 +356,8 @@ object LibraryManager {
                     durationMs = estimateDuration(f.length()),
                     folderKey = folderKey, folderName = f.parentFile?.name ?: "Telefon",
                     size = f.length(), added = f.lastModified(), track = 0,
-                    genre = guessGenre(f.parentFile?.name ?: "", f.name)
+                    genre = guessGenre(f.parentFile?.name ?: "", f.name),
+                    path = f.absolutePath
                 )
             }
         }
@@ -355,7 +381,7 @@ object LibraryManager {
                     durationMs = estimateDuration(d.length()),
                     folderKey = folderKey, folderName = folderKey.substringAfterLast('/'),
                     size = d.length(), added = d.lastModified(), track = 0,
-                    genre = guessGenre(folderKey, name)
+                    genre = guessGenre(folderKey, name), path = uri
                 )
             }
         }

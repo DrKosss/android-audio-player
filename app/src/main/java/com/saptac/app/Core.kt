@@ -98,8 +98,16 @@ data class AudioItem(
     val size: Long,
     val added: Long,
     val track: Int,
-    val genre: String = ""
+    val genre: String = "",
+    val path: String = ""
 )
+
+/** Prava putanja kad postoji, inače URI iz kog fajl može da se prepozna. */
+fun diskPathOf(a: AudioItem): String = when {
+    a.path.isNotBlank() -> a.path
+    a.uri.startsWith("file://") -> a.uri.removePrefix("file://")
+    else -> a.uri
+}
 
 data class Group(
     val key: String,
@@ -306,6 +314,7 @@ fun audioItemToJson(a: AudioItem): JSONObject = JSONObject().apply {
     put("durationMs", a.durationMs); put("folderKey", a.folderKey)
     put("folderName", a.folderName); put("size", a.size)
     put("added", a.added); put("track", a.track); put("genre", a.genre)
+    put("path", a.path)
 }
 
 fun audioItemFromJson(o: JSONObject): AudioItem = AudioItem(
@@ -314,7 +323,7 @@ fun audioItemFromJson(o: JSONObject): AudioItem = AudioItem(
     album = o.optString("album"), durationMs = o.optLong("durationMs"),
     folderKey = o.optString("folderKey"), folderName = o.optString("folderName"),
     size = o.optLong("size"), added = o.optLong("added"), track = o.optInt("track"),
-    genre = o.optString("genre", "")
+    genre = o.optString("genre", ""), path = o.optString("path", "")
 )
 
 fun playerStateFromJson(o: JSONObject): PlayerState? {
