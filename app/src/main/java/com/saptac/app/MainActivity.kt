@@ -53,7 +53,6 @@ object Nav {
     var chips: String = "sve"
     var musicTab: String = "folderi"
     var seriesTab: String = "folderi"
-    var standupChips: String = "sve"
     var query: String = ""
     var sheet: String? = null
     var moveName: String = ""
@@ -75,10 +74,12 @@ object Nav {
     var normalizeAfterScan: Boolean = false
     var musicSort: String = "folder"
     var standupSort: String = "naziv"
+    var plusTab: String = "import"
+    var importImportedExpanded: Boolean = true
+    var importFreshExpanded: Boolean = true
     var infoItem: AudioItem? = null
     var infoGroup: Group? = null
     var infoFrom: Section = Section.NONE
-    var infoRenameDraft: String? = null
 }
 
 /** Tanki napredak u mini-plejeru. */
@@ -312,6 +313,11 @@ class MainActivity : android.app.Activity() {
         Bus.night = false
         render()
     }
+    /** + otvara jedan meni za uvoz, sređivanje, internet i izvoz. */
+    private fun openPlus(tab: String) {
+        Nav.plusTab = tab
+        go("plus")
+    }
     /** Strelica nadole u plejeru: vrati se na ekran ispod, odnosno na tab sekcije. */
     private fun minimizePlayer() {
         Nav.scrollToPlaying = true
@@ -445,7 +451,8 @@ class MainActivity : android.app.Activity() {
         val st = Store.settings
         return listOf(
             s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab, Nav.musicSort,
-            Nav.seriesTab, Nav.standupChips, Nav.standupSort,
+            Nav.seriesTab, Nav.standupSort, Nav.plusTab,
+            Nav.importImportedExpanded, Nav.importFreshExpanded,
             Nav.sheet ?: "", Nav.infoItem?.id ?: "", Nav.infoGroup?.key ?: "", Nav.infoFrom.name,
             Nav.feedId, Nav.catalog.size, Nav.catalogItem?.title ?: "",
             Nav.importSelection.size, Nav.scanning, Nav.moveName, Nav.moveFrom.name,
@@ -464,7 +471,8 @@ class MainActivity : android.app.Activity() {
     private fun scrollKey(): String {
         val s = cur()
         return listOf(s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab, Nav.musicSort,
-            Nav.seriesTab, Nav.standupChips, Nav.standupSort).joinToString("|")
+            Nav.seriesTab, Nav.standupSort, Nav.plusTab,
+            Nav.importImportedExpanded, Nav.importFreshExpanded).joinToString("|")
     }
 
     private fun findMainScroll(v: View?): ScrollView? {
@@ -491,7 +499,7 @@ class MainActivity : android.app.Activity() {
         val navH = c.dp(58) // donja navigacija je uvek tu, bez linije iznad
         // Ulazak u Uvoz: već uvezeni folderi su automatski čekirani.
         // Ako skeniranje završi dok smo na Uvozu, ponovi seed za novu verziju biblioteke.
-        if (cur().v == "import") {
+        if (cur().v == "import" || (cur().v == "plus" && Nav.plusTab == "import")) {
             if (Nav.importSeededVersion != Bus.libraryVersion) {
                 val hasLoose = Store.loose().isNotEmpty()
                 Bus.library.folders.forEach { f ->
@@ -536,7 +544,8 @@ class MainActivity : android.app.Activity() {
         })
 
         val keyAfter = scrollKey()
-        savedScrollY = if (lastScrollKey == keyBefore && keyBefore == keyAfter) oldScroll else 0
+        savedScrollY = if (cur().v == "series" && !Nav.scrollToPlaying) 0
+            else if (lastScrollKey == keyBefore && keyBefore == keyAfter) oldScroll else 0
         lastScrollKey = keyAfter
         setContentView(root, ViewGroup.LayoutParams(-1, -1))
         currentRoot = root
@@ -634,7 +643,7 @@ class MainActivity : android.app.Activity() {
             addView(text(c, title, if (back) 20f else 26f, C_T1, bold = true),
                 LinearLayout.LayoutParams(0, -2, 1f))
             extras.forEach { addView(it) }
-            if (plus) addView(iconBox(c, R.drawable.ic_plus, C_T2, 22, 6) { go("import") })
+            if (plus) addView(iconBox(c, R.drawable.ic_plus, C_T2, 22, 6) { openPlus("import") })
             if (gear) addView(iconBox(c, R.drawable.ic_settings, C_T2, 22, 6) { go("settings") })
         }
     }
@@ -686,9 +695,7 @@ class MainActivity : android.app.Activity() {
         }
         val row = horizontal(c).apply { gravity = Gravity.CENTER_VERTICAL }
         val fraction = if (state.total > 0) state.done.toFloat() / state.total else 0f
-        val label = if (state.running)
-            "Internet: ${state.done} / ${state.total} · ${state.label}"
-        else "Internet: ${state.message ?: "Završeno"}"
+        val label = "Internet: ${state.done} / ${state.total} · ${state.label}"
         row.addView(text(c, label, 11f, C_T2, bold = true).apply {
             layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
             maxLines = 1
@@ -714,53 +721,63 @@ class MainActivity : android.app.Activity() {
         return box
     }
 
-    /** Dugme pokreće pretragu SVIH uvezenih fajlova, uz stalni status. */
+    /** Ručna internet pretraga cele biblioteke ili samo Stand up poređenje. */
     private fun startFullOnlineScan() {
+        val total = Bus.library.items.size
+        requestOnlineScan("Internet", total) { ctx, progress ->
+            OnlineEnricher.enrichAll(ctx, progress)
+        }
+    }
+
+    private fun startStandupOnlineCompare() {
+        val total = Bus.library.items.count { LibraryManager.sectionOf(it) == Section.STANDUP }
+        if (total == 0) { toast("Nema Stand up fajlova za poređenje"); return }
+        requestOnlineScan("Stand up", total) { ctx, progress ->
+            OnlineEnricher.enrichStandup(ctx, progress)
+        }
+    }
+
+    /** Wi-Fi podrazumevano; na mobilnom se korisnik pita SVAKI PUT. */
+    private fun requestOnlineScan(
+        label: String, total: Int,
+        worker: (Context, (Int, Int, String) -> Unit) -> Triple<Int, Int, Boolean>
+    ) {
         if (Bus.onlineScan?.running == true) { toast("Pretraga već traje"); return }
         if (!Store.settings.normalizeOnline) {
-            toast("Uključi internet za sređivanje u podešavanjima")
+            toast("Uključi internet za sređivanje u + meniju")
             return
         }
-        if (Net.onWifi(this)) { launchFullOnlineScan(); return }
+        if (Net.onWifi(this)) { launchOnlineScan(label, total, worker); return }
         AlertDialog.Builder(this)
             .setTitle("Mobilni internet")
             .setMessage("Koristi mobilni internet za ovu proveru?")
-            .setPositiveButton("Da") { _, _ -> launchFullOnlineScan() }
+            .setPositiveButton("Da") { _, _ -> launchOnlineScan(label, total, worker) }
             .setNegativeButton("Ne") { _, _ ->
-                Bus.log("Internet pretraga svih fajlova preskočena: odbijen mobilni internet")
+                Bus.log("$label preskočena: odbijen mobilni internet")
             }
             .show()
     }
 
-    private fun launchFullOnlineScan() {
-        val total = Bus.library.items.size
+    /** Status traka se prikazuje samo dok traje i odmah nestaje po završetku. */
+    private fun launchOnlineScan(
+        label: String, total: Int,
+        worker: (Context, (Int, Int, String) -> Unit) -> Triple<Int, Int, Boolean>
+    ) {
         Bus.onlineScanCancel = false
-        Bus.onlineScan = OnlineScanState(0, total, "Pripremam upite…", true, null)
+        Bus.onlineScan = OnlineScanState(0, total, "$label · pripremam…", true, null)
         render()
         thread {
-            val (made, processed, canceled) = OnlineEnricher.enrichAll(applicationContext) { done, tot, label ->
-                Bus.onlineScan = OnlineScanState(done, tot, label, true, null)
+            val (made, processed, canceled) = worker(applicationContext) { done, tot, query ->
+                Bus.onlineScan = OnlineScanState(done, tot, "$label · $query", true, null)
             }
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
                 Bus.onlineScanCancel = false
                 Bus.normalizationVersion++
                 Bus.libraryVersion++
-                val doneState = OnlineScanState(
-                    processed, total,
-                    if (canceled) "Prekinuto" else "Završeno", false,
-                    (if (canceled) "Prekinuto" else "Završeno") + " · $made predloga"
-                )
-                Bus.onlineScan = doneState
-                Bus.log("Internet pretraga svih fajlova: $made predloga" +
-                    (if (canceled) " (prekinuto)" else ""))
-                render()
-                handler.postDelayed({
-                    if (!isFinishing && Bus.onlineScan === doneState) {
-                        Bus.onlineScan = null
-                        render()
-                    }
-                }, 3500L)
+                Bus.onlineScan = null
+                Bus.log("$label: $made predloga" + (if (canceled) " (prekinuto)" else ""))
+                toast((if (canceled) "Prekinuto" else "Završeno") + " · $made predloga")
             }
         }
     }
@@ -785,7 +802,6 @@ class MainActivity : android.app.Activity() {
         Nav.infoItem = null
         Nav.infoGroup = null
         Nav.infoFrom = Section.NONE
-        Nav.infoRenameDraft = null
         render()
     }
 
@@ -793,19 +809,18 @@ class MainActivity : android.app.Activity() {
         Nav.infoItem = item
         Nav.infoGroup = group
         Nav.infoFrom = from
-        Nav.infoRenameDraft = null
         Nav.sheet = "info"
         render()
     }
 
-    private fun saveInfoTitle() {
+    private fun saveInfoTitle(newTitle: String) {
         val key = infoKey() ?: return
-        val draft = (Nav.infoRenameDraft ?: currentInfoTitle()).trim()
+        val draft = newTitle.trim()
         val original = infoOriginalTitle()
         if (draft.isBlank() || draft == original) Store.clearManualTitle(key)
         else Store.setManualTitle(key, draft)
         Bus.libraryVersion++
-        Bus.log("Ručno ime: $draft")
+        Bus.log("Ručno ime: ${draft.ifBlank { original }}")
         Bus.showToast("Ime sačuvano")
         closeInfo()
     }
@@ -829,6 +844,46 @@ class MainActivity : android.app.Activity() {
         closeInfo()
     }
 
+    /** Poseban dijalog za ime: Android sam podiže polje iznad tastature. */
+    private fun renameDialog() {
+        val c = this
+        if (Nav.infoItem == null && Nav.infoGroup == null) return
+        infoKey() ?: return
+        val current = currentInfoTitle()
+        val edit = EditText(c).apply {
+            setText(current)
+            setSelection(text.length)
+            setTextColor(C_T1)
+            setHintTextColor(C_T3)
+            textSize = 15f
+            inputType = InputType.TYPE_CLASS_TEXT
+            isSingleLine = true
+            background = rounded(C_S2, 10f, c)
+            setPadding(c.dp(14), c.dp(12), c.dp(14), c.dp(12))
+        }
+        val box = FrameLayout(c).apply {
+            setPadding(c.dp(20), c.dp(6), c.dp(20), c.dp(6))
+            addView(edit, FrameLayout.LayoutParams(-1, -2))
+        }
+        val dlg = AlertDialog.Builder(c)
+            .setTitle("Ručno ime")
+            .setMessage("Ime je samo u aplikaciji; fajl na disku ostaje netaknut.")
+            .setView(box)
+            .setPositiveButton("Sačuvaj") { _, _ -> saveInfoTitle(edit.text.toString()) }
+            .setNegativeButton("Otkaži") { _, _ -> }
+            .setNeutralButton("Vrati original") { _, _ -> restoreInfoTitle() }
+            .create()
+        dlg.setOnShowListener {
+            edit.requestFocus()
+            dlg.window?.setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or
+                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            )
+        }
+        dlg.show()
+    }
+
+    /** Dugi klik na fajl ili grupu: podaci, virtuelno ime i ručna sekcija. */
     /** Dugi klik na fajl ili grupu: podaci, virtuelno ime i ručna sekcija. */
     private fun infoSheet(sheet: LinearLayout) {
         val c = this
@@ -854,6 +909,14 @@ class MainActivity : android.app.Activity() {
             line("Trajanje", fmtTime(item.durationMs))
             line("Folder", item.folderName)
             line("Sekcija", infoSectionLabel(LibraryManager.sectionOf(item)))
+            LibraryManager.manualSeasonOf(item)?.let { ms ->
+                line("Sezona iz imena", "S" + String.format(Locale.US, "%02d", ms.season))
+                ms.episode?.let { line("Epizoda iz imena", "E" + String.format(Locale.US, "%02d", it)) }
+            }
+            if (LibraryManager.sectionOf(item) == Section.STANDUP || Nav.infoFrom == Section.STANDUP) {
+                line("Izvođač iz imena", LibraryManager.standupArtist(item).ifBlank { "—" })
+                line("Show iz imena", LibraryManager.standupShow(item).ifBlank { "—" })
+            }
         } else if (group != null) {
             val first = group.items.firstOrNull()
             line("Grupa", current)
@@ -865,6 +928,10 @@ class MainActivity : android.app.Activity() {
             line("Trajanje", fmtTime(group.items.sumOf { it.durationMs }))
             line("Folder", first?.folderName ?: "—")
             line("Sekcija", infoSectionLabel(Nav.infoFrom))
+            if (Nav.infoFrom == Section.STANDUP && first != null) {
+                line("Izvođač iz imena", LibraryManager.standupArtist(first).ifBlank { "—" })
+                line("Show iz imena", LibraryManager.standupShow(first).ifBlank { "—" })
+            }
         }
         Store.manualTitle(key)?.let { line("Ručno ime", it) }
         val probeId = item?.id ?: group?.items?.firstOrNull()?.id ?: ""
@@ -876,25 +943,13 @@ class MainActivity : android.app.Activity() {
             m.onlineSource?.let { line("Internet", "$it · ${m.onlineConfidence}%") }
         }
         body.addView(miniSectionLabel("RUČNO IME · VIRTUELNO"))
-        val edit = EditText(c).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
+        body.addView(text(c, current, 14f, C_T1, bold = true).apply {
             background = rounded(C_S2, 10f, c)
             setPadding(c.dp(12), c.dp(10), c.dp(12), c.dp(10))
-            setText(Nav.infoRenameDraft ?: current)
-            setTextColor(C_T1)
-            setHintTextColor(C_T3)
-            textSize = 14f
-            inputType = InputType.TYPE_CLASS_TEXT
-            isSingleLine = true
-            addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                override fun afterTextChanged(s: Editable?) { Nav.infoRenameDraft = s?.toString() }
-            })
-        }
-        body.addView(edit)
+            click { renameDialog() }
+        })
         val saveRow = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
-        saveRow.addView(actionButton(c, "Sačuvaj ime", true) { saveInfoTitle() },
+        saveRow.addView(actionButton(c, "Promeni ime", true) { renameDialog() },
             LinearLayout.LayoutParams(0, c.dp(42), 1f))
         saveRow.addView(actionButton(c, "Vrati original", false) { restoreInfoTitle() },
             LinearLayout.LayoutParams(0, c.dp(42), 1f).apply { marginStart = c.dp(8) })
@@ -955,7 +1010,7 @@ class MainActivity : android.app.Activity() {
             val cell = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(-2, -2).apply { marginEnd = c.dp(22) }
                 addView(text(c, label, 13.5f, if (active) C_T1 else C_T2, bold = active).apply {
-                    setPadding(0, c.dp(6), 0, c.dp(10))
+                    setPadding(0, c.dp(2), 0, c.dp(6))
                 })
                 addView(View(c).apply { background = rounded(if (active) C_AMBER else Color.TRANSPARENT, 1f, c) },
                     LinearLayout.LayoutParams(-1, c.dp(2)))
@@ -1110,12 +1165,13 @@ class MainActivity : android.app.Activity() {
         "chapters" -> chaptersScreen()
         "settings" -> settingsScreen()
         "arrange" -> arrangeScreen()
-        "import" -> importScreen()
+        "plus" -> plusScreen()
+        "import" -> plusScreen()
         "mixed" -> mixedScreen()
         "feeds" -> feedsScreen()
         "feed" -> feedScreen(cur().id)
         "catitem" -> catalogItemScreen()
-        "normalize" -> normalizeScreen()
+        "normalize" -> plusScreen()
         else -> booksScreen()
     }
 
@@ -1137,7 +1193,7 @@ class MainActivity : android.app.Activity() {
         }
         val list = listHost()
         if (filtered.isEmpty()) list.addView(emptyState("Nema knjiga u ovoj grupi.\nUvezi foldere sa audio fajlovima.",
-            "Uvezi foldere") { go("import") })
+            "Uvezi foldere") { openPlus("import") })
         filtered.forEach { (g, pos, done) ->
             val sub = when {
                 done -> "${g.subtitle} · završena"
@@ -1177,40 +1233,8 @@ class MainActivity : android.app.Activity() {
         when (Nav.seriesTab) {
             "folderi" -> {
                 val groups = LibraryManager.groups(Section.SERIES)
-                // Uvoz i neraspoređeni fajlovi odmah ispod tabova, bez praznog prostora.
-                val importRow = rowView(c, { go("import") })
-                importRow.addView(FrameLayout(c).apply {
-                    layoutParams = LinearLayout.LayoutParams(c.dp(56), c.dp(56))
-                    background = rounded(C_S2, 12f, c)
-                    addView(icon(c, R.drawable.ic_plus, C_AMBER, 30),
-                        FrameLayout.LayoutParams(c.dp(30), c.dp(30), Gravity.CENTER))
-                })
-                importRow.addView(vertical(c).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                    addView(text(c, "Uvezi foldere ili fajlove", 14.5f, C_T1))
-                    addView(text(c, "interna memorija, SD kartica", 12f, C_T2))
-                })
-                list.addView(importRow)
-                val unknown = Bus.library.items.filter { LibraryManager.sectionOf(it) == Section.NONE }
-                val mixedCount = LibraryManager.mixed().size
-                if (unknown.isNotEmpty() || mixedCount > 0) {
-                    val unknownRow = rowView(c, { go("mixed") }, { go("mixed"); true })
-                    unknownRow.addView(FrameLayout(c).apply {
-                        layoutParams = LinearLayout.LayoutParams(c.dp(56), c.dp(56))
-                        background = rounded(C_S2, 12f, c)
-                        addView(icon(c, R.drawable.ic_folder, C_T2, 26),
-                            FrameLayout.LayoutParams(c.dp(26), c.dp(26), Gravity.CENTER))
-                    })
-                    unknownRow.addView(vertical(c).apply {
-                        layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                        addView(text(c, "Nepoznati / mešani fajlovi", 14.5f, C_T1))
-                        addView(text(c, "${unknown.size + mixedCount} čeka raspoređivanje", 12f, C_T2))
-                    })
-                    unknownRow.addView(icon(c, R.drawable.ic_right, C_T3, 16))
-                    list.addView(unknownRow)
-                }
                 if (groups.isEmpty()) list.addView(emptyState("Nema serija. Uvezi foldere sa epizodama.",
-                    "Uvezi foldere") { go("import") })
+                    "Uvezi foldere") { openPlus("import") })
                 groups.forEach { g ->
                     var fresh = 0
                     var started = false
@@ -1293,29 +1317,25 @@ class MainActivity : android.app.Activity() {
     private fun standupScreen(): View {
         val c = this
         Nav.tab = Section.STANDUP
-        val chips = chipsBar(listOf("sve" to "Sve", "tok" to "U toku", "nove" to "Nove", "zav" to "Završene"),
-            Nav.standupChips) { Nav.standupChips = it }
         val sort = chipsBar(listOf("naziv" to "Naziv", "izvodjac" to "Izvođač"),
             Nav.standupSort) { Nav.standupSort = it }
+        val compare = actionButton(c, "Uporedi izvođače / show na internetu", false,
+            R.drawable.ic_refresh) { startStandupOnlineCompare() }
+        compare.layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply {
+            setMargins(c.dp(16), 0, c.dp(16), c.dp(8))
+        }
         val rows = LibraryManager.groups(Section.STANDUP).map { g ->
             val pos = LibraryManager.bookPosition(g)
             val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
             Triple(g, pos, done)
         }
-        val filtered = rows.filter { (_, pos, done) ->
-            when (Nav.standupChips) {
-                "tok" -> pos > 0 && !done
-                "nove" -> pos == 0L
-                "zav" -> done
-                else -> true
-            }
-        }
         val ordered = when (Nav.standupSort) {
-            "izvodjac" -> filtered.sortedWith(
+            "izvodjac" -> rows.sortedWith(
                 compareBy<Triple<Group, Long, Boolean>> {
-                    it.first.items.firstOrNull()?.artist?.lowercase(Locale.ROOT) ?: ""
+                    it.first.items.firstOrNull()?.let { item -> LibraryManager.standupArtist(item) }
+                        ?.lowercase(Locale.ROOT) ?: ""
                 }.thenBy { it.first.title.lowercase(Locale.ROOT) })
-            else -> filtered.sortedWith(compareBy { it.first.title.lowercase(Locale.ROOT) })
+            else -> rows.sortedWith(compareBy { it.first.title.lowercase(Locale.ROOT) })
         }
         val list = listHost()
         ordered.forEach { (g, pos, done) ->
@@ -1340,7 +1360,7 @@ class MainActivity : android.app.Activity() {
             if (done) row.alpha = 0.42f
             list.addView(row)
         }
-        return page(header("Stand up"), chips, sort, scroll(c, list), miniPlayer())
+        return page(header("Stand up"), sort, compare, scroll(c, list), miniPlayer())
     }
 
     private fun feedActions(feeds: List<Feed>): View {
@@ -1493,7 +1513,7 @@ class MainActivity : android.app.Activity() {
         val list = listHost()
         val groups = LibraryManager.groups(Section.MUSIC, view)
         if (groups.isEmpty()) list.addView(emptyState("Nema muzike u ovoj sekciji.\nUvezi foldere sa numerama.",
-            "Uvezi foldere") { go("import") })
+            "Uvezi foldere") { openPlus("import") })
         groups.forEach { g ->
             val row = rowView(c, { go("folder", g.key) }, {
                 openInfoDialog(group = g, from = Section.MUSIC); true
@@ -1824,7 +1844,7 @@ class MainActivity : android.app.Activity() {
     }
 
     /* ------------------------------------------------------------ sređivanje biblioteke (Faza 1) */
-    private fun normalizeScreen(): View {
+    private fun normalizeBody(): LinearLayout {
         val c = this
         val applied = Store.allNormalizations().values
             .sortedWith(compareBy({ it.sortKey ?: it.displayTitle.lowercase(Locale.ROOT) }, { it.rawTitle }))
@@ -1909,9 +1929,12 @@ class MainActivity : android.app.Activity() {
         body.addView(text(c,
             "Sve je virtuelno: fajlovi se ne preimenuju, ne pomeraju i ne brišu. „Vrati sve“ vraća stanje pre poslednjeg automatskog pokretanja. Internet pretraga pravi samo predloge; ništa se automatski ne primenjuje.",
             11.5f, C_T3).apply { setPadding(c.dp(4), c.dp(12), c.dp(4), c.dp(8)) })
-        return page(header("Sređivanje biblioteke", plus = false, gear = false, back = true),
-            scroll(c, body))
+        return body
     }
+
+    private fun normalizeScreen(): View =
+        page(header("Sređivanje biblioteke", plus = false, gear = false, back = true),
+            scroll(this, normalizeBody()))
 
     /* ------------------------------------------------------------ poglavlja / lista */
     private fun chaptersScreen(): View {
@@ -2004,9 +2027,6 @@ class MainActivity : android.app.Activity() {
             layoutParams = LinearLayout.LayoutParams(-1, -2)
             setPadding(c.dp(18), 0, c.dp(18), c.dp(16))
         }
-        val unassigned = Bus.library.folders.count { Store.folderSection(it.key) == null }
-        val unknownFiles = Bus.library.items.count { LibraryManager.sectionOf(it) == Section.NONE }
-        val mixedFiles = LibraryManager.mixed().size
 
         body.addView(sectionLabelView("REPRODUKCIJA"))
         body.addView(settingRow(c, "Skok", "${s.jump} s") {
@@ -2050,31 +2070,6 @@ class MainActivity : android.app.Activity() {
         body.addView(settingRow(c, "Preuzimanja samo na Wi-Fi", null, s.wifiOnly) {
             saveSettings { it.wifiOnly = !it.wifiOnly }
         })
-
-        body.addView(sectionLabelView("IZVOZ"))
-        body.addView(settingRow(c, "Izvezi listu uvezenih fajlova", "JSON · svi detalji") { exportLibrary() })
-
-        body.addView(sectionLabelView("SREĐIVANJE"))
-        val normDone = Store.allNormalizations().size
-        val normWait = Store.allProposals().size
-        body.addView(settingRow(c, "Sređivanje biblioteke",
-            "$normDone sređeno · $normWait čeka potvrdu") { go("normalize") })
-        body.addView(settingRow(c, "Rasporedi foldere", "$unassigned čekaju") { go("arrange") })
-        body.addView(settingRow(c, "Neraspoređeni i mešani fajlovi",
-            "${unknownFiles + mixedFiles} fajlova") { go("mixed") })
-
-        body.addView(sectionLabelView("SREĐIVANJE · INTERNET"))
-        body.addView(settingRow(c, "Koristi internet za sređivanje", null, s.normalizeOnline) {
-            saveSettings { it.normalizeOnline = !it.normalizeOnline }
-        })
-        body.addView(settingRow(c, "Pretraži sve uvezene fajlove", "ručno") { startFullOnlineScan() })
-        body.addView(settingRow(c, "Mreža", "Wi-Fi · mobilni uz potvrdu") { })
-        val pk = s.podcastIndexKey
-        val ps = s.podcastIndexSecret
-        body.addView(settingRow(c, "Podcast Index ključ",
-            if (pk.isBlank()) "nije unet" else "••••${pk.takeLast(4)}") { askPodcastCredential(false) })
-        body.addView(settingRow(c, "Podcast Index tajna",
-            if (ps.isBlank()) "nije uneta" else "••••") { askPodcastCredential(true) })
 
         body.addView(sectionLabelView("RAD U POZADINI"))
         body.addView(settingRow(c, "Baterija bez ograničenja", ok = true) { })
@@ -2156,48 +2151,163 @@ class MainActivity : android.app.Activity() {
             checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         else checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
 
-    private fun importScreen(): View {
+    /** Zaglavlje kategorije na Uvoz tabu: klik na strelicu skriva celu kolonu. */
+    private fun importSectionHeader(label: String, count: Int, expanded: Boolean,
+                                    onToggle: () -> Unit): View {
         val c = this
-        if (!hasReadPermission() && !Environment.isExternalStorageManager()) {
-            val body = vertical(c).apply {
-                layoutParams = LinearLayout.LayoutParams(-1, -2)
-                setPadding(c.dp(22), c.dp(10), c.dp(22), c.dp(24))
-                addView(FrameLayout(c).apply {
-                    layoutParams = LinearLayout.LayoutParams(c.dp(54), c.dp(54)).apply { bottomMargin = c.dp(16) }
-                    background = rounded(C_S2, 11f, c)
-                    addView(icon(c, R.drawable.ic_folder, C_T2, 26),
-                        FrameLayout.LayoutParams(c.dp(26), c.dp(26), Gravity.CENTER))
-                })
-                addView(text(c, "Šaptač traži pristup fajlovima", 19f, C_T1, bold = true))
-                addView(text(c,
-                    "Da bi čitao muziku, knjige i emisije sa telefona i SD kartice, potrebna je dozvola „Pristup svim fajlovima“. Aplikacija ništa ne menja i ništa ne briše; samo čita ono što joj ti pokažeš.",
-                    13.5f, C_T2).apply { setPadding(0, c.dp(8), 0, c.dp(14)) })
-                addView(text(c,
-                    "Aplikacija nije iz prodavnice, pa ne može da traži dozvolu pojedinačno po folderu. Zato traži ovu jednu.",
-                    12f, C_T3).apply { setPadding(0, 0, 0, c.dp(22)) })
-                addView(actionButton(c, "Dozvoli pristup svim fajlovima", true) { openAllFilesAccess() }.apply {
-                    layoutParams = LinearLayout.LayoutParams(-1, c.dp(48))
-                })
-                addView(actionButton(c, "Ne sad", false) { onBack() }.apply {
-                    layoutParams = LinearLayout.LayoutParams(-1, c.dp(44)).apply { topMargin = c.dp(8) }
-                })
-                addView(text(c, "U prototipu je ovo simulacija: ništa se stvarno ne čita sa uređaja.",
-                    11.5f, C_T3).apply { setPadding(0, c.dp(16), 0, 0) })
-            }
-            return page(header("Uvoz", plus = false, gear = false, back = true), scroll(c, body))
+        val row = horizontal(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setPadding(c.dp(18), c.dp(10), c.dp(18), c.dp(4))
+            gravity = Gravity.CENTER_VERTICAL
+            background = ripple(null)
+            click { onToggle() }
         }
-        if (Nav.scanning) {
+        val tx = text(c, "$label · $count", 10.5f, C_AMBER, bold = true).apply {
+            letterSpacing = 0.14f
+        }
+        row.addView(tx, LinearLayout.LayoutParams(0, -2, 1f))
+        val arrow = icon(c, if (expanded) R.drawable.ic_down else R.drawable.ic_right, C_AMBER, 14)
+        arrow.contentDescription = if (expanded) "Sakrij $label" else "Prikaži $label"
+        row.addView(arrow)
+        return row
+    }
+
+    /** + meni: uvoz je samo jedna od opcija, uz sređivanje, internet i izvoz. */
+    private fun plusScreen(): View {
+        val c = this
+        when (cur().v) {
+            "import" -> Nav.plusTab = "import"
+            "normalize" -> Nav.plusTab = "sort"
+        }
+        if (!hasReadPermission() && !Environment.isExternalStorageManager()) return importScreen()
+        if (Nav.scanning) return importScreen()
+        val tabs = chipsBar(listOf(
+            "import" to "Uvoz",
+            "sort" to "Sređivanje",
+            "online" to "Internet",
+            "export" to "Izvoz"
+        ), Nav.plusTab) { Nav.plusTab = it }
+        val body = when (Nav.plusTab) {
+            "sort" -> plusSortContent()
+            "online" -> plusOnlineContent()
+            "export" -> plusExportContent()
+            else -> importListContent()
+        }
+        return page(header("Uvoz i sređivanje", plus = false, gear = false, back = true), tabs, body)
+    }
+
+    private fun plusSortContent(): View {
+        val c = this
+        val body = vertical(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setPadding(c.dp(18), 0, c.dp(18), c.dp(8))
+        }
+        val unassigned = Bus.library.folders.count { Store.folderSection(it.key) == null }
+        val unknownFiles = Bus.library.items.count { LibraryManager.sectionOf(it) == Section.NONE }
+        val mixedFiles = LibraryManager.mixed().size
+        body.addView(sectionLabelView("RASPOREĐIVANJE"))
+        body.addView(settingRow(c, "Rasporedi foldere", "$unassigned čekaju") { go("arrange") })
+        body.addView(settingRow(c, "Neraspoređeni i mešani fajlovi",
+            "${unknownFiles + mixedFiles} fajlova") { go("mixed") })
+        body.addView(normalizeBody())
+        return scroll(c, body)
+    }
+
+    private fun plusOnlineContent(): View {
+        val c = this
+        val s = Store.settings
+        val body = vertical(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setPadding(c.dp(18), 0, c.dp(18), c.dp(16))
+        }
+        body.addView(sectionLabelView("INTERNET SREĐIVANJE"))
+        body.addView(settingRow(c, "Koristi internet za sređivanje", null, s.normalizeOnline) {
+            saveSettings { it.normalizeOnline = !it.normalizeOnline }
+        })
+        body.addView(settingRow(c, "Proveri na internetu", "20 upita") { maybeStartOnlineEnrichment() })
+        body.addView(settingRow(c, "Pretraži sve uvezene fajlove", "ručno") { startFullOnlineScan() })
+        body.addView(settingRow(c, "Mreža", "Wi-Fi · mobilni uz potvrdu") { })
+        body.addView(settingRow(c, "Podcast Index ključ",
+            if (s.podcastIndexKey.isBlank()) "nije unet" else "••••${s.podcastIndexKey.takeLast(4)}") {
+            askPodcastCredential(false)
+        })
+        body.addView(settingRow(c, "Podcast Index tajna",
+            if (s.podcastIndexSecret.isBlank()) "nije uneta" else "••••") {
+            askPodcastCredential(true)
+        })
+        return scroll(c, body)
+    }
+
+    private fun plusExportContent(): View {
+        val c = this
+        val body = vertical(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setPadding(c.dp(18), 0, c.dp(18), c.dp(16))
+        }
+        body.addView(sectionLabelView("IZVOZ"))
+        val btn = actionButton(c, "Izvezi listu uvezenih fajlova", true) { exportLibrary() }
+        btn.layoutParams = LinearLayout.LayoutParams(-1, c.dp(48)).apply { topMargin = c.dp(8) }
+        body.addView(btn)
+        body.addView(text(c,
+            "JSON sadrži sve detalje o fajlovima, grupama, ručnim imenima i virtuelnom sređivanju. Podcast Index ključ i tajna se ne izvoze.",
+            11.5f, C_T3).apply { setPadding(0, c.dp(12), 0, 0) })
+        return scroll(c, body)
+    }
+
+    private fun importPermissionBody(): View {
+        val c = this
+        return vertical(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setPadding(c.dp(22), c.dp(10), c.dp(22), c.dp(24))
+            addView(FrameLayout(c).apply {
+                layoutParams = LinearLayout.LayoutParams(c.dp(54), c.dp(54)).apply { bottomMargin = c.dp(16) }
+                background = rounded(C_S2, 11f, c)
+                addView(icon(c, R.drawable.ic_folder, C_T2, 26),
+                    FrameLayout.LayoutParams(c.dp(26), c.dp(26), Gravity.CENTER))
+            })
+            addView(text(c, "Šaptač traži pristup fajlovima", 19f, C_T1, bold = true))
+            addView(text(c,
+                "Da bi čitao muziku, knjige i emisije sa telefona i SD kartice, potrebna je dozvola „Pristup svim fajlovima“. Aplikacija ništa ne menja i ništa ne briše; samo čita ono što joj ti pokažeš.",
+                13.5f, C_T2).apply { setPadding(0, c.dp(8), 0, c.dp(14)) })
+            addView(text(c,
+                "Aplikacija nije iz prodavnice, pa ne može da traži dozvolu pojedinačno po folderu. Zato traži ovu jednu.",
+                12f, C_T3).apply { setPadding(0, 0, 0, c.dp(22)) })
+            addView(actionButton(c, "Dozvoli pristup svim fajlovima", true) { openAllFilesAccess() }.apply {
+                layoutParams = LinearLayout.LayoutParams(-1, c.dp(48))
+            })
+            addView(actionButton(c, "Ne sad", false) { onBack() }.apply {
+                layoutParams = LinearLayout.LayoutParams(-1, c.dp(44)).apply { topMargin = c.dp(8) }
+            })
+            addView(text(c, "U prototipu je ovo simulacija: ništa se stvarno ne čita sa uređaja.",
+                11.5f, C_T3).apply { setPadding(0, c.dp(16), 0, 0) })
+        }
+    }
+
+    private fun importScanningBody(): View =
+        emptyState("Pregledam telefon…\nInterna memorija i SD kartica\nTražim audio fajlove i preskačem zvukove obaveštenja.")
+
+    private fun importScreen(): View {
+        if (!hasReadPermission() && !Environment.isExternalStorageManager())
             return page(header("Uvoz", plus = false, gear = false, back = true),
-                emptyState("Pregledam telefon…\nInterna memorija i SD kartica\nTražim audio fajlove i preskačem zvukove obaveštenja."))
-        }
+                scroll(this, importPermissionBody()))
+        if (Nav.scanning)
+            return page(header("Uvoz", plus = false, gear = false, back = true), importScanningBody())
+        return page(header("Uvoz", plus = false, gear = false, back = true), importListContent())
+    }
+
+    /** Sadržaj Uvoz taba: note + skrol lista, bez zaglavlja. */
+    private fun importListContent(): View {
+        val c = this
         val folders = Bus.library.folders
         val totalFiles = folders.sumOf { it.count }
+        val root = vertical(c).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f) }
         val note = horizontal(c).apply {
             setPadding(c.dp(18), c.dp(4), c.dp(18), c.dp(8))
             addView(text(c, "${folders.size} foldera sa zvukom", 12f, C_T2),
                 LinearLayout.LayoutParams(0, -2, 1f))
             addView(text(c, "$totalFiles fajlova", 12f, C_T2))
         }
+        root.addView(note)
         val list = listHost()
         var confirmText: TextView? = null
         fun refreshConfirm() {
@@ -2249,14 +2359,16 @@ class MainActivity : android.app.Activity() {
         if (folders.isEmpty()) list.addView(emptyState("Nema novih foldera.\nSve što je pronađeno je već uvezeno."))
         val imported = folders.filter { isImported(it) }
         val fresh = folders.filterNot { isImported(it) }
-        if (imported.isNotEmpty()) {
-            list.addView(sectionLabelView("UVEZENI · ${imported.size}"))
-            imported.forEach { addFolderRow(it) }
-        }
-        if (fresh.isNotEmpty()) {
-            list.addView(sectionLabelView("NEUVEZENI · ${fresh.size}"))
-            fresh.forEach { addFolderRow(it) }
-        }
+        list.addView(importSectionHeader("UVEZENI", imported.size, Nav.importImportedExpanded) {
+            Nav.importImportedExpanded = !Nav.importImportedExpanded
+            render()
+        })
+        if (Nav.importImportedExpanded) imported.forEach { addFolderRow(it) }
+        list.addView(importSectionHeader("NEUVEZENI", fresh.size, Nav.importFreshExpanded) {
+            Nav.importFreshExpanded = !Nav.importFreshExpanded
+            render()
+        })
+        if (Nav.importFreshExpanded) fresh.forEach { addFolderRow(it) }
         list.addView(text(c, "Dodir na red uključuje folder, dodir na oznaku menja sekciju",
             12f, C_T2).apply { setPadding(c.dp(18), c.dp(4), c.dp(18), c.dp(10)) })
         list.addView(actionButton(c, "Uvezi pojedinačne fajlove", false) {
@@ -2278,7 +2390,8 @@ class MainActivity : android.app.Activity() {
         list.addView(text(c,
             "Fajlovi ostaju gde jesu. Uvoz samo pamti koji folder pripada kojoj sekciji, pa ništa ne može da se izgubi ili obriše.\nPrototip prikazuje izmišljene foldere; prava aplikacija čita tvoj telefon.",
             11.5f, C_T3).apply { setPadding(c.dp(22), 0, c.dp(22), c.dp(24)) })
-        return page(header("Uvoz", plus = false, gear = false, back = true), note, scroll(c, list))
+        root.addView(scroll(c, list))
+        return root
     }
 
     private fun doImport() {
@@ -2361,6 +2474,7 @@ class MainActivity : android.app.Activity() {
             fo.put("section", secText(sec))
             fo.put("sectionSource", when {
                 Store.override(item.id) != null -> "override"
+                LibraryManager.manualSeasonOf(item) != null -> "manualSeason"
                 Store.folderSectionForPath(item.folderKey) != null -> "folder"
                 LibraryManager.suggestPath(item.folderKey) != null -> "pathSuggestion"
                 else -> "none"
@@ -2373,6 +2487,12 @@ class MainActivity : android.app.Activity() {
             fo.put("normalizationProposal", Store.proposal(item.id)?.let { normalizedToJson(it) } ?: JSONObject.NULL)
             fo.put("manualTitle", Store.manualTitle("item:" + item.id) ?: JSONObject.NULL)
             fo.put("displayTitle", LibraryManager.displayTitle(item))
+            val ms = LibraryManager.manualSeasonOf(item)
+            fo.put("manualSeason", ms?.let { String.format(Locale.US, "S%02d", it.season) } ?: JSONObject.NULL)
+            fo.put("manualEpisode", ms?.episode?.let { String.format(Locale.US, "E%02d", it) } ?: JSONObject.NULL)
+            fo.put("manualSeriesTitle", ms?.seriesTitle ?: JSONObject.NULL)
+            fo.put("standupArtist", LibraryManager.standupArtist(item))
+            fo.put("standupShow", LibraryManager.standupShow(item))
             filesArr.put(fo)
         }
 

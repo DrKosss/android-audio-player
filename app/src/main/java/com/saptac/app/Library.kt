@@ -52,6 +52,53 @@ private data class GroupCacheStamp(
     val storeEpoch: Long
 )
 
+
+/** Ručno ime sa S##E## / Sezona NN: virtuelna sezona, bez diranja fajla na disku. */
+data class ManualSeason(
+    val season: Int,
+    val episode: Int?,
+    val seriesTitle: String,
+    val episodeTitle: String?,
+    val sortKey: String
+)
+
+private val MANUAL_SE = Regex("""\bS(\d{1,2})\s*E(\d{1,2})\b""", RegexOption.IGNORE_CASE)
+private val MANUAL_SEASON_WORD = Regex("""\b(?:season|sezona)\s*(\d{1,2})\b""", RegexOption.IGNORE_CASE)
+private val MANUAL_SEASON_BARE = Regex("""\bS(\d{1,2})\b""", RegexOption.IGNORE_CASE)
+private val STANDUP_SPLIT = Regex("""\s+[-–—:|]\s+|\s+\.\s+""")
+
+private fun cleanPart(value: String): String = value
+    .trim(' ', '-', '–', '—', '·', ':', '.', ',', '|', '(', ')', '[', ']')
+    .trim()
+
+/** Iz ručnog imena izvlači sezonu, epizodu, ime serije i naslov epizode. */
+fun manualSeasonFromTitle(title: String, fallbackSeries: String): ManualSeason? {
+    val se = MANUAL_SE.find(title)
+    val seasonWord = MANUAL_SEASON_WORD.find(title)
+    val bare = MANUAL_SEASON_BARE.find(title)
+    val match = se ?: seasonWord ?: bare ?: return null
+    val season = match.groupValues[1].toIntOrNull() ?: return null
+    val episode = if (se != null) se.groupValues[2].toIntOrNull() else null
+    val prefix = cleanPart(title.substring(0, match.range.first))
+    val tail = cleanPart(title.substring(match.range.last + 1))
+    val sortKey = if (episode != null)
+        String.format(Locale.US, "S%02dE%02d", season, episode)
+    else String.format(Locale.US, "S%02d", season)
+    return ManualSeason(
+        season = season,
+        episode = episode,
+        seriesTitle = prefix.ifBlank { fallbackSeries },
+        episodeTitle = tail.takeIf { it.isNotBlank() },
+        sortKey = sortKey
+    )
+}
+
+private fun standupParts(item: AudioItem): List<String> {
+    val raw = Store.manualTitle("item:" + item.id) ?: item.title
+    val t = raw.substringBeforeLast('.', raw).trim()
+    return STANDUP_SPLIT.split(t).map { it.trim() }.filter { it.isNotEmpty() }
+}
+
 object LibraryManager {
 
     /** Jedan izvor istine: MediaStore + (opciono) direktan pristup disku + SAF folderi. */
@@ -270,11 +317,34 @@ object LibraryManager {
             else -> null
         }
 
-    /** Kojoj sekciji fajl pripada: pojedinačna ispravka ima prednost nad folderom. */
+    /** Iz imena fajla ili ručnog imena vadi izvođača za Stand up. */
+    fun standupArtist(item: AudioItem): String {
+        val parts = standupParts(item)
+        if (parts.size >= 2) return parts[0]
+        return item.artist.takeIf { it.isNotBlank() && it != "<unknown>" }
+            ?: parts.firstOrNull() ?: ""
+    }
+
+    /** Iz imena fajla ili ručnog imena vadi album / show za Stand up. */
+    fun standupShow(item: AudioItem): String {
+        val parts = standupParts(item)
+        if (parts.size >= 2) return parts[1]
+        val album = item.album.takeIf { it.isNotBlank() && !it.equals(item.folderName, true) } ?: ""
+        return album.ifBlank { parts.firstOrNull() ?: "" }
+    }
+
+    /** Kojoj sekciji fajl pripada: ručna ispravka > S##E## iz ručnog imena > folder. */
     fun sectionOf(item: AudioItem): Section {
         val ov = Store.override(item.id)
         if (ov != null) return ov
+        if (manualSeasonOf(item) != null) return Section.SERIES
         return Store.folderSectionForPath(item.folderKey) ?: Section.NONE
+    }
+
+    /** Ručno ime sa S##E## automatski daje virtuelnu sezonu u Emisijama. */
+    fun manualSeasonOf(item: AudioItem): ManualSeason? {
+        val title = Store.manualTitle("item:" + item.id) ?: return null
+        return manualSeasonFromTitle(title, Normalizer.seriesTitleFor(item))
     }
 
     /** Ručno ime ima prednost, pa normalizovano, pa original iz fajla. */
@@ -282,11 +352,17 @@ object LibraryManager {
         Store.manualTitle("item:" + item.id)
             ?: Store.normalization(item.id)?.displayTitle
             ?: item.title
-    /** Stabilan ključ za slaganje epizoda po sezoni/epizodi. */
-    fun sortKeyOf(item: AudioItem): String =
-        Store.manualTitle("item:" + item.id)?.lowercase(Locale.ROOT)
-            ?: Store.normalization(item.id)?.sortKey
+    /** Stabilan ključ: ručno S##E## ide pre običnog ručnog imena. */
+    fun sortKeyOf(item: AudioItem): String {
+        val manual = Store.manualTitle("item:" + item.id)
+        if (manual != null) {
+            val ms = manualSeasonFromTitle(manual, Normalizer.seriesTitleFor(item))
+            if (ms != null) return ms.sortKey
+            return manual.lowercase(Locale.ROOT)
+        }
+        return Store.normalization(item.id)?.sortKey
             ?: item.title.lowercase(Locale.ROOT)
+    }
 
     private fun groupTitle(key: String, sec: Section, view: String, items: List<AudioItem>): String =
         when {
@@ -339,22 +415,39 @@ object LibraryManager {
                 sec == Section.MUSIC && view == "zanr" -> "genre:" + item.genre.ifBlank { "?" }
                 else -> item.folderKey
             }
-            // Virtuelna grupa po sezoni samo za potvrđene, već raspoređene epizode.
+            // Virtuelna grupa po sezoni: potvrđena normalizacija ili ručno ime sa S##E##.
             val meta = Store.normalization(item.id)
-            val key = if (sec == Section.SERIES && view == "folderi" && meta?.seasonGroupKey != null)
-                meta.seasonGroupKey else baseKey
+            val manualSeason = if (sec == Section.SERIES && view == "folderi") manualSeasonOf(item) else null
+            val key = when {
+                sec == Section.SERIES && view == "folderi" && manualSeason != null ->
+                    item.folderKey + "|season|" + String.format(Locale.US, "S%02d", manualSeason.season)
+                sec == Section.SERIES && view == "folderi" && meta?.seasonGroupKey != null -> meta.seasonGroupKey
+                else -> baseKey
+            }
             buckets.getOrPut(key) { ArrayList() }.add(item)
         }
         val out = buckets.map { (key, list) ->
             val meta = list.firstNotNullOfOrNull { Store.normalization(it.id) }
-            val baseTitle = if (sec == Section.SERIES && view == "folderi" && meta?.seasonGroupTitle != null)
-                meta.seasonGroupTitle else groupTitle(key, sec, view, list)
+            val firstManualSeason = if (sec == Section.SERIES && view == "folderi")
+                list.firstNotNullOfOrNull { manualSeasonOf(it) } else null
+            val baseTitle = when {
+                sec == Section.SERIES && view == "folderi" && firstManualSeason != null ->
+                    "Sezona " + String.format(Locale.US, "%02d", firstManualSeason.season)
+                sec == Section.SERIES && view == "folderi" && meta?.seasonGroupTitle != null -> meta.seasonGroupTitle
+                else -> groupTitle(key, sec, view, list)
+            }
             val title = Store.manualTitle("group:" + key) ?: baseTitle
             val items = list.sortedWith(compareBy({ sortKeyOf(it) }, { it.track },
                 { it.title.lowercase(Locale.ROOT) }))
             val artists = items.map { it.artist }.filter { it.isNotBlank() }
             val subtitle = when {
                 sec == Section.MUSIC -> "${items.size} numera"
+                sec == Section.STANDUP -> {
+                    val first = items.firstOrNull()
+                    val a = first?.let { standupArtist(it) } ?: ""
+                    val sh = first?.let { standupShow(it) } ?: ""
+                    listOf(a, sh).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Nepoznat izvođač" }
+                }
                 else -> artists.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "Nepoznat autor"
             }
             val cKey = coverKeyOf(key)

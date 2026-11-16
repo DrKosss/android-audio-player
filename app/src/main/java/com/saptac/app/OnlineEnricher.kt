@@ -283,12 +283,18 @@ object OnlineEnricher {
     private fun queryFor(kind: String, item: AudioItem, meta: NormalizedMetadata?): String {
         val album = safeAlbum(item)
         val raw = when (kind) {
-            "series" -> meta?.seriesTitle?.takeIf { it.isNotBlank() }
-                ?: Normalizer.seriesTitleFor(item)
+            "series" -> {
+                val manual = Store.manualTitle("item:" + item.id)
+                val ms = manual?.let { manualSeasonFromTitle(it, Normalizer.seriesTitleFor(item)) }
+                ms?.seriesTitle?.takeIf { it.isNotBlank() }
+                    ?: meta?.seriesTitle?.takeIf { it.isNotBlank() }
+                    ?: Normalizer.seriesTitleFor(item)
+            }
             "music" -> listOf(item.artist, album).filter { it.isNotBlank() }
                 .joinToString(" ").ifBlank { item.title }
             "book" -> album.ifBlank { item.title }
-            "standup" -> album.ifBlank { item.title }
+            "standup" -> listOf(LibraryManager.standupArtist(item), LibraryManager.standupShow(item))
+                .filter { it.isNotBlank() }.joinToString(" ").ifBlank { item.title }
             else -> album.ifBlank { item.title }
         }
         return cleanQuery(raw)
@@ -356,6 +362,45 @@ object OnlineEnricher {
      * Ručna pretraga SVIH uvezenih fajlova, bez rotacionog limita.
      * Vraća (broj predloga, broj obrađenih fajlova, prekinuto).
      */
+    /**
+     * Stand up: upoređuje izvođača + show iz imena fajla sa internetom.
+     * Pravi samo predloge, ne dira fajl i ne primenjuje naslov automatski.
+     */
+    fun enrichStandup(ctx: Context, progress: (Int, Int, String) -> Unit): Triple<Int, Int, Boolean> {
+        val app = ctx.applicationContext
+        val items = Bus.library.items.filter { LibraryManager.sectionOf(it) == Section.STANDUP }
+        if (items.isEmpty()) {
+            progress(0, 0, "Nema Stand up fajlova")
+            return Triple(0, 0, false)
+        }
+        val targets = LinkedHashMap<String, Target>()
+        items.forEach { item ->
+            val meta = Store.normalization(item.id) ?: Store.proposal(item.id)
+            val query = queryFor("standup", item, meta)
+            if (query.isBlank()) return@forEach
+            val key = "standup|" + query.lowercase(Locale.ROOT)
+            targets.getOrPut(key) { Target(key, "standup", query) }.items.add(item)
+        }
+        val ordered = targets.values.sortedBy { it.key }
+        val total = ordered.sumOf { it.items.size }
+        if (ordered.isEmpty()) {
+            progress(0, 0, "Nema upita za poređenje")
+            return Triple(0, 0, false)
+        }
+        var processed = 0
+        var made = 0
+        var canceled = false
+        progress(0, total, "Pripremam upite…")
+        for (t in ordered) {
+            if (Bus.onlineScanCancel) { canceled = true; break }
+            made += try { applyTarget(app, t) } catch (_: Exception) { 0 }
+            processed += t.items.size
+            progress(processed, total, t.query)
+            try { Thread.sleep(120L) } catch (_: InterruptedException) { canceled = true; break }
+        }
+        return Triple(made, processed, canceled)
+    }
+
     fun enrichAll(ctx: Context, progress: (Int, Int, String) -> Unit): Triple<Int, Int, Boolean> {
         val app = ctx.applicationContext
         val all = buildTargets()
