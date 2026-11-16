@@ -1,14 +1,23 @@
-# Šaptač — Android v1.2.1
+# Šaptač — Android v1.2.2
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.564.298 bajtova
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.561.534 bajtova
 
-SHA-256: `39328f7ff6dbaac1116f40effd78d8a4fc525b3585c709b9b0a06501302c5aef`
+SHA-256: `ba8d1063ca768c82196d37fa60214836d3696fbc723f58575ee41e95c1825081`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), jedan `+` meni za uvoz, sređivanje, internet i izvoz, virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem, ručna virtuelna imena i sezone iz `S##E##`, pretraga cele biblioteke i čipovi za sortiranje; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), jedan `+` meni za uvoz, sređivanje, internet i izvoz, čista imena knjiga sa autorom ispod, izvođač numere ispod pesme, virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem, ručna virtuelna imena i sezone iz `S##E##`, pretraga cele biblioteke i čipovi za sortiranje; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Šta je novo u v1.2.1 — sedam ispravki posle povratnih informacija
+## Šta je novo u v1.2.2 — tri ispravke prikaza i uvoza
+
+- **Muzika po folderima:** ispod svake pesme više ne piše ime foldera, nego `artist` tag te pesme. Desno ostaje trajanje; kada tag nedostaje ili je `<unknown>` / jednak imenu foldera, prikazuje se `Nepoznat izvođač`. Grupisanje po folderima, `Loop`, `Shuffle` i ostali prikazi ostaju netaknuti.
+- **Emisije bez posebnog uvoza i bez foldera nepoznatih fajlova:** uklonjeni su posebni redovi / dugmad `Uvezi foldere i fajlove` i `Nepoznati / mešani fajlovi`, kao i ceo ekran mešanih fajlova i njegov link u `+ / Sređivanje`. Prazna stanja sada samo kažu da uvoz ide preko `+` menija; `+ / Uvoz` je jedino mesto za izbor foldera i pojedinačnih fajlova. Neuvezeni fajlovi se ne prikazuju kao virtuelna grupa u `Emisijama`. Predlozi za sređivanje i dalje postoje u `+ / Sređivanje`, bez posebnog foldera.
+- **Knjige: čisto ime i autor ispod:** naslov grupe i naslov fajla u plejeru / mini-plejeru / listi poglavlja sada skidaju ekstenziju, brojeve numera, `Glava / Poglavlje / Chapter / Part` prefikse i sufikse i tehničke oznake poput `(1/12)`. Ime se uzima iz albuma, foldera ili imena fajla; ručno ime fajla i ručno ime grupe i dalje imaju prednost. Autor se čita iz `artist` taga, a ako ga nema, iz obrasca `Autor – Naslov`; prikazuje se ispod naslova, uz `Nepoznat autor` kao fallback. Fajlovi se ne diraju na disku.
+- **Izvoz prati nove prikaze:** dodata su polja `musicArtist`, `bookFileTitle`, `bookGroupTitle` i `bookAuthor`, uz ranija ručna imena, virtuelne sezone, Stand up izvođača / show i `zanr`. Podcast Index ključ i tajna se i dalje brišu iz izvoza.
+- **Bez promene osnovnog ponašanja:** četiri taba, uvek vidljiva donja navigacija, reprodukcija u pozadini, omot samo preko olovke, virtuelno sređivanje, snapshot / `Vrati sve`, Wi-Fi podrazumevano, mobilni uz potvrdu svaki put i pravilo „samo predlog, ja potvrdim“ ostaju netaknuti. Faza 3 i dalje nije urađena.
+- **Verzija:** `versionCode 16`, `versionName 1.2.2`; izvorni commit `0b66d2d`, CI `43803926869` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`), artifact commit `fcbe836`.
+
+## Ranije ispravke (v1.2.1) — sedam ispravki posle povratnih informacija
 
 - **Skrivanje kolona na `+` / `Uvoz`:** zaglavlja `UVEZENI` i `NEUVEZENI` imaju strelicu. Dodir na zaglavlje ili strelicu sklapa celu kolonu, a ponovni dodir je vraća; stanje se pamti pri prelasku između `+` tabova.
 - **Ručno ime bez preklapanja sa tastaturom:** umesto ugrađenog `EditText`-a u listiću, `Promeni ime` otvara zaseban `AlertDialog`. Dijalog koristi `SOFT_INPUT_STATE_VISIBLE` + `SOFT_INPUT_ADJUST_RESIZE`, uz već postojeći `adjustResize` iz manifesta, pa polje i dugmad ostaju iznad tastature. `Sačuvaj`, `Otkaži` i `Vrati original` su uvek dostupni.
@@ -137,7 +146,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.2.1` (`versionCode 15`) |
+| Verzija | `1.2.2` (`versionCode 16`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
