@@ -340,6 +340,23 @@ class MainActivity : android.app.Activity() {
         tabHome(sec)
     }
 
+    /** X u plejeru: zaustavi reprodukciju, skloni mini-plejer i vrati se na tab. */
+    private fun closePlayer() {
+        val p = Bus.player
+        val sec = p?.let { sectionForKind(it.kind) } ?: Nav.tab
+        cmd(PlayerService.ACTION_STOP)
+        Bus.player = null
+        Bus.timer = null
+        Bus.playRequest = null
+        Bus.night = false
+        Bus.seeking = false
+        Bus.undo = null
+        Nav.sheet = null
+        Bus.showToast("Plejer isključen")
+        tabHome(sec)
+        Nav.scrollToPlaying = false
+    }
+
     private fun onBack() {
         if (cur().v == "player" && Nav.stack.size <= 1) { minimizePlayer(); return }
         if (cur().v == "player") Nav.scrollToPlaying = true
@@ -987,9 +1004,10 @@ class MainActivity : android.app.Activity() {
         sheet.addView(sc)
     }
 
-    private fun chipsBar(items: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit): View {
+    private fun chipsBar(items: List<Pair<String, String>>, selected: String,
+                         bottomDp: Int = 10, onPick: (String) -> Unit): View {
         val c = this
-        val inner = horizontal(c).apply { setPadding(c.dp(16), 0, c.dp(16), c.dp(10)) }
+        val inner = horizontal(c).apply { setPadding(c.dp(16), 0, c.dp(16), c.dp(bottomDp)) }
         items.forEach { (k, label) ->
             val p = pill(c, label, k == selected)
             p.click { onPick(k); render() }
@@ -1060,13 +1078,17 @@ class MainActivity : android.app.Activity() {
         card.addView(cover(c, p.cover, p.initial, 38, 9f, coverKeyOf(p.groupKey)))
         val tx = vertical(c).apply {
             layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(10) }
-            addView(text(c, p.groupTitle, 14f, C_T1))
+            val firstLine = if (p.kind == Kind.TRACK) LibraryManager.displayTitle(p.current)
+                else p.groupTitle
+            addView(text(c, firstLine, 14f, C_T1))
             val timerPart = Bus.timer?.let {
                 " · tajmer " + fmtTime(if (it.phase == TPhase.GRACE) it.graceMs else it.leftMs)
             } ?: ""
-            val secondLine = if (p.kind == Kind.BOOK)
-                bookAuthor(p.current).ifBlank { "Nepoznat autor" }
-            else LibraryManager.displayTitle(p.current)
+            val secondLine = when (p.kind) {
+                Kind.TRACK -> musicArtist(p.current).ifBlank { "Nepoznat izvođač" }
+                Kind.BOOK -> bookAuthor(p.current).ifBlank { "Nepoznat autor" }
+                else -> LibraryManager.displayTitle(p.current)
+            }
             addView(text(c, secondLine + timerPart, 12f, C_T2))
         }
         card.addView(tx)
@@ -1238,8 +1260,8 @@ class MainActivity : android.app.Activity() {
     private fun seriesScreen(): View {
         val c = this
         Nav.tab = Section.SERIES
-        val tabs = tabsBar(listOf("folderi" to "Folderi", "feedovi" to "Feedovi", "katalog" to "Katalog"),
-            Nav.seriesTab) { Nav.seriesTab = it }
+        val tabs = chipsBar(listOf("folderi" to "Folderi", "feedovi" to "Feedovi", "katalog" to "Katalog"),
+            Nav.seriesTab, 0) { Nav.seriesTab = it }
         val list = listHost()
         when (Nav.seriesTab) {
             "folderi" -> {
@@ -1593,7 +1615,9 @@ class MainActivity : android.app.Activity() {
             addView(text(c, p.sectionLabel, 10.5f, C_T2, bold = true).apply {
                 letterSpacing = 0.16f; gravity = Gravity.CENTER
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(View(c), LinearLayout.LayoutParams(c.dp(30), c.dp(30)))
+            addView(iconBox(c, R.drawable.ic_x, C_T2, 22, 4) { closePlayer() }.apply {
+                contentDescription = "Isključi plejer"
+            })
         }
         body.addView(top)
         body.addView(playerArt(p))
@@ -1602,10 +1626,11 @@ class MainActivity : android.app.Activity() {
             else LibraryManager.displayTitle(p.current),
             18f, C_T1, bold = true)
         body.addView(titleRef)
-        val playerSub = if (p.kind == Kind.BOOK) {
-            bookAuthor(p.current).ifBlank { "Nepoznat autor" } +
-                " · ${p.index + 1} od ${p.queue.size}"
-        } else "${p.groupTitle} · ${p.index + 1} od ${p.queue.size}"
+        val playerSub = when (p.kind) {
+            Kind.BOOK -> bookAuthor(p.current).ifBlank { "Nepoznat autor" }
+            Kind.TRACK -> musicArtist(p.current).ifBlank { "Nepoznat izvođač" }
+            else -> p.groupTitle
+        } + " · ${p.index + 1} od ${p.queue.size}"
         body.addView(text(c, playerSub, 12.5f, C_T2).apply {
             setPadding(0, c.dp(3), 0, c.dp(12))
         })

@@ -609,6 +609,16 @@ class PlayerService : Service(), SensorEventListener {
         }
     }
 
+    /** Naslov i red ispod njega za MediaSession / obaveštenje. */
+    private fun metadataTitle(p: PlayerState): String =
+        if (p.kind == Kind.BOOK) bookFileTitle(p.current) else LibraryManager.displayTitle(p.current)
+
+    private fun metadataSubtitle(p: PlayerState): String = when (p.kind) {
+        Kind.TRACK -> musicArtist(p.current).ifBlank { "Nepoznat izvođač" }
+        Kind.BOOK -> bookAuthor(p.current).ifBlank { "Nepoznat autor" }
+        else -> p.groupTitle
+    }
+
     private fun updateSession() {
         val p = state
         val st = if (p?.playing == true) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
@@ -625,8 +635,8 @@ class PlayerService : Service(), SensorEventListener {
             .build()
         session.setPlaybackState(ps)
         val md = MediaMetadata.Builder()
-            .putString(MediaMetadata.METADATA_KEY_TITLE, p?.current?.title ?: "Šaptač")
-            .putString(MediaMetadata.METADATA_KEY_ARTIST, p?.groupTitle ?: "Ništa se ne pušta")
+            .putString(MediaMetadata.METADATA_KEY_TITLE, p?.let { metadataTitle(it) } ?: "Šaptač")
+            .putString(MediaMetadata.METADATA_KEY_ARTIST, p?.let { metadataSubtitle(it) } ?: "Ništa se ne pušta")
             .putString(MediaMetadata.METADATA_KEY_ALBUM, p?.sub ?: "")
             .putLong(MediaMetadata.METADATA_KEY_DURATION, p?.durationMs ?: 0L)
         coverBitmap()?.let { md.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it) }
@@ -664,8 +674,8 @@ class PlayerService : Service(), SensorEventListener {
         val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             Notification.Builder(this, CHANNEL) else Notification.Builder(this)
         b.setSmallIcon(R.drawable.ic_radio)
-            .setContentTitle(p?.current?.title ?: "Šaptač")
-            .setContentText(p?.groupTitle ?: "Ništa se ne pušta")
+            .setContentTitle(p?.let { metadataTitle(it) } ?: "Šaptač")
+            .setContentText(p?.let { metadataSubtitle(it) } ?: "Ništa se ne pušta")
             .setSubText(if (t != null) "Tajmer · ${fmtTime(if (t.phase == TPhase.GRACE) t.graceMs else t.leftMs)}" else "Šaptač")
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
@@ -697,6 +707,8 @@ class PlayerService : Service(), SensorEventListener {
 
     private fun stopPlayback() {
         savePosition(force = true)
+        Store.saveLastPlayer(JSONObject())
+        Bus.playRequest = null
         cancelTimer()
         releasePlayer()
         state = null
