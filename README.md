@@ -1,14 +1,27 @@
-# Šaptač — Android v1.2.0
+# Šaptač — Android v1.2.1
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.550.722 bajtova
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.564.298 bajtova
 
-SHA-256: `b3b5d58f9a206681ef1d2d68aada495f3404a0a2cb12700df9e720e54ac589ea`
+SHA-256: `39328f7ff6dbaac1116f40effd78d8a4fc525b3585c709b9b0a06501302c5aef`
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova, virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem, ručna virtuelna imena, pretraga cele biblioteke i čipovi za sortiranje; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), jedan `+` meni za uvoz, sređivanje, internet i izvoz, virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem, ručna virtuelna imena i sezone iz `S##E##`, pretraga cele biblioteke i čipovi za sortiranje; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Šta je novo u v1.2.0 — ručni metapodaci, pretraga svih fajlova i sortiranje
+## Šta je novo u v1.2.1 — sedam ispravki posle povratnih informacija
+
+- **Skrivanje kolona na `+` / `Uvoz`:** zaglavlja `UVEZENI` i `NEUVEZENI` imaju strelicu. Dodir na zaglavlje ili strelicu sklapa celu kolonu, a ponovni dodir je vraća; stanje se pamti pri prelasku između `+` tabova.
+- **Ručno ime bez preklapanja sa tastaturom:** umesto ugrađenog `EditText`-a u listiću, `Promeni ime` otvara zaseban `AlertDialog`. Dijalog koristi `SOFT_INPUT_STATE_VISIBLE` + `SOFT_INPUT_ADJUST_RESIZE`, uz već postojeći `adjustResize` iz manifesta, pa polje i dugmad ostaju iznad tastature. `Sačuvaj`, `Otkaži` i `Vrati original` su uvek dostupni.
+- **Virtuelna sezona iz novog imena:** ručno ime oblika `Ime serije S02E07 Naslov`, `Sezona 02` ili golo `S02` sada pravi virtuelnu grupu `Sezona 02` u `Emisije / Folderi` i sortira epizode po `S##E##`. `SxxExx` iz imena dakle smešta fajl u odgovarajuću sezonu. Prioritet je ručna sekcija, pa sezona iz ručnog imena, pa folder; fajl se ne preimenuje, ne pomera i ne briše na disku.
+- **Emisije bez praznine:** uklonjeni su redovi za uvoz i nepoznate / mešane fajlove koji su stajali ispod `Folderi`; zadržan je samo kompaktni `Folderi / Feedovi / Katalog` tab, pa sadržaj počinje odmah ispod njega. Ti poslovi su sada dostupni iz `+`.
+- **Stand up samo `Naziv / Izvođač`:** uklonjeni su `Sve / U toku / Nove / Završene`. Iz imena fajla ili ručnog imena se vade izvođač i album / show (razdvajači `-`, `–`, `—`, `:`, `|`, tačka), uz fallback na `artist` / `album` tag. `Uporedi izvođače / show na internetu` šalje samo očišćen upit, pravi isključivo predloge i ne primenjuje ih automatski.
+- **Jedan `+` meni:** `Uvoz / Sređivanje / Internet / Izvoz` su četiri taba na `+` ekranu. Uvoz je jedna opcija, `Sređivanje` nosi raspoređivanje, predloge, `Vrati sve` i internet pretragu cele biblioteke, `Internet` nosi mrežna podešavanja, a `Izvoz` izvoz liste fajlova. `Podešavanja` više nemaju `SREĐIVANJE`, `INTERNET`, `IZVOZ` ni `FOLDERI`; ostaju reprodukcija, tajmer, omoti, podkasti i rad u pozadini.
+- **Statusna traka nestaje odmah:** čim internet pretraga završi ili se prekine, `Bus.onlineScan` se postavlja na `null` pre osvežavanja ekrana. Nema zaostalog `Završeno` stanja ispod statusne linije; ostaje samo kratki toast sa brojem predloga.
+- **Izvoz prati nova virtuelna polja:** pored ranijih ručnih imena i `zanr`, JSON sada nosi `sectionSource = "manualSeason"`, `manualSeason`, `manualEpisode`, `manualSeriesTitle`, `standupArtist` i `standupShow`. Podcast Index ključ i tajna se i dalje brišu iz izvoza.
+- **Bez promene osnovnog ponašanja:** četiri taba, uvek vidljiva donja navigacija, reprodukcija u pozadini, omot samo preko olovke, virtuelno sređivanje, snapshot / `Vrati sve`, originalni engleski naslov uz `S##E##`, Wi-Fi podrazumevano, mobilni uz potvrdu svaki put i pravilo „samo predlog, ja potvrdim“ ostaju netaknuti. Faza 3 i dalje nije urađena.
+- **Verzija:** `versionCode 15`, `versionName 1.2.1`; izvorni commit `d79bd16`, CI `43801520376` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`), artifact commit `cb84b15`.
+
+## Ranije ispravke (v1.2.0) — ručni metapodaci, pretraga svih fajlova i sortiranje
 
 - **Dugi klik na svaki fajl:** jedan listić prikazuje originalno i normalizovano ime, izvođača, album, žanr, trajanje, folder, sekciju i internet predlog; tu se ime može ručno promeniti, a fajl rasporediti u `Knjige / Emisije / Muzika / Stand up` ili ostaviti neraspoređenim. Ime je isključivo virtuelno: originalni fajl, putanja i URI ostaju netaknuti. Dugi klik radi u svim sekcijama, na pojedinačnim fajlovima i na grupama.
 - **Internet pretraga svih uvezenih fajlova:** dugme `Pretraži sve uvezene fajlove` u `Sređivanju biblioteke` i `Podešavanjima` pokreće obilazak cele biblioteke bez rotacionog limita od 20 upita. Tanka globalna traka ispod statusne linije prikazuje `Internet: 37 / 362`, napredak i `Prekini` na svim ekranima; po završetku se sama sklanja. Wi-Fi je podrazumevan, mobilni i dalje traži `Koristi mobilni internet za ovu proveru?` → `Da / Ne`; i dalje se prave samo predlozi, ništa se ne primenjuje automatski. Upiti su dodatno očišćeni od putanja, URI-ja i imena foldera.
@@ -124,7 +137,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.2.0` (`versionCode 14`) |
+| Verzija | `1.2.1` (`versionCode 15`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
