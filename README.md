@@ -1,13 +1,23 @@
-# Šaptač — Android v1.1.1
+# Šaptač — Android v1.1.2
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.511.994 bajtova  
-SHA-256: `1be6c227d19516db045526a462da1d1cba80779f83a0d63eec077d103fd396be`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.517.206 bajtova  
+SHA-256: `4afb90c776672f4d77d9e1c8ff46a8714196acc89fc614cdd5211090badace85`
 
 Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova i virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem (skriveno u `Podešavanjima`); skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
 
-## Šta je novo u v1.1.1 — Faza 2 sređivanja biblioteke
+## Šta je novo u v1.1.2 — brži prelazak između sekcija
+
+- **Uzrok usporenja:** pri svakom kliku na `Muzika / Knjige / Emisije / Stand up` se za svaki od 1.341 fajla iznova parsirala velika lokalna `SharedPreferences` JSON baza (folderi, override, normalizacije, pozicije, `done`, nedavne grupe), zatim su se grupe ponovo gradile, a status i omoti su se čitali više puta po redu. `signature()` je uz to svakih 500 ms ponovo čitao ceo JSON feedova.
+- **Jedno parsiranje po ključu:** `Store` sada drži keš parsiranih `JSONObject`/`JSONArray` vrednosti. Upisi rade nad kopijom, pa deljeni keš nikad ne menja neko drugi tok; `Store.epoch()` se menja posle svakog upisa i time odbacuje izvedene keševe.
+- **Grupe se ne prave iznova:** `LibraryManager.groups()` kešira gotovu listu grupa po sekciji i prikazu (`folderi / izvođači / albumi`). Keš važi dok se ne promeni biblioteka, normalizacija ili lokalna baza; ponovni klik na isti tab više ne skenira svih 1.341 fajl.
+- **Manje posla po redu:** `Knjige` i `Stand up` sada izračunaju poziciju i „završeno“ jednom po grupi, `Emisije` prolaze kroz epizode jednom umesto dva puta, a `signature()` koristi `Store.feedCount()` umesto da pravi sve `Feed` objekte svakih pola sekunde.
+- **Omoti bez kočenja i bez rasta memorije:** ručni/ugrađeni i internet omoti koriste ograničen `LruCache` bitmapa; internet omoti se učitavaju umanjeni na najviše 256 px, a negativni rezultat se zapamti, pa se za svaku grupu više ne otvara i ne dekoduje isti fajl uzalud. Prioritet **tvoja olovka > ugrađeni omot > keširani internet omot > generički gradijent** ostaje netaknut.
+- **Nema promene ponašanja:** četiri taba, stalno vidljiva donja navigacija, minimiziranje/`Back`, reprodukcija u pozadini preko obaveštenja, birač omota samo na olovku, virtuelno sređivanje, snapshot/`Vrati sve`, pravila za mobilni internet i „samo predlog, ja potvrdim“ ostaju tačno kao u v1.1.1. Nema novih mrežnih poziva, novih ekrana ni promene fajlova na disku.
+- **Verzija:** `versionCode 13`, `versionName 1.1.2`; CI `43785919122` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`), artifact commit `4ec5620`.
+
+## Ranije ispravke (v1.1.1) — Faza 2 sređivanja biblioteke
 
 - **Svih pet odobrenih izvora:** `Apple/iTunes` (katalog + RSS sa originalnim engleskim naslovima epizoda), `Wikipedia` (wikitext spisak epizoda), `BBC` (programme guide, best-effort), `MusicBrainz` (muzika) i `Open Library` (knjige, sa URL-om omota), plus `Podcast Index` kada se unese besplatni ključ + tajna. Svi su HTTPS, bez hardkodovanih kredencijala.
 - **Podcast Index ključ/tajna se unose SAMO u aplikaciji:** `Podešavanja → SREĐIVANJE · INTERNET → Podcast Index ključ / tajna`. Ne traže se u chatu, ne upisuju se u repozitorijum i **brišu se iz izvezenog JSON-a**. Bez njih se taj jedan izvor preskače, ostali rade. Potpis zahteva je `HmacSHA1(key + timestamp)` sa `X-Auth-Key` / `X-Auth-Date` / `Authorization` zaglavljima.
@@ -101,7 +111,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.1.1` (`versionCode 12`) |
+| Verzija | `1.1.2` (`versionCode 13`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
