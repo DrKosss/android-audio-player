@@ -11,8 +11,8 @@ android {
         applicationId = "com.saptac.app"
         minSdk = 30
         targetSdk = 37
-        versionCode = 15
-        versionName = "1.2.1"
+        versionCode = 16
+        versionName = "1.2.2"
     }
 
     signingConfigs {

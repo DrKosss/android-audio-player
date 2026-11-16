@@ -592,7 +592,8 @@ class MainActivity : android.app.Activity() {
         wholeRef?.text = if (p.kind == Kind.BOOK)
             "Cela knjiga: ${(f * 100).roundToInt()}% · preostalo ${fmtShort(dur - p.positionMs)}"
         else "ukupno ${fmtShort(dur)}"
-        titleRef?.text = LibraryManager.displayTitle(p.current)
+        titleRef?.text = if (p.kind == Kind.BOOK)
+            bookFileTitle(p.current) else LibraryManager.displayTitle(p.current)
         miniProgressRef?.set(f)
         Bus.timer?.let { t ->
             val left = if (t.phase == TPhase.GRACE) t.graceMs else t.leftMs
@@ -1063,7 +1064,10 @@ class MainActivity : android.app.Activity() {
             val timerPart = Bus.timer?.let {
                 " · tajmer " + fmtTime(if (it.phase == TPhase.GRACE) it.graceMs else it.leftMs)
             } ?: ""
-            addView(text(c, LibraryManager.displayTitle(p.current) + timerPart, 12f, C_T2))
+            val secondLine = if (p.kind == Kind.BOOK)
+                bookAuthor(p.current).ifBlank { "Nepoznat autor" }
+            else LibraryManager.displayTitle(p.current)
+            addView(text(c, secondLine + timerPart, 12f, C_T2))
         }
         card.addView(tx)
         card.addView(circleButton(c, 38, C_AMBER,
@@ -1167,7 +1171,6 @@ class MainActivity : android.app.Activity() {
         "arrange" -> arrangeScreen()
         "plus" -> plusScreen()
         "import" -> plusScreen()
-        "mixed" -> mixedScreen()
         "feeds" -> feedsScreen()
         "feed" -> feedScreen(cur().id)
         "catitem" -> catalogItemScreen()
@@ -1192,8 +1195,8 @@ class MainActivity : android.app.Activity() {
             }
         }
         val list = listHost()
-        if (filtered.isEmpty()) list.addView(emptyState("Nema knjiga u ovoj grupi.\nUvezi foldere sa audio fajlovima.",
-            "Uvezi foldere") { openPlus("import") })
+        if (filtered.isEmpty()) list.addView(emptyState(
+            "Nema knjiga u ovoj grupi.\nUvoz ide preko + menija."))
         filtered.forEach { (g, pos, done) ->
             val sub = when {
                 done -> "${g.subtitle} · završena"
@@ -1224,6 +1227,14 @@ class MainActivity : android.app.Activity() {
         )
     }
 
+    /** Virtuelni folderi nepoznatih / mešanih fajlova ne pripadaju Emisijama. */
+    private fun unknownSeriesGroup(g: Group): Boolean {
+        val t = g.title.lowercase(Locale.ROOT)
+        val k = g.key.lowercase(Locale.ROOT)
+        val words = listOf("nepoznat", "mešani", "mesani", "neraspoređen", "neuvezen", "unknown", "mixed")
+        return words.any { t.contains(it) || k.contains(it) }
+    }
+
     private fun seriesScreen(): View {
         val c = this
         Nav.tab = Section.SERIES
@@ -1232,9 +1243,9 @@ class MainActivity : android.app.Activity() {
         val list = listHost()
         when (Nav.seriesTab) {
             "folderi" -> {
-                val groups = LibraryManager.groups(Section.SERIES)
-                if (groups.isEmpty()) list.addView(emptyState("Nema serija. Uvezi foldere sa epizodama.",
-                    "Uvezi foldere") { openPlus("import") })
+                val groups = LibraryManager.groups(Section.SERIES).filterNot { unknownSeriesGroup(it) }
+                if (groups.isEmpty()) list.addView(emptyState(
+                    "Nema serija.\nUvoz foldera i fajlova ide preko + menija."))
                 groups.forEach { g ->
                     var fresh = 0
                     var started = false
@@ -1512,8 +1523,8 @@ class MainActivity : android.app.Activity() {
         )
         val list = listHost()
         val groups = LibraryManager.groups(Section.MUSIC, view)
-        if (groups.isEmpty()) list.addView(emptyState("Nema muzike u ovoj sekciji.\nUvezi foldere sa numerama.",
-            "Uvezi foldere") { openPlus("import") })
+        if (groups.isEmpty()) list.addView(emptyState(
+            "Nema muzike u ovoj sekciji.\nUvoz ide preko + menija."))
         groups.forEach { g ->
             val row = rowView(c, { go("folder", g.key) }, {
                 openInfoDialog(group = g, from = Section.MUSIC); true
@@ -1555,7 +1566,7 @@ class MainActivity : android.app.Activity() {
             val tx = vertical(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
                 addView(rowTitle(c, LibraryManager.displayTitle(item), np))
-                addView(text(c, "${g.title} · ${fmtTime(item.durationMs)}", 12f, C_T2))
+                addView(text(c, musicArtist(item).ifBlank { "Nepoznat izvođač" }, 12f, C_T2))
             }
             row.addView(tx)
             row.addView(text(c, fmtTime(item.durationMs), 12f, C_T2))
@@ -1586,9 +1597,16 @@ class MainActivity : android.app.Activity() {
         }
         body.addView(top)
         body.addView(playerArt(p))
-        titleRef = text(c, LibraryManager.displayTitle(p.current), 18f, C_T1, bold = true)
+        titleRef = text(c,
+            if (p.kind == Kind.BOOK) bookFileTitle(p.current)
+            else LibraryManager.displayTitle(p.current),
+            18f, C_T1, bold = true)
         body.addView(titleRef)
-        body.addView(text(c, p.groupTitle + " · ${p.index + 1} od ${p.queue.size}", 12.5f, C_T2).apply {
+        val playerSub = if (p.kind == Kind.BOOK) {
+            bookAuthor(p.current).ifBlank { "Nepoznat autor" } +
+                " · ${p.index + 1} od ${p.queue.size}"
+        } else "${p.groupTitle} · ${p.index + 1} od ${p.queue.size}"
+        body.addView(text(c, playerSub, 12.5f, C_T2).apply {
             setPadding(0, c.dp(3), 0, c.dp(12))
         })
 
@@ -1863,7 +1881,7 @@ class MainActivity : android.app.Activity() {
             }
 
         body.addView(sectionLabelView("AUTOMATSKI SREĐENO · ${applied.size}"))
-        if (applied.isEmpty()) body.addView(emptyState("Još nema sigurnih pogodaka.\nUvezi foldere pa se sređivanje pokreće samo."))
+        if (applied.isEmpty()) body.addView(emptyState("Još nema sigurnih pogodaka.\nUvoz ide preko + menija, pa se sređivanje pokreće samo."))
         applied.take(40).forEach { m ->
             val box = vertical(c).apply {
                 background = rounded(C_S1, 12f, c)
@@ -1972,8 +1990,13 @@ class MainActivity : android.app.Activity() {
                 row.addView(statusDot(c, here))
                 row.addView(vertical(c).apply {
                     layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-                    addView(rowTitle(c, LibraryManager.displayTitle(item), here))
-                    addView(text(c, fmtTime(offset), 12f, C_T2))
+                    addView(rowTitle(c,
+                        if (p.kind == Kind.BOOK) bookFileTitle(item)
+                        else LibraryManager.displayTitle(item), here))
+                    val chapterSub = if (p.kind == Kind.BOOK)
+                        bookAuthor(item).ifBlank { "Nepoznat autor" } + " · "
+                    else ""
+                    addView(text(c, chapterSub + fmtTime(offset), 12f, C_T2))
                 })
                 row.addView(text(c, fmtTime(item.durationMs), 12f, C_T2))
                 offset += item.durationMs
@@ -2203,12 +2226,11 @@ class MainActivity : android.app.Activity() {
             setPadding(c.dp(18), 0, c.dp(18), c.dp(8))
         }
         val unassigned = Bus.library.folders.count { Store.folderSection(it.key) == null }
-        val unknownFiles = Bus.library.items.count { LibraryManager.sectionOf(it) == Section.NONE }
-        val mixedFiles = LibraryManager.mixed().size
         body.addView(sectionLabelView("RASPOREĐIVANJE"))
         body.addView(settingRow(c, "Rasporedi foldere", "$unassigned čekaju") { go("arrange") })
-        body.addView(settingRow(c, "Neraspoređeni i mešani fajlovi",
-            "${unknownFiles + mixedFiles} fajlova") { go("mixed") })
+        body.addView(text(c,
+            "Neuvezeni folderi i fajlovi se biraju isključivo u + / Uvoz. Nema posebnog foldera nepoznatih fajlova.",
+            11.5f, C_T3).apply { setPadding(0, c.dp(8), 0, c.dp(4)) })
         body.addView(normalizeBody())
         return scroll(c, body)
     }
@@ -2493,6 +2515,10 @@ class MainActivity : android.app.Activity() {
             fo.put("manualSeriesTitle", ms?.seriesTitle ?: JSONObject.NULL)
             fo.put("standupArtist", LibraryManager.standupArtist(item))
             fo.put("standupShow", LibraryManager.standupShow(item))
+            fo.put("musicArtist", musicArtist(item))
+            fo.put("bookFileTitle", bookFileTitle(item))
+            fo.put("bookGroupTitle", bookGroupTitle(item))
+            fo.put("bookAuthor", bookAuthor(item))
             filesArr.put(fo)
         }
 
@@ -2720,79 +2746,6 @@ class MainActivity : android.app.Activity() {
         try { startExternal(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:$packageName"))) } catch (_: Exception) { }
     }
-    /* ------------------------------------------------------------ mešani fajlovi */
-    private fun mixedScreen(): View {
-        val c = this
-        val list = listHost()
-        val unknown = Bus.library.items.filter { LibraryManager.sectionOf(it) == Section.NONE }
-        val items = LibraryManager.mixed()
-        if (unknown.isEmpty() && items.isEmpty()) list.addView(emptyState("Nema neraspoređenih ni sumnjivih fajlova."))
-        if (unknown.isNotEmpty()) {
-            list.addView(sectionLabelView("NERASPOREĐENI · ${unknown.size}"))
-            unknown.forEach { item ->
-                val np = isPlayingItem(item.id)
-                val row = rowView(c, {
-                    openInfoDialog(item = item, from = Section.NONE)
-                }, {
-                    openInfoDialog(item = item, from = Section.NONE); true
-                }, playing = np)
-                row.addView(FrameLayout(c).apply {
-                    layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
-                    background = rounded(C_S2, 11f, c)
-                    addView(icon(c, R.drawable.ic_folder, C_T2, 19),
-                        FrameLayout.LayoutParams(c.dp(19), c.dp(19), Gravity.CENTER))
-                })
-                row.addView(vertical(c).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                    addView(rowTitle(c, LibraryManager.displayTitle(item), np))
-                    addView(text(c, "u folderu ${item.folderName} · ${fmtShort(item.durationMs)}", 12f, C_T2))
-                })
-                val badge = text(c, "Rasporedi", 11.5f, C_AMBER, bold = true)
-                badge.background = rounded(C_AMBER_D, 9f, c)
-                badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
-                badge.click { openInfoDialog(item = item, from = Section.NONE) }
-                row.addView(badge)
-                list.addView(row)
-            }
-        }
-        if (items.isNotEmpty()) {
-            list.addView(sectionLabelView("MEŠANI · ${items.size}"))
-            items.forEach { (item, looks) ->
-                val np = isPlayingItem(item.id)
-                val from = LibraryManager.sectionOf(item)
-                val row = rowView(c, {
-                    openInfoDialog(item = item, from = from)
-                }, {
-                    openInfoDialog(item = item, from = from); true
-                }, playing = np)
-                row.addView(FrameLayout(c).apply {
-                    layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
-                    background = rounded(C_S2, 11f, c)
-                    addView(icon(c, R.drawable.ic_folder, C_T2, 19),
-                        FrameLayout.LayoutParams(c.dp(19), c.dp(19), Gravity.CENTER))
-                })
-                row.addView(vertical(c).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                    addView(rowTitle(c, LibraryManager.displayTitle(item), np))
-                    addView(text(c, "u folderu ${item.folderName} · ${fmtShort(item.durationMs)}", 12f, C_T2))
-                })
-                val badge = text(c, "→ ${sectionName(looks)}", 11.5f, C_AMBER, bold = true)
-                badge.background = rounded(C_AMBER_D, 9f, c)
-                badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
-                badge.click { openInfoDialog(item = item, from = from) }
-                row.addView(badge)
-                list.addView(row)
-            }
-        }
-        val footer = text(c,
-            "Aplikacija prati dužinu, ime i tagove. Fajl od 50 minuta u folderu muzike koji se zove „Glava 3“ verovatno je deo knjige. Dodir ili dug pritisak otvara podatke i ručno raspoređivanje; predlog se ne primenjuje sam.",
-            11.5f, C_T3).apply { setPadding(c.dp(20), c.dp(6), c.dp(20), c.dp(20)) }
-        return page(header("Mešani fajlovi", back = true),
-            text(c, "${unknown.size + items.size} fajlova · predlog, ne pravilo", 12f, C_T2).apply {
-                setPadding(c.dp(18), c.dp(4), c.dp(18), c.dp(8))
-            }, scroll(c, list), footer)
-    }
-
     /* ------------------------------------------------------------ feedovi */
     private fun feedsScreen(): View {
         val c = this

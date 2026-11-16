@@ -71,6 +71,82 @@ private fun cleanPart(value: String): String = value
     .trim(' ', '-', '–', '—', '·', ':', '.', ',', '|', '(', ')', '[', ']')
     .trim()
 
+/** MediaStore često upiše "<unknown>" ili ime foldera umesto pravog izvođača. */
+private fun usefulArtist(item: AudioItem): String {
+    val a = item.artist.trim()
+    if (a.isBlank() || a.equals("<unknown>", true) || a.equals("unknown", true)) return ""
+    if (a.equals(item.folderName, true)) return ""
+    return a
+}
+
+private val BOOK_EXT = Regex("""\.(mp3|m4a|m4b|ogg|opus|flac|wav|aac|aiff|aif|mpga)$""", RegexOption.IGNORE_CASE)
+private val BOOK_TRACK_PREFIX = Regex(
+    """^\s*(?:#?\d{1,4}\s*[-–—:.)]\s*|(?:chapter|ch|glava|poglavlj\w*|deo|dio|part|pt|track|disk|cd)\s*\.?\s*\d{1,4}\s*[-–—:.)]?\s*)""",
+    RegexOption.IGNORE_CASE)
+private val BOOK_CHAPTER_SUFFIX = Regex(
+    """\s*[-–—:|(]\s*(?:chapter|ch|glava|poglavlj\w*|deo|dio|part|pt|track|disk|cd)\s*\.?\s*\d{1,4}\s*[)|]?\s*$""",
+    RegexOption.IGNORE_CASE)
+private val BOOK_COUNTER_SUFFIX = Regex(
+    """\s*\((?:\d{1,4}\s*(?:/|of|od)\s*\d{1,4}|\d{1,4})\)\s*$""",
+    RegexOption.IGNORE_CASE)
+private val BOOK_DASH = Regex("""\s+[-–—]\s+""")
+private val BOOK_SPACES = Regex("""\s+""")
+
+/** Skida ekstenziju, brojeve poglavlja i tehničke sufikse, ali čuva pravo ime knjige. */
+private fun cleanBookText(raw: String): String {
+    var t = raw.trim().replace('_', ' ')
+    t = BOOK_EXT.replace(t, "")
+    t = BOOK_TRACK_PREFIX.replace(t, "")
+    t = BOOK_CHAPTER_SUFFIX.replace(t, "")
+    t = BOOK_COUNTER_SUFFIX.replace(t, "")
+    t = BOOK_SPACES.replace(t, " ").trim()
+    return t.trim(' ', '-', '–', '—', '·', ':', '.', ',', '|', '(', ')', '[', ']')
+        .ifBlank { cleanTitle(raw) }
+}
+
+/** Obrazac „Autor – Naslov“ kada tag autora nije upisan. */
+private fun splitBookAuthor(raw: String): Pair<String, String>? {
+    val parts = BOOK_DASH.split(raw, limit = 2)
+    if (parts.size != 2) return null
+    val author = cleanBookText(parts[0])
+    val title = cleanBookText(parts[1])
+    if (author.isBlank() || title.isBlank()) return null
+    if (author.any { it.isDigit() } || author.split(' ').size > 5 || author.length > 60) return null
+    return author to title
+}
+
+private fun bookAlbum(item: AudioItem): String =
+    item.album.trim().takeIf { it.isNotBlank() && !it.equals(item.folderName, true) } ?: ""
+
+private fun bookFolder(item: AudioItem): String = cleanBookText(item.folderName)
+
+/** Autor knjige: ID3/MediaStore tag, pa obrazac „Autor – Naslov“ iz foldera/albuma/imena fajla. */
+fun bookAuthor(item: AudioItem): String {
+    usefulArtist(item).takeIf { it.isNotBlank() }?.let { return it }
+    listOf(bookFolder(item), bookAlbum(item), item.title).forEach { raw ->
+        splitBookAuthor(raw)?.first?.takeIf { it.isNotBlank() }?.let { return it }
+    }
+    return ""
+}
+
+/** Čisto ime knjige za grupu: album > folder > ime fajla. Ručno ime grupe ima prednost u buildGroups. */
+fun bookGroupTitle(item: AudioItem): String {
+    val album = bookAlbum(item)
+    if (album.isNotBlank()) return splitBookAuthor(album)?.second ?: cleanBookText(album)
+    val folder = bookFolder(item)
+    return (splitBookAuthor(folder)?.second ?: folder).ifBlank { cleanBookText(item.title) }
+}
+
+/** Čisto ime fajla knjige: ručno ime > normalizovano > očišćeno ime fajla. */
+fun bookFileTitle(item: AudioItem): String {
+    Store.manualTitle("item:" + item.id)?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+    Store.normalization(item.id)?.displayTitle?.takeIf { it.isNotBlank() }?.let { return cleanBookText(it) }
+    return (splitBookAuthor(item.title)?.second ?: cleanBookText(item.title)).ifBlank { "Bez naziva" }
+}
+
+/** Izvođač numere, za prikaz ispod pesme u folderima. */
+fun musicArtist(item: AudioItem): String = usefulArtist(item)
+
 /** Iz ručnog imena izvlači sezonu, epizodu, ime serije i naslov epizode. */
 fun manualSeasonFromTitle(title: String, fallbackSeries: String): ManualSeason? {
     val se = MANUAL_SE.find(title)
@@ -434,6 +510,8 @@ object LibraryManager {
                 sec == Section.SERIES && view == "folderi" && firstManualSeason != null ->
                     "Sezona " + String.format(Locale.US, "%02d", firstManualSeason.season)
                 sec == Section.SERIES && view == "folderi" && meta?.seasonGroupTitle != null -> meta.seasonGroupTitle
+                sec == Section.BOOKS && view == "folderi" ->
+                    list.firstOrNull()?.let { bookGroupTitle(it) } ?: groupTitle(key, sec, view, list)
                 else -> groupTitle(key, sec, view, list)
             }
             val title = Store.manualTitle("group:" + key) ?: baseTitle
@@ -448,6 +526,8 @@ object LibraryManager {
                     val sh = first?.let { standupShow(it) } ?: ""
                     listOf(a, sh).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Nepoznat izvođač" }
                 }
+                sec == Section.BOOKS ->
+                    items.firstNotNullOfOrNull { bookAuthor(it).takeIf { it.isNotBlank() } } ?: "Nepoznat autor"
                 else -> artists.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "Nepoznat autor"
             }
             val cKey = coverKeyOf(key)
