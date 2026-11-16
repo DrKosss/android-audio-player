@@ -265,9 +265,36 @@ object OnlineEnricher {
         )
     }
 
-    /** Poziva se sa background niti. Vraća broj novih predloga. */
-    fun enrich(ctx: Context): Int {
-        val app = ctx.applicationContext
+    /** Na mrežu sme samo kratak, normalizovan upit — bez putanje, URI-ja ili imena foldera. */
+    private fun safeAlbum(item: AudioItem): String {
+        val a = item.album
+        if (a.isBlank() || a.equals(item.folderName, ignoreCase = true)) return ""
+        if (a.contains('/') || a.contains('\\')) return ""
+        if (a.startsWith("content://", true) || a.startsWith("file://", true)) return ""
+        return a
+    }
+    private fun cleanQuery(raw: String): String = raw
+        .replace('/', ' ').replace('\\', ' ')
+        .replace(Regex("content://|file://", RegexOption.IGNORE_CASE), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .take(120)
+
+    private fun queryFor(kind: String, item: AudioItem, meta: NormalizedMetadata?): String {
+        val album = safeAlbum(item)
+        val raw = when (kind) {
+            "series" -> meta?.seriesTitle?.takeIf { it.isNotBlank() }
+                ?: Normalizer.seriesTitleFor(item)
+            "music" -> listOf(item.artist, album).filter { it.isNotBlank() }
+                .joinToString(" ").ifBlank { item.title }
+            "book" -> album.ifBlank { item.title }
+            "standup" -> album.ifBlank { item.title }
+            else -> album.ifBlank { item.title }
+        }
+        return cleanQuery(raw)
+    }
+
+    private fun buildTargets(): List<Target> {
         val targets = LinkedHashMap<String, Target>()
         Bus.library.items.forEach { item ->
             val sec = LibraryManager.sectionOf(item)
@@ -279,45 +306,76 @@ object OnlineEnricher {
                 Section.STANDUP -> "standup"
                 else -> "none"
             }
-            val query = when (kind) {
-                "series" -> meta?.seriesTitle?.takeIf { it.isNotBlank() }
-                    ?: Normalizer.seriesTitleFor(item)
-                "music" -> listOf(item.artist, item.album).filter { it.isNotBlank() }
-                    .joinToString(" ").ifBlank { item.title }
-                "book" -> item.album.ifBlank { item.title }
-                "standup" -> item.album.ifBlank { item.title }
-                else -> item.album.ifBlank { item.title }
-            }
+            val query = queryFor(kind, item, meta)
+            if (query.isBlank()) return@forEach
             val key = kind + "|" + query.lowercase(Locale.ROOT)
             targets.getOrPut(key) { Target(key, kind, query) }.items.add(item)
         }
-        val all = targets.values
+        return targets.values
             .sortedWith(compareByDescending<Target> { it.kind == "series" }.thenBy { it.key })
+    }
+
+    /** Jedan upit: pravi samo predloge, nikad ne dira fajl niti primenjuje naslov. */
+    private fun applyTarget(app: Context, t: Target): Int {
+        var made = 0
+        val hits = try { hitsFor(t) } catch (_: Exception) { emptyList() }
+        val best = hits.maxByOrNull { it.confidence } ?: return 0
+        if (best.artworkUrl != null) {
+            val keys = LinkedHashSet<String>()
+            t.items.forEach { keys.addAll(artKeys(it, t.kind)) }
+            try { cacheArtwork(app, best.artworkUrl!!, keys) } catch (_: Exception) { }
+        }
+        t.items.forEach { item ->
+            if (Store.isDismissed(item.id)) return@forEach
+            val meta = Store.normalization(item.id) ?: Store.proposal(item.id)
+            val existing = Store.proposal(item.id)
+            // Lokalni, sigurniji predlog ne gazimo slabijim internet pogotkom.
+            if (existing != null && existing.source.startsWith("local") && best.confidence < 70)
+                return@forEach
+            Store.setProposal(proposalFor(item, t, best, meta))
+            made++
+        }
+        return made
+    }
+
+    /** Poziva se sa background niti. Vraća broj novih predloga. */
+    fun enrich(ctx: Context): Int {
+        val app = ctx.applicationContext
+        val all = buildTargets()
         if (all.isEmpty()) return 0
         // Svako pokretanje obradi sledećih MAX_TARGETS; posle nekoliko uvoza pokrivena je cela biblioteka.
         val start = Store.onlineCursor % all.size
         val ordered = (all.drop(start) + all.take(start)).take(MAX_TARGETS)
         Store.onlineCursor = (start + ordered.size) % all.size
         var made = 0
-        ordered.forEach { t ->
-            val hits = try { hitsFor(t) } catch (_: Exception) { emptyList() }
-            val best = hits.maxByOrNull { it.confidence } ?: return@forEach
-            if (best.artworkUrl != null) {
-                val keys = LinkedHashSet<String>()
-                t.items.forEach { keys.addAll(artKeys(it, t.kind)) }
-                try { cacheArtwork(app, best.artworkUrl!!, keys) } catch (_: Exception) { }
-            }
-            t.items.forEach { item ->
-                if (Store.isDismissed(item.id)) return@forEach
-                val meta = Store.normalization(item.id) ?: Store.proposal(item.id)
-                val existing = Store.proposal(item.id)
-                // Lokalni, sigurniji predlog ne gazimo slabijim internet pogotkom.
-                if (existing != null && existing.source.startsWith("local") && best.confidence < 70)
-                    return@forEach
-                Store.setProposal(proposalFor(item, t, best, meta))
-                made++
-            }
-        }
+        ordered.forEach { t -> made += try { applyTarget(app, t) } catch (_: Exception) { 0 } }
         return made
+    }
+
+    /**
+     * Ručna pretraga SVIH uvezenih fajlova, bez rotacionog limita.
+     * Vraća (broj predloga, broj obrađenih fajlova, prekinuto).
+     */
+    fun enrichAll(ctx: Context, progress: (Int, Int, String) -> Unit): Triple<Int, Int, Boolean> {
+        val app = ctx.applicationContext
+        val all = buildTargets()
+        val total = all.sumOf { it.items.size }
+        if (all.isEmpty()) {
+            progress(0, 0, "Nema uvezenih fajlova")
+            return Triple(0, 0, false)
+        }
+        var processed = 0
+        var made = 0
+        var canceled = false
+        progress(0, total, "Pripremam upite…")
+        for (t in all) {
+            if (Bus.onlineScanCancel) { canceled = true; break }
+            made += try { applyTarget(app, t) } catch (_: Exception) { 0 }
+            processed += t.items.size
+            progress(processed, total, t.query)
+            try { Thread.sleep(120L) } catch (_: InterruptedException) { canceled = true; break }
+        }
+        Store.onlineCursor = 0
+        return Triple(made, processed, canceled)
     }
 }

@@ -73,6 +73,12 @@ object Nav {
     var importSeededVersion: Int = -1
     var scrollToPlaying: Boolean = false
     var normalizeAfterScan: Boolean = false
+    var musicSort: String = "folder"
+    var standupSort: String = "naziv"
+    var infoItem: AudioItem? = null
+    var infoGroup: Group? = null
+    var infoFrom: Section = Section.NONE
+    var infoRenameDraft: String? = null
 }
 
 /** Tanki napredak u mini-plejeru. */
@@ -438,15 +444,18 @@ class MainActivity : android.app.Activity() {
         val t = Bus.timer
         val st = Store.settings
         return listOf(
-            s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab, Nav.seriesTab,
-            Nav.standupChips,
-            Nav.sheet ?: "", Nav.feedId, Nav.catalog.size, Nav.catalogItem?.title ?: "",
+            s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab, Nav.musicSort,
+            Nav.seriesTab, Nav.standupChips, Nav.standupSort,
+            Nav.sheet ?: "", Nav.infoItem?.id ?: "", Nav.infoGroup?.key ?: "", Nav.infoFrom.name,
+            Nav.feedId, Nav.catalog.size, Nav.catalogItem?.title ?: "",
             Nav.importSelection.size, Nav.scanning, Nav.moveName, Nav.moveFrom.name,
             Bus.night, Bus.libraryVersion, Bus.normalizationVersion, Bus.toast ?: "",
+            Bus.onlineScan?.toString() ?: "",
             p?.playing, p?.groupKey, p?.index, p?.current?.id, p?.rate, p?.durationMs,
             t?.phase?.name ?: "off", Bus.undo != null,
             st.jump, st.fade, st.extend, st.gShake, st.gVol, st.gScreen,
             st.nextAuto, st.covers, st.autodl, st.wifiOnly, st.timeSpeed,
+            st.shuffle, st.repeat,
             st.normalizeOnline, st.podcastIndexKey.isNotBlank(), st.podcastIndexSecret.isNotBlank(),
             Store.feedCount(), Store.hasAnyFolder()
         ).joinToString("|")
@@ -454,8 +463,8 @@ class MainActivity : android.app.Activity() {
 
     private fun scrollKey(): String {
         val s = cur()
-        return listOf(s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab,
-            Nav.seriesTab, Nav.standupChips).joinToString("|")
+        return listOf(s.v, s.id, Nav.tab.name, Nav.chips, Nav.musicTab, Nav.musicSort,
+            Nav.seriesTab, Nav.standupChips, Nav.standupSort).joinToString("|")
     }
 
     private fun findMainScroll(v: View?): ScrollView? {
@@ -505,6 +514,7 @@ class MainActivity : android.app.Activity() {
         base.setPadding(0, 0, 0, bottomInsetPx)
         baseRef = base
         base.addView(statusBar())
+        Bus.onlineScan?.let { base.addView(onlineStatusView(it)) }
         val content = screenRoot()
         content.setPadding(0, 0, 0, navH)
         base.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -614,7 +624,7 @@ class MainActivity : android.app.Activity() {
     }
 
     private fun header(title: String, plus: Boolean = true, gear: Boolean = true,
-                       back: Boolean = false): View {
+                       back: Boolean = false, extras: List<View> = emptyList()): View {
         val c = this
         return horizontal(c).apply {
             layoutParams = LinearLayout.LayoutParams(-1, -2)
@@ -623,9 +633,302 @@ class MainActivity : android.app.Activity() {
             if (back) addView(iconBox(c, R.drawable.ic_back, C_T2, 22, 6) { onBack() })
             addView(text(c, title, if (back) 20f else 26f, C_T1, bold = true),
                 LinearLayout.LayoutParams(0, -2, 1f))
+            extras.forEach { addView(it) }
             if (plus) addView(iconBox(c, R.drawable.ic_plus, C_T2, 22, 6) { go("import") })
             if (gear) addView(iconBox(c, R.drawable.ic_settings, C_T2, 22, 6) { go("settings") })
         }
+    }
+
+
+    /** Mali prekidač u gornjem toolbaru: Loop / Shuffle. */
+    private fun toolbarToggle(res: Int, on: Boolean, description: String,
+                              action: (View) -> Unit): FrameLayout =
+        iconBox(this, res, if (on) C_AMBER else C_T2, 18, 4) { action(it) }.apply {
+            contentDescription = description
+            background = ripple(rounded(if (on) C_AMBER_D else Color.TRANSPARENT, 10f, this@MainActivity))
+            layoutParams = LinearLayout.LayoutParams(this@MainActivity.dp(26), this@MainActivity.dp(26)).apply {
+                marginEnd = this@MainActivity.dp(2)
+            }
+        }
+
+    private fun toggleShuffle() {
+        val s = Store.settings; s.shuffle = !s.shuffle; Store.settings = s
+        toast(if (s.shuffle) "Nasumični red uključen" else "Nasumični red isključen")
+    }
+    private fun toggleRepeat() {
+        val s = Store.settings; s.repeat = !s.repeat; Store.settings = s
+        toast(if (s.repeat) "Ponavljanje uključeno" else "Ponavljanje isključeno")
+    }
+
+    /** Čipovi za sortiranje Muzike koriste stabilne ključeve grupa. */
+    private fun musicView(): String = when (Nav.musicSort) {
+        "artist" -> "izvodjaci"
+        "album" -> "albumi"
+        "zanr" -> "zanr"
+        else -> "folderi"
+    }
+    private fun sectionForKind(k: Kind): Section = when (k) {
+        Kind.BOOK -> Section.BOOKS
+        Kind.EPISODE -> Section.SERIES
+        Kind.TRACK -> Section.MUSIC
+        Kind.STANDUP -> Section.STANDUP
+    }
+    private fun infoSectionLabel(sec: Section?): String =
+        if (sec == null || sec == Section.NONE) "Nije raspoređeno" else sectionName(sec)
+
+    /** Globalna tanka traka za ručnu internet pretragu cele biblioteke. */
+    private fun onlineStatusView(state: OnlineScanState): View {
+        val c = this
+        val box = vertical(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setPadding(c.dp(18), c.dp(2), c.dp(18), c.dp(6))
+            background = rounded(C_S1, 0f, c)
+        }
+        val row = horizontal(c).apply { gravity = Gravity.CENTER_VERTICAL }
+        val fraction = if (state.total > 0) state.done.toFloat() / state.total else 0f
+        val label = if (state.running)
+            "Internet: ${state.done} / ${state.total} · ${state.label}"
+        else "Internet: ${state.message ?: "Završeno"}"
+        row.addView(text(c, label, 11f, C_T2, bold = true).apply {
+            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        if (state.running) {
+            row.addView(text(c, "Prekini", 11f, C_AMBER, bold = true).apply {
+                setPadding(c.dp(8), c.dp(4), c.dp(2), c.dp(4))
+                click {
+                    Bus.onlineScanCancel = true
+                    Bus.onlineScan = state.copy(label = "Prekidam…", message = null)
+                    render()
+                }
+            })
+        } else {
+            row.addView(text(c, "×", 15f, C_T3, bold = true).apply {
+                setPadding(c.dp(8), c.dp(2), c.dp(2), c.dp(2))
+                click { Bus.onlineScan = null; render() }
+            })
+        }
+        box.addView(row)
+        box.addView(progressLine(c, fraction, 0))
+        return box
+    }
+
+    /** Dugme pokreće pretragu SVIH uvezenih fajlova, uz stalni status. */
+    private fun startFullOnlineScan() {
+        if (Bus.onlineScan?.running == true) { toast("Pretraga već traje"); return }
+        if (!Store.settings.normalizeOnline) {
+            toast("Uključi internet za sređivanje u podešavanjima")
+            return
+        }
+        if (Net.onWifi(this)) { launchFullOnlineScan(); return }
+        AlertDialog.Builder(this)
+            .setTitle("Mobilni internet")
+            .setMessage("Koristi mobilni internet za ovu proveru?")
+            .setPositiveButton("Da") { _, _ -> launchFullOnlineScan() }
+            .setNegativeButton("Ne") { _, _ ->
+                Bus.log("Internet pretraga svih fajlova preskočena: odbijen mobilni internet")
+            }
+            .show()
+    }
+
+    private fun launchFullOnlineScan() {
+        val total = Bus.library.items.size
+        Bus.onlineScanCancel = false
+        Bus.onlineScan = OnlineScanState(0, total, "Pripremam upite…", true, null)
+        render()
+        thread {
+            val (made, processed, canceled) = OnlineEnricher.enrichAll(applicationContext) { done, tot, label ->
+                Bus.onlineScan = OnlineScanState(done, tot, label, true, null)
+            }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                Bus.onlineScanCancel = false
+                Bus.normalizationVersion++
+                Bus.libraryVersion++
+                val doneState = OnlineScanState(
+                    processed, total,
+                    if (canceled) "Prekinuto" else "Završeno", false,
+                    (if (canceled) "Prekinuto" else "Završeno") + " · $made predloga"
+                )
+                Bus.onlineScan = doneState
+                Bus.log("Internet pretraga svih fajlova: $made predloga" +
+                    (if (canceled) " (prekinuto)" else ""))
+                render()
+                handler.postDelayed({
+                    if (!isFinishing && Bus.onlineScan === doneState) {
+                        Bus.onlineScan = null
+                        render()
+                    }
+                }, 3500L)
+            }
+        }
+    }
+
+    private fun miniSectionLabel(label: String): View =
+        text(this, label, 10.5f, C_AMBER, bold = true).apply {
+            setPadding(0, this@MainActivity.dp(12), 0, this@MainActivity.dp(4))
+            letterSpacing = 0.14f
+        }
+
+    private fun infoKey(): String? = Nav.infoItem?.let { "item:" + it.id }
+        ?: Nav.infoGroup?.let { "group:" + it.key }
+    private fun currentInfoTitle(): String = Nav.infoItem?.let { LibraryManager.displayTitle(it) }
+        ?: Nav.infoGroup?.title ?: ""
+    private fun infoOriginalTitle(): String = Nav.infoItem?.title
+        ?: Nav.infoGroup?.let { LibraryManager.originalGroupTitle(it) } ?: ""
+    private fun infoDisplayName(): String = Nav.infoItem?.let { LibraryManager.displayTitle(it) }
+        ?: Nav.infoGroup?.title ?: "fajl"
+
+    private fun closeInfo() {
+        Nav.sheet = null
+        Nav.infoItem = null
+        Nav.infoGroup = null
+        Nav.infoFrom = Section.NONE
+        Nav.infoRenameDraft = null
+        render()
+    }
+
+    private fun openInfoDialog(item: AudioItem? = null, group: Group? = null, from: Section) {
+        Nav.infoItem = item
+        Nav.infoGroup = group
+        Nav.infoFrom = from
+        Nav.infoRenameDraft = null
+        Nav.sheet = "info"
+        render()
+    }
+
+    private fun saveInfoTitle() {
+        val key = infoKey() ?: return
+        val draft = (Nav.infoRenameDraft ?: currentInfoTitle()).trim()
+        val original = infoOriginalTitle()
+        if (draft.isBlank() || draft == original) Store.clearManualTitle(key)
+        else Store.setManualTitle(key, draft)
+        Bus.libraryVersion++
+        Bus.log("Ručno ime: $draft")
+        Bus.showToast("Ime sačuvano")
+        closeInfo()
+    }
+
+    private fun restoreInfoTitle() {
+        val key = infoKey() ?: return
+        Store.clearManualTitle(key)
+        Bus.libraryVersion++
+        Bus.log("Vraćeno originalno ime: ${infoDisplayName()}")
+        Bus.showToast("Vraćeno originalno ime")
+        closeInfo()
+    }
+
+    private fun applyInfoSection(sec: Section?) {
+        val ids = Nav.infoItem?.let { listOf(it.id) }
+            ?: Nav.infoGroup?.items?.map { it.id } ?: emptyList()
+        ids.forEach { Store.setOverride(it, sec) }
+        Bus.libraryVersion++
+        Bus.log("Ručno raspoređeno: ${infoDisplayName()} → ${infoSectionLabel(sec)}")
+        Bus.showToast(if (sec == null) "Sekcija uklonjena" else "Premešteno u ${infoSectionLabel(sec)}")
+        closeInfo()
+    }
+
+    /** Dugi klik na fajl ili grupu: podaci, virtuelno ime i ručna sekcija. */
+    private fun infoSheet(sheet: LinearLayout) {
+        val c = this
+        val item = Nav.infoItem
+        val group = Nav.infoGroup
+        if (item == null && group == null) return
+        val key = infoKey() ?: return
+        val current = currentInfoTitle()
+        val original = infoOriginalTitle()
+        val body = vertical(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
+        fun line(label: String, value: String) {
+            body.addView(text(c, "$label: $value", 11.5f, C_T2))
+        }
+        body.addView(text(c, if (item != null) "Podaci o fajlu" else "Podaci o grupi",
+            17f, C_T1, bold = true))
+        body.addView(miniSectionLabel("DOSTUPNI PODACI"))
+        if (item != null) {
+            line("Original", item.title)
+            line("Prikaz", current)
+            line("Izvođač", item.artist.ifBlank { "—" })
+            line("Album", item.album.ifBlank { "—" })
+            line("Žanr", item.genre.ifBlank { "—" })
+            line("Trajanje", fmtTime(item.durationMs))
+            line("Folder", item.folderName)
+            line("Sekcija", infoSectionLabel(LibraryManager.sectionOf(item)))
+        } else if (group != null) {
+            val first = group.items.firstOrNull()
+            line("Grupa", current)
+            line("Original", original)
+            line("Fajlova", group.items.size.toString())
+            line("Izvođač", first?.artist?.takeIf { it.isNotBlank() } ?: "—")
+            line("Album", first?.album?.takeIf { it.isNotBlank() } ?: "—")
+            line("Žanr", first?.genre?.takeIf { it.isNotBlank() } ?: "—")
+            line("Trajanje", fmtTime(group.items.sumOf { it.durationMs }))
+            line("Folder", first?.folderName ?: "—")
+            line("Sekcija", infoSectionLabel(Nav.infoFrom))
+        }
+        Store.manualTitle(key)?.let { line("Ručno ime", it) }
+        val probeId = item?.id ?: group?.items?.firstOrNull()?.id ?: ""
+        Store.normalization(probeId)?.let { m ->
+            line("Sređeno", "${m.displayTitle} · ${m.source} · ${m.confidence}%")
+        }
+        Store.proposal(probeId)?.let { m ->
+            line("Predlog", "${m.displayTitle} · ${m.source} · ${m.confidence}%")
+            m.onlineSource?.let { line("Internet", "$it · ${m.onlineConfidence}%") }
+        }
+        body.addView(miniSectionLabel("RUČNO IME · VIRTUELNO"))
+        val edit = EditText(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            background = rounded(C_S2, 10f, c)
+            setPadding(c.dp(12), c.dp(10), c.dp(12), c.dp(10))
+            setText(Nav.infoRenameDraft ?: current)
+            setTextColor(C_T1)
+            setHintTextColor(C_T3)
+            textSize = 14f
+            inputType = InputType.TYPE_CLASS_TEXT
+            isSingleLine = true
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: Editable?) { Nav.infoRenameDraft = s?.toString() }
+            })
+        }
+        body.addView(edit)
+        val saveRow = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
+        saveRow.addView(actionButton(c, "Sačuvaj ime", true) { saveInfoTitle() },
+            LinearLayout.LayoutParams(0, c.dp(42), 1f))
+        saveRow.addView(actionButton(c, "Vrati original", false) { restoreInfoTitle() },
+            LinearLayout.LayoutParams(0, c.dp(42), 1f).apply { marginStart = c.dp(8) })
+        body.addView(saveRow)
+        body.addView(miniSectionLabel("RASPOREDI U SEKCIJU"))
+        val secRow = horizontal(c).apply { layoutParams = LinearLayout.LayoutParams(-1, -2) }
+        listOf(Section.BOOKS, Section.SERIES, Section.MUSIC, Section.STANDUP).forEach { sec ->
+            val active = sec == Nav.infoFrom
+            val cell = text(c, sectionName(sec), 11.5f, if (active) C_INK else C_T1, bold = active).apply {
+                gravity = Gravity.CENTER
+                background = rounded(if (active) C_AMBER else C_S2, 10f, c)
+                setPadding(c.dp(4), c.dp(10), c.dp(4), c.dp(10))
+                click { applyInfoSection(sec) }
+            }
+            secRow.addView(cell, LinearLayout.LayoutParams(0, c.dp(42), 1f).apply { marginEnd = c.dp(6) })
+        }
+        body.addView(secRow)
+        body.addView(text(c, "Nije raspoređeno", 12f, C_T3, bold = true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(C_S2, 10f, c)
+            setPadding(c.dp(8), c.dp(9), c.dp(8), c.dp(9))
+            click { applyInfoSection(null) }
+        })
+        body.addView(text(c, "Ime je samo u aplikaciji; fajl na disku ostaje netaknut.",
+            11.5f, C_T3).apply { setPadding(0, c.dp(12), 0, 0) })
+        val maxH = (resources.displayMetrics.heightPixels - c.dp(180))
+            .coerceAtLeast(c.dp(280)).coerceAtMost(c.dp(480))
+        val sc = ScrollView(c).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, maxH)
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        sc.addView(body, ViewGroup.LayoutParams(-1, -2))
+        sheet.addView(sc)
     }
 
     private fun chipsBar(items: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit): View {
@@ -842,7 +1145,7 @@ class MainActivity : android.app.Activity() {
                 else -> "${g.subtitle} · ${fmtShort(g.durationMs)} · nova"
             }
             val row = rowView(c, { openBook(g) }, {
-                moveDialog(g.title, Section.BOOKS, g.items); true
+                openInfoDialog(group = g, from = Section.BOOKS); true
             }, playing = Bus.player?.groupKey == g.key)
             row.addView(cover(c, g.cover, g.initial, 48, 11f, g.coverKey))
             val tx = vertical(c).apply {
@@ -874,31 +1177,7 @@ class MainActivity : android.app.Activity() {
         when (Nav.seriesTab) {
             "folderi" -> {
                 val groups = LibraryManager.groups(Section.SERIES)
-                if (groups.isEmpty()) list.addView(emptyState("Nema serija. Uvezi foldere sa epizodama.",
-                    "Uvezi foldere") { go("import") })
-                groups.forEach { g ->
-                    var fresh = 0
-                    var started = false
-                    g.items.forEach { item ->
-                        when (LibraryManager.episodeStatus(item)) {
-                            "new" -> fresh++
-                            "started" -> started = true
-                        }
-                    }
-                    val row = rowView(c, { go("seriesdetail", g.key) }, {
-                        moveDialog(g.title, Section.SERIES, g.items); true
-                    }, playing = Bus.player?.groupKey == g.key)
-                    row.addView(cover(c, g.cover, g.initial, 48, 11f, g.coverKey))
-                    val tx = vertical(c).apply {
-                        layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                        addView(rowTitle(c, g.title, Bus.player?.groupKey == g.key))
-                        addView(text(c, "${g.items.size} epizoda" +
-                            (if (fresh > 0) " · $fresh nove" else "") + if (started) " · u toku" else "", 12f, C_T2))
-                    }
-                    row.addView(tx)
-                    row.addView(icon(c, R.drawable.ic_right, C_T3, 16))
-                    list.addView(row)
-                }
+                // Uvoz i neraspoređeni fajlovi odmah ispod tabova, bez praznog prostora.
                 val importRow = rowView(c, { go("import") })
                 importRow.addView(FrameLayout(c).apply {
                     layoutParams = LinearLayout.LayoutParams(c.dp(56), c.dp(56))
@@ -912,6 +1191,49 @@ class MainActivity : android.app.Activity() {
                     addView(text(c, "interna memorija, SD kartica", 12f, C_T2))
                 })
                 list.addView(importRow)
+                val unknown = Bus.library.items.filter { LibraryManager.sectionOf(it) == Section.NONE }
+                val mixedCount = LibraryManager.mixed().size
+                if (unknown.isNotEmpty() || mixedCount > 0) {
+                    val unknownRow = rowView(c, { go("mixed") }, { go("mixed"); true })
+                    unknownRow.addView(FrameLayout(c).apply {
+                        layoutParams = LinearLayout.LayoutParams(c.dp(56), c.dp(56))
+                        background = rounded(C_S2, 12f, c)
+                        addView(icon(c, R.drawable.ic_folder, C_T2, 26),
+                            FrameLayout.LayoutParams(c.dp(26), c.dp(26), Gravity.CENTER))
+                    })
+                    unknownRow.addView(vertical(c).apply {
+                        layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
+                        addView(text(c, "Nepoznati / mešani fajlovi", 14.5f, C_T1))
+                        addView(text(c, "${unknown.size + mixedCount} čeka raspoređivanje", 12f, C_T2))
+                    })
+                    unknownRow.addView(icon(c, R.drawable.ic_right, C_T3, 16))
+                    list.addView(unknownRow)
+                }
+                if (groups.isEmpty()) list.addView(emptyState("Nema serija. Uvezi foldere sa epizodama.",
+                    "Uvezi foldere") { go("import") })
+                groups.forEach { g ->
+                    var fresh = 0
+                    var started = false
+                    g.items.forEach { item ->
+                        when (LibraryManager.episodeStatus(item)) {
+                            "new" -> fresh++
+                            "started" -> started = true
+                        }
+                    }
+                    val row = rowView(c, { go("seriesdetail", g.key) }, {
+                        openInfoDialog(group = g, from = Section.SERIES); true
+                    }, playing = Bus.player?.groupKey == g.key)
+                    row.addView(cover(c, g.cover, g.initial, 48, 11f, g.coverKey))
+                    val tx = vertical(c).apply {
+                        layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
+                        addView(rowTitle(c, g.title, Bus.player?.groupKey == g.key))
+                        addView(text(c, "${g.items.size} epizoda" +
+                            (if (fresh > 0) " · $fresh nove" else "") + if (started) " · u toku" else "", 12f, C_T2))
+                    }
+                    row.addView(tx)
+                    row.addView(icon(c, R.drawable.ic_right, C_T3, 16))
+                    list.addView(row)
+                }
             }
             "feedovi" -> {
                 val feeds = Store.feeds()
@@ -973,6 +1295,8 @@ class MainActivity : android.app.Activity() {
         Nav.tab = Section.STANDUP
         val chips = chipsBar(listOf("sve" to "Sve", "tok" to "U toku", "nove" to "Nove", "zav" to "Završene"),
             Nav.standupChips) { Nav.standupChips = it }
+        val sort = chipsBar(listOf("naziv" to "Naziv", "izvodjac" to "Izvođač"),
+            Nav.standupSort) { Nav.standupSort = it }
         val rows = LibraryManager.groups(Section.STANDUP).map { g ->
             val pos = LibraryManager.bookPosition(g)
             val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
@@ -986,15 +1310,22 @@ class MainActivity : android.app.Activity() {
                 else -> true
             }
         }
+        val ordered = when (Nav.standupSort) {
+            "izvodjac" -> filtered.sortedWith(
+                compareBy<Triple<Group, Long, Boolean>> {
+                    it.first.items.firstOrNull()?.artist?.lowercase(Locale.ROOT) ?: ""
+                }.thenBy { it.first.title.lowercase(Locale.ROOT) })
+            else -> filtered.sortedWith(compareBy { it.first.title.lowercase(Locale.ROOT) })
+        }
         val list = listHost()
-        filtered.forEach { (g, pos, done) ->
+        ordered.forEach { (g, pos, done) ->
             val sub = when {
                 done -> "${g.subtitle} · završena"
                 pos > 0 -> "${g.subtitle} · preostalo ${fmtShort(g.durationMs - pos)}"
                 else -> "${g.subtitle} · ${fmtShort(g.durationMs)} · nova"
             }
             val row = rowView(c, { openStandup(g) }, {
-                moveDialog(g.title, Section.STANDUP, g.items); true
+                openInfoDialog(group = g, from = Section.STANDUP); true
             }, playing = Bus.player?.groupKey == g.key)
             row.addView(cover(c, g.cover, g.initial, 48, 11f, g.coverKey))
             val tx = vertical(c).apply {
@@ -1009,7 +1340,7 @@ class MainActivity : android.app.Activity() {
             if (done) row.alpha = 0.42f
             list.addView(row)
         }
-        return page(header("Stand up"), chips, scroll(c, list), miniPlayer())
+        return page(header("Stand up"), chips, sort, scroll(c, list), miniPlayer())
     }
 
     private fun feedActions(feeds: List<Feed>): View {
@@ -1103,7 +1434,7 @@ class MainActivity : android.app.Activity() {
             val st = LibraryManager.episodeStatus(item)
             val np = isPlayingItem(item.id)
             val row = rowView(c, { openEpisode(g, i) }, {
-                moveDialog(LibraryManager.displayTitle(item), Section.SERIES, listOf(item), g); true
+                openInfoDialog(item = item, from = Section.SERIES); true
             }, playing = np)
             val status = FrameLayout(c).apply {
                 layoutParams = LinearLayout.LayoutParams(c.dp(22), c.dp(22))
@@ -1146,24 +1477,26 @@ class MainActivity : android.app.Activity() {
     private fun musicScreen(): View {
         val c = this
         Nav.tab = Section.MUSIC
-        val tabs = tabsBar(listOf("folderi" to "Folderi", "izvodjaci" to "Izvođači", "albumi" to "Albumi"),
-            Nav.musicTab) { Nav.musicTab = it }
-        val actions = horizontal(c).apply {
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
-            setPadding(c.dp(16), 0, c.dp(16), c.dp(10))
-            addView(actionButton(c, "Nasumično sve", false, R.drawable.ic_shuffle) {
-                val all = LibraryManager.groups(Section.MUSIC).flatMap { it.items }.shuffled()
-                if (all.isNotEmpty()) playItems(Kind.TRACK, "sve", "Sve numere", "Nasumično", all, 0,
-                    shuffle = true, repeat = Store.settings.repeat)
-            }, LinearLayout.LayoutParams(0, c.dp(42), 1f))
+        val view = musicView()
+        Nav.musicTab = view
+        val sort = chipsBar(listOf(
+            "folder" to "Folderi", "artist" to "Izvođači",
+            "album" to "Albumi", "zanr" to "Žanr"
+        ), Nav.musicSort) {
+            Nav.musicSort = it
+            Nav.musicTab = musicView()
         }
+        val toggles = listOf(
+            toolbarToggle(R.drawable.ic_loop, Store.settings.repeat, "Ponavljanje") { toggleRepeat() },
+            toolbarToggle(R.drawable.ic_shuffle, Store.settings.shuffle, "Nasumično") { toggleShuffle() }
+        )
         val list = listHost()
-        val groups = LibraryManager.groups(Section.MUSIC, Nav.musicTab)
+        val groups = LibraryManager.groups(Section.MUSIC, view)
         if (groups.isEmpty()) list.addView(emptyState("Nema muzike u ovoj sekciji.\nUvezi foldere sa numerama.",
             "Uvezi foldere") { go("import") })
         groups.forEach { g ->
             val row = rowView(c, { go("folder", g.key) }, {
-                moveDialog(g.title, Section.MUSIC, g.items); true
+                openInfoDialog(group = g, from = Section.MUSIC); true
             }, playing = Bus.player?.groupKey == g.key)
             row.addView(cover(c, g.cover, g.initial, 48, 11f, g.coverKey))
             val tx = vertical(c).apply {
@@ -1175,16 +1508,7 @@ class MainActivity : android.app.Activity() {
             row.addView(icon(c, R.drawable.ic_right, C_T3, 16))
             list.addView(row)
         }
-        val shuffleRow = settingRow(c, "Nasumično", null, Store.settings.shuffle) {
-            val s = Store.settings; s.shuffle = !s.shuffle; Store.settings = s
-            toast(if (s.shuffle) "Nasumični red uključen" else "Nasumični red isključen")
-        }
-        val repeatRow = settingRow(c, "Ponavljanje", null, Store.settings.repeat) {
-            val s = Store.settings; s.repeat = !s.repeat; Store.settings = s
-            toast(if (s.repeat) "Ponavljanje uključeno" else "Ponavljanje isključeno")
-        }
-        list.addView(shuffleRow); list.addView(repeatRow)
-        return page(header("Muzika"), tabs, actions, scroll(c, list), miniPlayer())
+        return page(header("Muzika", extras = toggles), sort, scroll(c, list), miniPlayer())
     }
 
     private fun folderScreen(id: String): View {
@@ -1205,7 +1529,7 @@ class MainActivity : android.app.Activity() {
         g.items.forEachIndexed { i, item ->
             val np = isPlayingItem(item.id)
             val row = rowView(c, { openTrack(g, i) }, {
-                moveDialog(LibraryManager.displayTitle(item), Section.MUSIC, listOf(item), g); true
+                openInfoDialog(item = item, from = Section.MUSIC); true
             }, playing = np)
             row.addView(playingSlot(c, np))
             val tx = vertical(c).apply {
@@ -1572,13 +1896,18 @@ class MainActivity : android.app.Activity() {
         val check = actionButton(c, "Proveri na internetu", true) { maybeStartOnlineEnrichment() }
         check.layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply { topMargin = c.dp(8) }
         body.addView(check)
+        val scanAll = actionButton(c, "Pretraži sve uvezene fajlove", false, R.drawable.ic_refresh) {
+            startFullOnlineScan()
+        }
+        scanAll.layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply { topMargin = c.dp(8) }
+        body.addView(scanAll)
         val reset = actionButton(c, "Vrati sve", false) {
             if (Normalizer.restoreAll()) { Bus.libraryVersion++; render() }
         }
         reset.layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply { topMargin = c.dp(8) }
         body.addView(reset)
         body.addView(text(c,
-            "Sve je virtuelno: fajlovi se ne preimenuju, ne pomeraju i ne brišu. „Vrati sve“ vraća stanje pre poslednjeg automatskog pokretanja. Sređivanje u ovoj fazi ne pravi nijedan mrežni poziv; postojeće opcione preuzimanje omota ostaje netaknuto.",
+            "Sve je virtuelno: fajlovi se ne preimenuju, ne pomeraju i ne brišu. „Vrati sve“ vraća stanje pre poslednjeg automatskog pokretanja. Internet pretraga pravi samo predloge; ništa se automatski ne primenjuje.",
             11.5f, C_T3).apply { setPadding(c.dp(4), c.dp(12), c.dp(4), c.dp(8)) })
         return page(header("Sređivanje biblioteke", plus = false, gear = false, back = true),
             scroll(c, body))
@@ -1614,6 +1943,8 @@ class MainActivity : android.app.Activity() {
                 val row = rowView(c, {
                     playItems(p.kind, p.groupKey, p.groupTitle, p.sub, p.queue, i, 0L)
                     Nav.stack = mutableListOf(Screen("player")); render()
+                }, {
+                    openInfoDialog(item = item, from = sectionForKind(p.kind)); true
                 }, playing = here)
                 row.addView(statusDot(c, here))
                 row.addView(vertical(c).apply {
@@ -1674,28 +2005,8 @@ class MainActivity : android.app.Activity() {
             setPadding(c.dp(18), 0, c.dp(18), c.dp(16))
         }
         val unassigned = Bus.library.folders.count { Store.folderSection(it.key) == null }
-        body.addView(sectionLabelView("FOLDERI"))
-        val importRow = settingRow(c, "+ Uvezi foldere i fajlove", "$unassigned novih") { go("import") }
-        (importRow.getChildAt(0) as? TextView)?.setTextColor(C_AMBER)
-        body.addView(importRow)
-        Bus.library.folders.take(12).forEach { f ->
-            val row = settingRow(c, f.name, null) {}
-            val sec0 = Store.folderSection(f.key) ?: f.suggested
-            val badge = text(c, sectionName(sec0), 11.5f, C_AMBER, bold = true)
-            folderBadge(sec0, badge)
-            badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
-            row.addView(badge)
-            row.click {
-                cycleFolder(f.key, silent = true)
-                folderBadge(Store.folderSection(f.key) ?: f.suggested, badge)
-                settleUi()
-            }
-            body.addView(row)
-        }
-        body.addView(settingRow(c, "Rasporedi fajlove", "$unassigned čekaju") { go("arrange") })
-        body.addView(settingRow(c, "Mešani fajlovi", "${LibraryManager.mixed().size} sumnjivih") { go("mixed") })
-        body.addView(settingRow(c, "Podkast feedovi",
-            "${Store.feedCount()} · ${if (s.wifiOnly) "samo Wi-Fi" else "i mobilni"}") { go("feeds") })
+        val unknownFiles = Bus.library.items.count { LibraryManager.sectionOf(it) == Section.NONE }
+        val mixedFiles = LibraryManager.mixed().size
 
         body.addView(sectionLabelView("REPRODUKCIJA"))
         body.addView(settingRow(c, "Skok", "${s.jump} s") {
@@ -1731,6 +2042,8 @@ class MainActivity : android.app.Activity() {
         })
 
         body.addView(sectionLabelView("PODKASTI"))
+        body.addView(settingRow(c, "Podkast feedovi",
+            "${Store.feedCount()} · ${if (s.wifiOnly) "samo Wi-Fi" else "i mobilni"}") { go("feeds") })
         body.addView(settingRow(c, "Preuzimaj nove epizode", null, s.autodl) {
             saveSettings { it.autodl = !it.autodl }
         })
@@ -1746,11 +2059,15 @@ class MainActivity : android.app.Activity() {
         val normWait = Store.allProposals().size
         body.addView(settingRow(c, "Sređivanje biblioteke",
             "$normDone sređeno · $normWait čeka potvrdu") { go("normalize") })
+        body.addView(settingRow(c, "Rasporedi foldere", "$unassigned čekaju") { go("arrange") })
+        body.addView(settingRow(c, "Neraspoređeni i mešani fajlovi",
+            "${unknownFiles + mixedFiles} fajlova") { go("mixed") })
 
         body.addView(sectionLabelView("SREĐIVANJE · INTERNET"))
         body.addView(settingRow(c, "Koristi internet za sređivanje", null, s.normalizeOnline) {
             saveSettings { it.normalizeOnline = !it.normalizeOnline }
         })
+        body.addView(settingRow(c, "Pretraži sve uvezene fajlove", "ručno") { startFullOnlineScan() })
         body.addView(settingRow(c, "Mreža", "Wi-Fi · mobilni uz potvrdu") { })
         val pk = s.podcastIndexKey
         val ps = s.podcastIndexSecret
@@ -1888,8 +2205,12 @@ class MainActivity : android.app.Activity() {
                 else "Uvezi ${Nav.importSelection.size} foldera"
             settleUi()
         }
-        if (folders.isEmpty()) list.addView(emptyState("Nema novih foldera.\nSve što je pronađeno je već uvezeno."))
-        folders.forEach { f ->
+        val hasLoose = Store.loose().isNotEmpty()
+        fun isImported(f: FolderInfo): Boolean {
+            val assigned = Store.folderSectionForPath(f.key)
+            return assigned != null || (hasLoose && f.key == "Pojedinačni fajlovi")
+        }
+        fun addFolderRow(f: FolderInfo) {
             val included = Nav.importSelection.contains(f.key)
             if (!Nav.importSections.containsKey(f.key)) Nav.importSections[f.key] = f.suggested
             val sec = Nav.importSections[f.key]
@@ -1924,6 +2245,17 @@ class MainActivity : android.app.Activity() {
             }
             row.addView(badge)
             list.addView(row)
+        }
+        if (folders.isEmpty()) list.addView(emptyState("Nema novih foldera.\nSve što je pronađeno je već uvezeno."))
+        val imported = folders.filter { isImported(it) }
+        val fresh = folders.filterNot { isImported(it) }
+        if (imported.isNotEmpty()) {
+            list.addView(sectionLabelView("UVEZENI · ${imported.size}"))
+            imported.forEach { addFolderRow(it) }
+        }
+        if (fresh.isNotEmpty()) {
+            list.addView(sectionLabelView("NEUVEZENI · ${fresh.size}"))
+            fresh.forEach { addFolderRow(it) }
         }
         list.addView(text(c, "Dodir na red uključuje folder, dodir na oznaku menja sekciju",
             12f, C_T2).apply { setPadding(c.dp(18), c.dp(4), c.dp(18), c.dp(10)) })
@@ -1977,7 +2309,7 @@ class MainActivity : android.app.Activity() {
         val views = linkedMapOf(
             Section.BOOKS to listOf("folderi"),
             Section.SERIES to listOf("folderi"),
-            Section.MUSIC to listOf("folderi", "izvodjaci", "albumi"),
+            Section.MUSIC to listOf("folderi", "izvodjaci", "albumi", "zanr"),
             Section.STANDUP to listOf("folderi")
         )
         val members = HashMap<String, JSONArray>()
@@ -1989,7 +2321,10 @@ class MainActivity : android.app.Activity() {
                     val go = JSONObject().apply {
                         put("section", sectionName(sec)); put("view", view)
                         put("groupKey", g.key); put("groupTitle", g.title)
-                        put("groupSubtitle", g.subtitle); put("coverIndex", g.cover)
+                        put("groupSubtitle", g.subtitle)
+                        put("originalGroupTitle", LibraryManager.originalGroupTitle(g))
+                        put("manualGroupTitle", Store.manualTitle("group:" + g.key) ?: JSONObject.NULL)
+                        put("coverIndex", g.cover)
                         put("initial", g.initial); put("durationMs", g.durationMs)
                         put("fileCount", g.items.size); put("itemIds", ids)
                         put("lastGroupTime", Store.lastGroupTime(g.key))
@@ -2036,6 +2371,7 @@ class MainActivity : android.app.Activity() {
             fo.put("mixedSuggestion", mixedMap[item.id]?.let { sectionName(it) } ?: JSONObject.NULL)
             fo.put("normalized", Store.normalization(item.id)?.let { normalizedToJson(it) } ?: JSONObject.NULL)
             fo.put("normalizationProposal", Store.proposal(item.id)?.let { normalizedToJson(it) } ?: JSONObject.NULL)
+            fo.put("manualTitle", Store.manualTitle("item:" + item.id) ?: JSONObject.NULL)
             fo.put("displayTitle", LibraryManager.displayTitle(item))
             filesArr.put(fo)
         }
@@ -2074,6 +2410,7 @@ class MainActivity : android.app.Activity() {
             put("normalizationProposals", Store.rawObject("normalizationProposals"))
             put("normalizationDismissed", Store.allDismissed())
             put("normalizationSnapshot", Store.normalizationSnapshot())
+            put("manualTitles", Store.rawObject("manualTitles"))
             put("normalizationArtCache", Store.artCache())
             put("normalizationOnlineCursor", Store.onlineCursor)
             put("importedOnce", Store.importedOnce)
@@ -2102,6 +2439,7 @@ class MainActivity : android.app.Activity() {
                 put("treeUris", Store.rawArray("trees").length())
                 put("normalizedApplied", Store.allNormalizations().size)
                 put("normalizationProposals", Store.allProposals().size)
+                put("manualTitles", Store.allManualTitles().size)
             })
             put("files", filesArr)
             put("folders", foldersArr)
@@ -2266,38 +2604,71 @@ class MainActivity : android.app.Activity() {
     private fun mixedScreen(): View {
         val c = this
         val list = listHost()
+        val unknown = Bus.library.items.filter { LibraryManager.sectionOf(it) == Section.NONE }
         val items = LibraryManager.mixed()
-        if (items.isEmpty()) list.addView(emptyState("Nema sumnjivih fajlova."))
-        items.forEach { (item, looks) ->
-            val np = isPlayingItem(item.id)
-            val row = rowView(c, {
-                Store.setOverride(item.id, looks)
-                Bus.libraryVersion++
-                Bus.log("Mešani fajl premešten: ${item.title} → ${sectionName(looks)}")
-                toast("Premešteno u ${sectionName(looks)}: ${item.title}")
-            }, playing = np)
-            row.addView(FrameLayout(c).apply {
-                layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
-                background = rounded(C_S2, 11f, c)
-                addView(icon(c, R.drawable.ic_folder, C_T2, 19),
-                    FrameLayout.LayoutParams(c.dp(19), c.dp(19), Gravity.CENTER))
-            })
-            row.addView(vertical(c).apply {
-                layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
-                addView(rowTitle(c, LibraryManager.displayTitle(item), np))
-                addView(text(c, "u folderu ${item.folderName} · ${fmtShort(item.durationMs)}", 12f, C_T2))
-            })
-            val badge = text(c, "→ ${sectionName(looks)}", 11.5f, C_AMBER, bold = true)
-            badge.background = rounded(C_AMBER_D, 9f, c)
-            badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
-            row.addView(badge)
-            list.addView(row)
+        if (unknown.isEmpty() && items.isEmpty()) list.addView(emptyState("Nema neraspoređenih ni sumnjivih fajlova."))
+        if (unknown.isNotEmpty()) {
+            list.addView(sectionLabelView("NERASPOREĐENI · ${unknown.size}"))
+            unknown.forEach { item ->
+                val np = isPlayingItem(item.id)
+                val row = rowView(c, {
+                    openInfoDialog(item = item, from = Section.NONE)
+                }, {
+                    openInfoDialog(item = item, from = Section.NONE); true
+                }, playing = np)
+                row.addView(FrameLayout(c).apply {
+                    layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
+                    background = rounded(C_S2, 11f, c)
+                    addView(icon(c, R.drawable.ic_folder, C_T2, 19),
+                        FrameLayout.LayoutParams(c.dp(19), c.dp(19), Gravity.CENTER))
+                })
+                row.addView(vertical(c).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
+                    addView(rowTitle(c, LibraryManager.displayTitle(item), np))
+                    addView(text(c, "u folderu ${item.folderName} · ${fmtShort(item.durationMs)}", 12f, C_T2))
+                })
+                val badge = text(c, "Rasporedi", 11.5f, C_AMBER, bold = true)
+                badge.background = rounded(C_AMBER_D, 9f, c)
+                badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
+                badge.click { openInfoDialog(item = item, from = Section.NONE) }
+                row.addView(badge)
+                list.addView(row)
+            }
+        }
+        if (items.isNotEmpty()) {
+            list.addView(sectionLabelView("MEŠANI · ${items.size}"))
+            items.forEach { (item, looks) ->
+                val np = isPlayingItem(item.id)
+                val from = LibraryManager.sectionOf(item)
+                val row = rowView(c, {
+                    openInfoDialog(item = item, from = from)
+                }, {
+                    openInfoDialog(item = item, from = from); true
+                }, playing = np)
+                row.addView(FrameLayout(c).apply {
+                    layoutParams = LinearLayout.LayoutParams(c.dp(42), c.dp(42))
+                    background = rounded(C_S2, 11f, c)
+                    addView(icon(c, R.drawable.ic_folder, C_T2, 19),
+                        FrameLayout.LayoutParams(c.dp(19), c.dp(19), Gravity.CENTER))
+                })
+                row.addView(vertical(c).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = c.dp(12) }
+                    addView(rowTitle(c, LibraryManager.displayTitle(item), np))
+                    addView(text(c, "u folderu ${item.folderName} · ${fmtShort(item.durationMs)}", 12f, C_T2))
+                })
+                val badge = text(c, "→ ${sectionName(looks)}", 11.5f, C_AMBER, bold = true)
+                badge.background = rounded(C_AMBER_D, 9f, c)
+                badge.setPadding(c.dp(11), c.dp(6), c.dp(11), c.dp(6))
+                badge.click { openInfoDialog(item = item, from = from) }
+                row.addView(badge)
+                list.addView(row)
+            }
         }
         val footer = text(c,
-            "Aplikacija prati dužinu, ime i tagove. Fajl od 50 minuta u folderu muzike koji se zove „Glava 3“ verovatno je deo knjige. Dodir premešta, dug pritisak otvara isti izbor kao u listama.",
+            "Aplikacija prati dužinu, ime i tagove. Fajl od 50 minuta u folderu muzike koji se zove „Glava 3“ verovatno je deo knjige. Dodir ili dug pritisak otvara podatke i ručno raspoređivanje; predlog se ne primenjuje sam.",
             11.5f, C_T3).apply { setPadding(c.dp(20), c.dp(6), c.dp(20), c.dp(20)) }
         return page(header("Mešani fajlovi", back = true),
-            text(c, "${items.size} sumnjivih · predlog, ne pravilo", 12f, C_T2).apply {
+            text(c, "${unknown.size + items.size} fajlova · predlog, ne pravilo", 12f, C_T2).apply {
                 setPadding(c.dp(18), c.dp(4), c.dp(18), c.dp(8))
             }, scroll(c, list), footer)
     }
@@ -2589,6 +2960,7 @@ class MainActivity : android.app.Activity() {
             "timer" -> timerSheet(sheet)
             "files" -> filesSheet(sheet)
             "move" -> moveSheet(sheet)
+            "info" -> infoSheet(sheet)
         }
         scrim.addView(sheet, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
         return scrim
@@ -2697,10 +3069,7 @@ class MainActivity : android.app.Activity() {
             row.addView(cell, LinearLayout.LayoutParams(0, c.dp(58), 1f).apply { marginEnd = c.dp(8) })
         }
         sheet.addView(row)
-        sheet.addView(actionButton(c, "Premesti i na disku…", false) {
-            toast("U pravoj aplikaciji bira se odredišni folder; fajl se tada stvarno premešta.")
-        }.apply { layoutParams = LinearLayout.LayoutParams(-1, c.dp(42)).apply { topMargin = c.dp(10) } })
-        sheet.addView(text(c, "Premeštanje menja samo pripadnost sekciji, pa je bezbedno. Pozicija i status ostaju sačuvani.",
+        sheet.addView(text(c, "Premeštanje menja samo pripadnost sekciji; fajl se ne premešta, ne preimenuje i ne briše.",
             12f, C_T2).apply { setPadding(0, c.dp(16), 0, 0) })
     }
 

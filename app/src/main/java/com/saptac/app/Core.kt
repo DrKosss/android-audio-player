@@ -97,7 +97,8 @@ data class AudioItem(
     val folderName: String,
     val size: Long,
     val added: Long,
-    val track: Int
+    val track: Int,
+    val genre: String = ""
 )
 
 data class Group(
@@ -304,7 +305,7 @@ fun audioItemToJson(a: AudioItem): JSONObject = JSONObject().apply {
     put("artist", a.artist); put("album", a.album)
     put("durationMs", a.durationMs); put("folderKey", a.folderKey)
     put("folderName", a.folderName); put("size", a.size)
-    put("added", a.added); put("track", a.track)
+    put("added", a.added); put("track", a.track); put("genre", a.genre)
 }
 
 fun audioItemFromJson(o: JSONObject): AudioItem = AudioItem(
@@ -312,7 +313,8 @@ fun audioItemFromJson(o: JSONObject): AudioItem = AudioItem(
     title = o.optString("title"), artist = o.optString("artist"),
     album = o.optString("album"), durationMs = o.optLong("durationMs"),
     folderKey = o.optString("folderKey"), folderName = o.optString("folderName"),
-    size = o.optLong("size"), added = o.optLong("added"), track = o.optInt("track")
+    size = o.optLong("size"), added = o.optLong("added"), track = o.optInt("track"),
+    genre = o.optString("genre", "")
 )
 
 fun playerStateFromJson(o: JSONObject): PlayerState? {
@@ -585,12 +587,28 @@ object Store {
     }
     fun allDismissed(): JSONObject = editObj("normalizationDismissed")
 
+    /** Ručna, isključivo virtuelna imena fajlova i grupa. */
+    fun manualTitle(key: String): String? =
+        obj("manualTitles").optString(key, "").takeIf { it.isNotEmpty() }
+    fun setManualTitle(key: String, title: String) {
+        val o = editObj("manualTitles"); o.put(key, title); put("manualTitles", o)
+    }
+    fun clearManualTitle(key: String) {
+        val o = editObj("manualTitles"); o.remove(key); put("manualTitles", o)
+    }
+    fun allManualTitles(): Map<String, String> {
+        val o = obj("manualTitles"); val out = LinkedHashMap<String, String>()
+        o.keys().forEach { k -> out[k] = o.optString(k, "") }
+        return out
+    }
+
     /** Snapshot pre svakog automatskog pokretanja, za "Vrati sve". */
     fun saveNormalizationSnapshot() {
         val snap = JSONObject()
         snap.put("normalizations", obj("normalizations"))
         snap.put("proposals", obj("normalizationProposals"))
         snap.put("dismissed", obj("normalizationDismissed"))
+        snap.put("manualTitles", obj("manualTitles"))
         put("normalizationSnapshot", snap)
     }
     fun restoreNormalizationSnapshot(): Boolean {
@@ -599,6 +617,7 @@ object Store {
         put("normalizations", snap.optJSONObject("normalizations") ?: JSONObject())
         put("normalizationProposals", snap.optJSONObject("proposals") ?: JSONObject())
         put("normalizationDismissed", snap.optJSONObject("dismissed") ?: JSONObject())
+        put("manualTitles", snap.optJSONObject("manualTitles") ?: JSONObject())
         return true
     }
     fun normalizationSnapshot(): JSONObject = editObj("normalizationSnapshot")
@@ -732,6 +751,15 @@ object Store {
 /* ------------------------------------------------------------------ *
  * Zajedničko stanje u procesu (UI i servis su u istom procesu)
  * ------------------------------------------------------------------ */
+/** Stanje ručno pokrenute internet pretrage cele biblioteke. */
+data class OnlineScanState(
+    val done: Int,
+    val total: Int,
+    val label: String,
+    val running: Boolean,
+    val message: String? = null
+)
+
 object Bus {
     var library: Library = Library(emptyList(), emptyList())
     var player: PlayerState? = null
@@ -748,6 +776,8 @@ object Bus {
     val onlineCovers = BitmapCache(bitmapCacheKb(24))
     val onlineCoverMisses: MutableSet<String> =
         java.util.Collections.synchronizedSet(java.util.HashSet<String>())
+    @Volatile var onlineScan: OnlineScanState? = null
+    @Volatile var onlineScanCancel: Boolean = false
 
     fun showToast(message: String, millis: Long = 2200) {
         toast = message; toastUntil = System.currentTimeMillis() + millis

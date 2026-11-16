@@ -25,6 +25,26 @@ private fun estimateDuration(sizeBytes: Long): Long =
 private fun cleanTitle(name: String): String =
     name.substringBeforeLast('.', name).trim().ifEmpty { "Bez naziva" }
 
+/** Žanr iz ID3/MediaStore-a, uz blagi fallback na ime foldera kad taga nema. */
+private val GENRE_WORDS = listOf(
+    "rock" to "Rock", "pop" to "Pop", "jazz" to "Jazz", "blues" to "Blues",
+    "classical" to "Klasična", "klasik" to "Klasična", "metal" to "Metal",
+    "hip hop" to "Hip hop", "hiphop" to "Hip hop", "rap" to "Rap",
+    "folk" to "Folk", "techno" to "Techno", "house" to "House",
+    "electronic" to "Elektronska", "elektron" to "Elektronska",
+    "reggae" to "Reggae", "country" to "Country", "dance" to "Dance",
+    "soundtrack" to "Soundtrack", "podcast" to "Podkast", "comedy" to "Komedija",
+    "audiobook" to "Audio knjiga", "stand up" to "Stand up"
+)
+private fun guessGenre(vararg parts: String): String {
+    val text = parts.joinToString(" ").lowercase(Locale.ROOT)
+    GENRE_WORDS.forEach { (needle, label) ->
+        if (Regex("\\b" + Regex.escape(needle) + "\\b", RegexOption.IGNORE_CASE)
+                .containsMatchIn(text)) return label
+    }
+    return ""
+}
+
 /** Keš grupa važi dok se biblioteka, normalizacija ili lokalna baza ne promene. */
 private data class GroupCacheStamp(
     val libraryVersion: Int,
@@ -40,7 +60,7 @@ object LibraryManager {
 
         // 1) MediaStore — radi sa READ_MEDIA_AUDIO bez "pristupa svim fajlovima".
         try {
-            val projection = arrayOf(
+            val baseProjection = arrayOf(
                 MediaStore.Audio.Media._ID,
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.ARTIST,
@@ -53,9 +73,17 @@ object LibraryManager {
                 MediaStore.MediaColumns.RELATIVE_PATH,
                 MediaStore.Audio.Media.TRACK
             )
-            ctx.contentResolver.query(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, null, null, null
-            )?.use { c ->
+            val projection = baseProjection + MediaStore.Audio.Media.GENRE
+            val cursor = try {
+                ctx.contentResolver.query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, null, null, null
+                )
+            } catch (_: Exception) {
+                ctx.contentResolver.query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, baseProjection, null, null, null
+                )
+            }
+            cursor?.use { c ->
                 val iId = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val iTitle = c.getColumnIndex(MediaStore.Audio.Media.TITLE)
                 val iArtist = c.getColumnIndex(MediaStore.Audio.Media.ARTIST)
@@ -67,6 +95,7 @@ object LibraryManager {
                 val iBucket = c.getColumnIndex(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
                 val iRel = c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
                 val iTrack = c.getColumnIndex(MediaStore.Audio.Media.TRACK)
+                val iGenre = c.getColumnIndex(MediaStore.Audio.Media.GENRE)
                 while (c.moveToNext()) {
                     val id = c.getLong(iId)
                     val name = c.getString(iName) ?: "audio"
@@ -84,19 +113,24 @@ object LibraryManager {
                     val uri = ContentUris.withAppendedId(
                         MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
                     ).toString()
+                    val artistVal = (if (iArtist >= 0) c.getString(iArtist) else null)
+                        ?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: ""
+                    val albumVal = (if (iAlbum >= 0) c.getString(iAlbum) else null)
+                        ?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: folderName
+                    val genreVal = (if (iGenre >= 0) c.getString(iGenre) else null)
+                        ?.takeIf { it.isNotBlank() && it != "<unknown>" }
+                        ?: guessGenre(rel, name, artistVal, albumVal)
                     val item = AudioItem(
                         id = "ms:$id", uri = uri,
                         title = (if (iTitle >= 0) c.getString(iTitle) else null)
                             ?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: cleanTitle(name),
-                        artist = (if (iArtist >= 0) c.getString(iArtist) else null)
-                            ?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: "",
-                        album = (if (iAlbum >= 0) c.getString(iAlbum) else null)
-                            ?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: folderName,
+                        artist = artistVal, album = albumVal,
                         durationMs = dur,
                         folderKey = folderKey, folderName = folderName,
                         size = if (iSize >= 0) c.getLong(iSize) else 0L,
                         added = if (iDate >= 0) c.getLong(iDate) * 1000L else 0L,
-                        track = if (iTrack >= 0) c.getInt(iTrack) else 0
+                        track = if (iTrack >= 0) c.getInt(iTrack) else 0,
+                        genre = genreVal
                     )
                     byId[item.uri] = item
                 }
@@ -142,7 +176,8 @@ object LibraryManager {
                     artist = "", album = "Pojedinačni fajlovi",
                     durationMs = estimateDuration(doc.length()),
                     folderKey = "Pojedinačni fajlovi", folderName = "Pojedinačni fajlovi",
-                    size = doc.length(), added = doc.lastModified(), track = 0
+                    size = doc.length(), added = doc.lastModified(), track = 0,
+                    genre = guessGenre(name, "Pojedinačni fajlovi")
                 )
                 byId[uri] = item
                 Store.setOverride(item.id, sec)
@@ -172,7 +207,8 @@ object LibraryManager {
                     artist = "", album = f.parentFile?.name ?: "Telefon",
                     durationMs = estimateDuration(f.length()),
                     folderKey = folderKey, folderName = f.parentFile?.name ?: "Telefon",
-                    size = f.length(), added = f.lastModified(), track = 0
+                    size = f.length(), added = f.lastModified(), track = 0,
+                    genre = guessGenre(f.parentFile?.name ?: "", f.name)
                 )
             }
         }
@@ -195,7 +231,8 @@ object LibraryManager {
                     artist = "", album = folderKey.substringAfterLast('/'),
                     durationMs = estimateDuration(d.length()),
                     folderKey = folderKey, folderName = folderKey.substringAfterLast('/'),
-                    size = d.length(), added = d.lastModified(), track = 0
+                    size = d.length(), added = d.lastModified(), track = 0,
+                    genre = guessGenre(folderKey, name)
                 )
             }
         }
@@ -240,19 +277,35 @@ object LibraryManager {
         return Store.folderSectionForPath(item.folderKey) ?: Section.NONE
     }
 
-    /** Virtuelni naslov: normalizovan ako postoji, inače original iz fajla. */
+    /** Ručno ime ima prednost, pa normalizovano, pa original iz fajla. */
     fun displayTitle(item: AudioItem): String =
-        Store.normalization(item.id)?.displayTitle ?: item.title
+        Store.manualTitle("item:" + item.id)
+            ?: Store.normalization(item.id)?.displayTitle
+            ?: item.title
     /** Stabilan ključ za slaganje epizoda po sezoni/epizodi. */
     fun sortKeyOf(item: AudioItem): String =
-        Store.normalization(item.id)?.sortKey ?: item.title.lowercase(Locale.ROOT)
+        Store.manualTitle("item:" + item.id)?.lowercase(Locale.ROOT)
+            ?: Store.normalization(item.id)?.sortKey
+            ?: item.title.lowercase(Locale.ROOT)
 
     private fun groupTitle(key: String, sec: Section, view: String, items: List<AudioItem>): String =
         when {
             sec == Section.MUSIC && view == "izvodjaci" -> items.firstOrNull()?.artist?.takeIf { it.isNotBlank() } ?: "Nepoznat izvođač"
             sec == Section.MUSIC && view == "albumi" -> items.firstOrNull()?.album?.takeIf { it.isNotBlank() } ?: "Nepoznat album"
+            sec == Section.MUSIC && view == "zanr" -> items.firstOrNull()?.genre?.takeIf { it.isNotBlank() } ?: "Nepoznat žanr"
             else -> coverKeyOf(key).substringAfterLast('/').ifEmpty { "Telefon" }
         }
+
+    /** Originalni naslov grupe, bez ručnog imena (za "Vrati original"). */
+    fun originalGroupTitle(g: Group): String = when {
+        g.key.startsWith("artist:") -> g.items.firstOrNull()?.artist?.takeIf { it.isNotBlank() } ?: "Nepoznat izvođač"
+        g.key.startsWith("album:") -> g.items.firstOrNull()?.album?.takeIf { it.isNotBlank() } ?: "Nepoznat album"
+        g.key.startsWith("genre:") -> g.items.firstOrNull()?.genre?.takeIf { it.isNotBlank() } ?: "Nepoznat žanr"
+        g.key.contains("|season|") -> g.items.firstNotNullOfOrNull {
+            Store.normalization(it.id)?.seasonGroupTitle
+        } ?: g.title
+        else -> coverKeyOf(g.key).substringAfterLast('/').ifEmpty { "Telefon" }
+    }
 
     private val groupCacheLock = Any()
     private var groupCacheStamp: GroupCacheStamp? = null
@@ -283,6 +336,7 @@ object LibraryManager {
             val baseKey = when {
                 sec == Section.MUSIC && view == "izvodjaci" -> "artist:" + item.artist.ifBlank { "?" }
                 sec == Section.MUSIC && view == "albumi" -> "album:" + item.album.ifBlank { "?" }
+                sec == Section.MUSIC && view == "zanr" -> "genre:" + item.genre.ifBlank { "?" }
                 else -> item.folderKey
             }
             // Virtuelna grupa po sezoni samo za potvrđene, već raspoređene epizode.
@@ -293,8 +347,9 @@ object LibraryManager {
         }
         val out = buckets.map { (key, list) ->
             val meta = list.firstNotNullOfOrNull { Store.normalization(it.id) }
-            val title = if (sec == Section.SERIES && view == "folderi" && meta?.seasonGroupTitle != null)
+            val baseTitle = if (sec == Section.SERIES && view == "folderi" && meta?.seasonGroupTitle != null)
                 meta.seasonGroupTitle else groupTitle(key, sec, view, list)
+            val title = Store.manualTitle("group:" + key) ?: baseTitle
             val items = list.sortedWith(compareBy({ sortKeyOf(it) }, { it.track },
                 { it.title.lowercase(Locale.ROOT) }))
             val artists = items.map { it.artist }.filter { it.isNotBlank() }
