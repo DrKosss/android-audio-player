@@ -2,7 +2,9 @@ package com.saptac.app
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.util.LruCache
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
@@ -39,6 +41,22 @@ fun coverIndex(key: String): Int {
     for (ch in key) h = h * 31 + ch.code
     return (h and 0x7fffffff) % COVERS.size
 }
+
+/** Keš slika sa ograničenom memorijom: brzi tabovi bez gomilanja bitmapa. */
+private fun bitmapCacheKb(divisor: Int): Int =
+    (Runtime.getRuntime().maxMemory() / 1024L / divisor).toInt()
+        .coerceIn(4 * 1024, 16 * 1024)
+
+class BitmapCache(maxKb: Int) : LruCache<String, Bitmap>(maxKb) {
+    override fun sizeOf(key: String, value: Bitmap): Int =
+        (value.byteCount / 1024).coerceAtLeast(1)
+    operator fun set(key: String, value: Bitmap) { put(key, value) }
+    fun containsKey(key: String): Boolean = snapshot().containsKey(key)
+    fun clear() = evictAll()
+}
+
+/** LruCache.get je finalan Java metod; operator dodajemo kao ekstenziju. */
+operator fun BitmapCache.get(key: String): Bitmap? = this.get(key)
 /** Folderi i podfolderi, od korena ka fajlu. */
 fun pathSegments(key: String): List<String> =
     key.split('/', '\\').map { it.trim() }.filter { it.isNotEmpty() }
@@ -390,15 +408,61 @@ fun sectionOf(name: String?): Section = when (name) {
  * ------------------------------------------------------------------ */
 object Store {
     private lateinit var prefs: SharedPreferences
+    private val cacheLock = Any()
+    private val jsonCache = HashMap<String, Any>()
+    @Volatile private var dataEpoch = 0L
+
+    /** Menja se posle svakog upisa; keši izvedenih podataka se tada odbacuju. */
+    fun epoch(): Long = dataEpoch
+    private fun touchEpoch() { synchronized(cacheLock) { dataEpoch++ } }
 
     fun init(ctx: Context) {
         prefs = ctx.applicationContext.getSharedPreferences("saptac", Context.MODE_PRIVATE)
+        synchronized(cacheLock) { jsonCache.clear(); dataEpoch++ }
     }
 
     private fun str(key: String): String = prefs.getString(key, "{}") ?: "{}"
-    private fun obj(key: String): JSONObject = try { JSONObject(str(key)) } catch (_: Exception) { JSONObject() }
-    private fun put(key: String, value: JSONObject) = prefs.edit().putString(key, value.toString()).apply()
-    private fun put(key: String, value: String) = prefs.edit().putString(key, value).apply()
+    private fun arrStr(key: String): String = prefs.getString(key, "[]") ?: "[]"
+
+    /** Parsira SharedPreferences JSON samo jednom po ključu; čitanje je samo za čitanje. */
+    private fun cachedObject(key: String): JSONObject = synchronized(cacheLock) {
+        when (val hit = jsonCache[key]) {
+            is JSONObject -> hit
+            else -> {
+                val o = try { JSONObject(str(key)) } catch (_: Exception) { JSONObject() }
+                jsonCache[key] = o
+                o
+            }
+        }
+    }
+    private fun cachedArray(key: String): JSONArray = synchronized(cacheLock) {
+        when (val hit = jsonCache[key]) {
+            is JSONArray -> hit
+            else -> {
+                val a = try { JSONArray(arrStr(key)) } catch (_: Exception) { JSONArray() }
+                jsonCache[key] = a
+                a
+            }
+        }
+    }
+    private fun obj(key: String): JSONObject = cachedObject(key)
+    private fun editObj(key: String): JSONObject = synchronized(cacheLock) {
+        JSONObject(cachedObject(key).toString())
+    }
+    private fun editArray(key: String): JSONArray = synchronized(cacheLock) {
+        JSONArray(cachedArray(key).toString())
+    }
+
+    private fun put(key: String, value: JSONObject) = put(key, value.toString())
+    private fun put(key: String, value: String) {
+        val stable: Any = if (value.trimStart().startsWith("[")) {
+            try { JSONArray(value) } catch (_: Exception) { JSONArray() }
+        } else {
+            try { JSONObject(value) } catch (_: Exception) { JSONObject() }
+        }
+        synchronized(cacheLock) { jsonCache[key] = stable; dataEpoch++ }
+        prefs.edit().putString(key, value).apply()
+    }
 
     var settings: Settings
         get() {
@@ -431,13 +495,13 @@ object Store {
 
     fun position(id: String): Long = obj("positions").optLong(id, 0L)
     fun setPosition(id: String, ms: Long) {
-        val o = obj("positions"); o.put(id, ms); put("positions", o)
+        val o = editObj("positions"); o.put(id, ms); put("positions", o)
     }
-    fun positions(): JSONObject = obj("positions")
+    fun positions(): JSONObject = editObj("positions")
 
     fun isDone(id: String): Boolean = obj("done").optBoolean(id, false)
     fun setDone(id: String, value: Boolean) {
-        val o = obj("done"); o.put(id, value); put("done", o)
+        val o = editObj("done"); o.put(id, value); put("done", o)
     }
 
     fun folderSection(key: String): Section? = sectionOf(obj("folders").optString(key, "").takeIf { it.isNotEmpty() }).let {
@@ -455,7 +519,7 @@ object Store {
         return null
     }
     fun setFolderSection(key: String, sec: Section?) {
-        val o = obj("folders")
+        val o = editObj("folders")
         if (sec == null || sec == Section.NONE) o.remove(key) else o.put(key, sectionName(sec))
         put("folders", o)
     }
@@ -470,7 +534,7 @@ object Store {
         if (it == Section.NONE) null else it
     }
     fun setOverride(id: String, sec: Section?) {
-        val o = obj("overrides")
+        val o = editObj("overrides")
         if (sec == null || sec == Section.NONE) o.remove(id) else o.put(id, sectionName(sec))
         put("overrides", o)
     }
@@ -484,10 +548,10 @@ object Store {
         return out
     }
     fun setNormalization(m: NormalizedMetadata) {
-        val o = obj("normalizations"); o.put(m.itemId, normalizedToJson(m)); put("normalizations", o)
+        val o = editObj("normalizations"); o.put(m.itemId, normalizedToJson(m)); put("normalizations", o)
     }
     fun removeNormalization(id: String) {
-        val o = obj("normalizations"); o.remove(id); put("normalizations", o)
+        val o = editObj("normalizations"); o.remove(id); put("normalizations", o)
     }
     fun saveNormalizations(map: Map<String, NormalizedMetadata>) {
         val o = JSONObject(); map.forEach { (k, v) -> o.put(k, normalizedToJson(v)) }
@@ -502,10 +566,10 @@ object Store {
         return out
     }
     fun setProposal(m: NormalizedMetadata) {
-        val o = obj("normalizationProposals"); o.put(m.itemId, normalizedToJson(m)); put("normalizationProposals", o)
+        val o = editObj("normalizationProposals"); o.put(m.itemId, normalizedToJson(m)); put("normalizationProposals", o)
     }
     fun removeProposal(id: String) {
-        val o = obj("normalizationProposals"); o.remove(id); put("normalizationProposals", o)
+        val o = editObj("normalizationProposals"); o.remove(id); put("normalizationProposals", o)
     }
     fun saveProposals(map: Map<String, NormalizedMetadata>) {
         val o = JSONObject(); map.forEach { (k, v) -> o.put(k, normalizedToJson(v)) }
@@ -514,12 +578,12 @@ object Store {
 
     fun isDismissed(id: String): Boolean = obj("normalizationDismissed").optBoolean(id, false)
     fun dismiss(id: String) {
-        val o = obj("normalizationDismissed"); o.put(id, true); put("normalizationDismissed", o)
+        val o = editObj("normalizationDismissed"); o.put(id, true); put("normalizationDismissed", o)
     }
     fun undismiss(id: String) {
-        val o = obj("normalizationDismissed"); o.remove(id); put("normalizationDismissed", o)
+        val o = editObj("normalizationDismissed"); o.remove(id); put("normalizationDismissed", o)
     }
-    fun allDismissed(): JSONObject = obj("normalizationDismissed")
+    fun allDismissed(): JSONObject = editObj("normalizationDismissed")
 
     /** Snapshot pre svakog automatskog pokretanja, za "Vrati sve". */
     fun saveNormalizationSnapshot() {
@@ -537,34 +601,42 @@ object Store {
         put("normalizationDismissed", snap.optJSONObject("dismissed") ?: JSONObject())
         return true
     }
-    fun normalizationSnapshot(): JSONObject = obj("normalizationSnapshot")
+    fun normalizationSnapshot(): JSONObject = editObj("normalizationSnapshot")
 
     /** Rotira kroz sve jedinstvene internet upite kroz više pokretanja (Faza 2). */
     var onlineCursor: Int
         get() = prefs.getInt("normalizationOnlineCursor", 0)
-        set(v) = prefs.edit().putInt("normalizationOnlineCursor", v).apply()
+        set(v) {
+            prefs.edit().putInt("normalizationOnlineCursor", v).apply()
+            touchEpoch()
+        }
 
     /** Keš jednog malog omota po seriji/albumu, sa ETag i vremenom preuzimanja. */
     fun artCacheEntry(key: String): JSONObject? = obj("normalizationArtCache").optJSONObject(key)
-    fun artCache(): JSONObject = obj("normalizationArtCache")
+    fun artCache(): JSONObject = editObj("normalizationArtCache")
     fun setArtCacheEntry(key: String, o: JSONObject) {
-        val all = obj("normalizationArtCache"); all.put(key, o); put("normalizationArtCache", all)
+        val all = editObj("normalizationArtCache"); all.put(key, o); put("normalizationArtCache", all)
     }
     fun clearArtCacheEntry(key: String) {
-        val all = obj("normalizationArtCache"); all.remove(key); put("normalizationArtCache", all)
+        val all = editObj("normalizationArtCache"); all.remove(key); put("normalizationArtCache", all)
     }
 
     fun lastGroupTime(key: String): Long = obj("recent").optLong(key, 0L)
     fun touchGroup(key: String) {
-        val o = obj("recent"); o.put(key, System.currentTimeMillis()); put("recent", o)
+        val o = editObj("recent"); o.put(key, System.currentTimeMillis()); put("recent", o)
     }
 
     var importedOnce: Boolean
         get() = prefs.getBoolean("importedOnce", false)
-        set(v) = prefs.edit().putBoolean("importedOnce", v).apply()
+        set(v) {
+            prefs.edit().putBoolean("importedOnce", v).apply()
+            touchEpoch()
+        }
+
+    fun feedCount(): Int = cachedArray("feeds").length()
 
     fun feeds(): MutableList<Feed> {
-        val a = try { JSONArray(str("feeds")) } catch (_: Exception) { JSONArray() }
+        val a = cachedArray("feeds")
         val out = ArrayList<Feed>()
         for (i in 0 until a.length()) {
             val o = a.optJSONObject(i) ?: continue
@@ -599,7 +671,7 @@ object Store {
     }
 
     fun treeUris(): MutableList<String> {
-        val a = try { JSONArray(str("trees")) } catch (_: Exception) { JSONArray() }
+        val a = cachedArray("trees")
         val out = ArrayList<String>()
         for (i in 0 until a.length()) a.optString(i)?.let { out.add(it) }
         return out
@@ -610,14 +682,14 @@ object Store {
     }
 
     fun log(message: String) {
-        val a = try { JSONArray(str("log")) } catch (_: Exception) { JSONArray() }
+        val a = editArray("log")
         val stamp = java.text.SimpleDateFormat("dd.MM. HH:mm:ss", Locale.getDefault()).format(java.util.Date())
         a.put("$stamp  $message")
         while (a.length() > 250) a.remove(0)
         put("log", a.toString())
     }
     fun logs(): List<String> {
-        val a = try { JSONArray(str("log")) } catch (_: Exception) { JSONArray() }
+        val a = cachedArray("log")
         val out = ArrayList<String>()
         for (i in a.length() - 1 downTo 0) a.optString(i)?.let { out.add(it) }
         return out
@@ -625,25 +697,25 @@ object Store {
     fun clearLog() = put("log", "[]")
 
     /** Sirovi JSON za izvoz / dijagnostiku. */
-    fun rawObject(key: String): JSONObject = obj(key)
-    fun rawArray(key: String): JSONArray = try { JSONArray(str(key)) } catch (_: Exception) { JSONArray() }
+    fun rawObject(key: String): JSONObject = editObj(key)
+    fun rawArray(key: String): JSONArray = editArray(key)
 
-    fun lastPlayer(): JSONObject = obj("lastPlayer")
+    fun lastPlayer(): JSONObject = editObj("lastPlayer")
     fun saveLastPlayer(o: JSONObject) = put("lastPlayer", o)
 
     /** Ručno izabran omot: SAF URI slike po grupi (knjizi/seriji/albumu). */
     fun customCover(key: String): String? =
         obj("covers").optString(key, "").takeIf { it.isNotEmpty() }
     fun setCustomCover(key: String, uri: String) {
-        val o = obj("covers"); o.put(key, uri); put("covers", o)
+        val o = editObj("covers"); o.put(key, uri); put("covers", o)
     }
     fun clearCustomCover(key: String) {
-        val o = obj("covers"); o.remove(key); put("covers", o)
+        val o = editObj("covers"); o.remove(key); put("covers", o)
     }
 
     fun rateForGroup(key: String): Float = obj("rates").optDouble(key, 1.0).toFloat()
     fun setRateForGroup(key: String, rate: Float) {
-        val o = obj("rates"); o.put(key, rate.toDouble()); put("rates", o)
+        val o = editObj("rates"); o.put(key, rate.toDouble()); put("rates", o)
     }
 
     /** Pojedinačni fajlovi uvezeni kroz sistemski izbor fajlova. */
@@ -653,7 +725,7 @@ object Store {
         return out
     }
     fun setLoose(uri: String, sec: Section) {
-        val o = obj("loose"); o.put(uri, sectionName(sec)); put("loose", o)
+        val o = editObj("loose"); o.put(uri, sectionName(sec)); put("loose", o)
     }
 }
 
@@ -672,8 +744,10 @@ object Bus {
     var normalizationVersion: Int = 0
     var seeking: Boolean = false
     var undo: Pair<Long, Long>? = null   // stara pozicija, vreme
-    var covers: HashMap<String, android.graphics.Bitmap> = HashMap()
-    var onlineCovers: HashMap<String, android.graphics.Bitmap> = HashMap()
+    val covers = BitmapCache(bitmapCacheKb(16))
+    val onlineCovers = BitmapCache(bitmapCacheKb(24))
+    val onlineCoverMisses: MutableSet<String> =
+        java.util.Collections.synchronizedSet(java.util.HashSet<String>())
 
     fun showToast(message: String, millis: Long = 2200) {
         toast = message; toastUntil = System.currentTimeMillis() + millis

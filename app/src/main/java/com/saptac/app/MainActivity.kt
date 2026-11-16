@@ -448,7 +448,7 @@ class MainActivity : android.app.Activity() {
             st.jump, st.fade, st.extend, st.gShake, st.gVol, st.gScreen,
             st.nextAuto, st.covers, st.autodl, st.wifiOnly, st.timeSpeed,
             st.normalizeOnline, st.podcastIndexKey.isNotBlank(), st.podcastIndexSecret.isNotBlank(),
-            Store.feeds().size, Store.hasAnyFolder()
+            Store.feedCount(), Store.hasAnyFolder()
         ).joinToString("|")
     }
 
@@ -819,10 +819,12 @@ class MainActivity : android.app.Activity() {
     private fun booksScreen(): View {
         val c = this
         Nav.tab = Section.BOOKS
-        val groups = LibraryManager.groups(Section.BOOKS)
-        val filtered = groups.filter { g ->
+        val rows = LibraryManager.groups(Section.BOOKS).map { g ->
             val pos = LibraryManager.bookPosition(g)
             val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
+            Triple(g, pos, done)
+        }
+        val filtered = rows.filter { (_, pos, done) ->
             when (Nav.chips) {
                 "tok" -> pos > 0 && !done
                 "nove" -> pos == 0L
@@ -833,9 +835,7 @@ class MainActivity : android.app.Activity() {
         val list = listHost()
         if (filtered.isEmpty()) list.addView(emptyState("Nema knjiga u ovoj grupi.\nUvezi foldere sa audio fajlovima.",
             "Uvezi foldere") { go("import") })
-        filtered.forEach { g ->
-            val pos = LibraryManager.bookPosition(g)
-            val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
+        filtered.forEach { (g, pos, done) ->
             val sub = when {
                 done -> "${g.subtitle} · završena"
                 pos > 0 -> "${g.subtitle} · preostalo ${fmtShort(g.durationMs - pos)}"
@@ -877,8 +877,14 @@ class MainActivity : android.app.Activity() {
                 if (groups.isEmpty()) list.addView(emptyState("Nema serija. Uvezi foldere sa epizodama.",
                     "Uvezi foldere") { go("import") })
                 groups.forEach { g ->
-                    val fresh = g.items.count { LibraryManager.episodeStatus(it) == "new" }
-                    val started = g.items.any { LibraryManager.episodeStatus(it) == "started" }
+                    var fresh = 0
+                    var started = false
+                    g.items.forEach { item ->
+                        when (LibraryManager.episodeStatus(item)) {
+                            "new" -> fresh++
+                            "started" -> started = true
+                        }
+                    }
                     val row = rowView(c, { go("seriesdetail", g.key) }, {
                         moveDialog(g.title, Section.SERIES, g.items); true
                     }, playing = Bus.player?.groupKey == g.key)
@@ -967,10 +973,12 @@ class MainActivity : android.app.Activity() {
         Nav.tab = Section.STANDUP
         val chips = chipsBar(listOf("sve" to "Sve", "tok" to "U toku", "nove" to "Nove", "zav" to "Završene"),
             Nav.standupChips) { Nav.standupChips = it }
-        val groups = LibraryManager.groups(Section.STANDUP)
-        val filtered = groups.filter { g ->
+        val rows = LibraryManager.groups(Section.STANDUP).map { g ->
             val pos = LibraryManager.bookPosition(g)
             val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
+            Triple(g, pos, done)
+        }
+        val filtered = rows.filter { (_, pos, done) ->
             when (Nav.standupChips) {
                 "tok" -> pos > 0 && !done
                 "nove" -> pos == 0L
@@ -979,9 +987,7 @@ class MainActivity : android.app.Activity() {
             }
         }
         val list = listHost()
-        filtered.forEach { g ->
-            val pos = LibraryManager.bookPosition(g)
-            val done = Store.isDone(g.key) || pos >= g.durationMs * 0.98 && g.durationMs > 0
+        filtered.forEach { (g, pos, done) ->
             val sub = when {
                 done -> "${g.subtitle} · završena"
                 pos > 0 -> "${g.subtitle} · preostalo ${fmtShort(g.durationMs - pos)}"
@@ -1689,7 +1695,7 @@ class MainActivity : android.app.Activity() {
         body.addView(settingRow(c, "Rasporedi fajlove", "$unassigned čekaju") { go("arrange") })
         body.addView(settingRow(c, "Mešani fajlovi", "${LibraryManager.mixed().size} sumnjivih") { go("mixed") })
         body.addView(settingRow(c, "Podkast feedovi",
-            "${Store.feeds().size} · ${if (s.wifiOnly) "samo Wi-Fi" else "i mobilni"}") { go("feeds") })
+            "${Store.feedCount()} · ${if (s.wifiOnly) "samo Wi-Fi" else "i mobilni"}") { go("feeds") })
 
         body.addView(sectionLabelView("REPRODUKCIJA"))
         body.addView(settingRow(c, "Skok", "${s.jump} s") {

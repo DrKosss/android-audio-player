@@ -25,6 +25,13 @@ private fun estimateDuration(sizeBytes: Long): Long =
 private fun cleanTitle(name: String): String =
     name.substringBeforeLast('.', name).trim().ifEmpty { "Bez naziva" }
 
+/** Keš grupa važi dok se biblioteka, normalizacija ili lokalna baza ne promene. */
+private data class GroupCacheStamp(
+    val libraryVersion: Int,
+    val normalizationVersion: Int,
+    val storeEpoch: Long
+)
+
 object LibraryManager {
 
     /** Jedan izvor istine: MediaStore + (opciono) direktan pristup disku + SAF folderi. */
@@ -247,7 +254,29 @@ object LibraryManager {
             else -> coverKeyOf(key).substringAfterLast('/').ifEmpty { "Telefon" }
         }
 
+    private val groupCacheLock = Any()
+    private var groupCacheStamp: GroupCacheStamp? = null
+    private val groupCache = HashMap<Pair<Section, String>, List<Group>>()
+
     fun groups(sec: Section, view: String = "folderi"): List<Group> {
+        val stamp = GroupCacheStamp(Bus.libraryVersion, Bus.normalizationVersion, Store.epoch())
+        val cacheKey = sec to view
+        val hit = synchronized(groupCacheLock) {
+            if (groupCacheStamp != stamp) {
+                groupCache.clear()
+                groupCacheStamp = stamp
+            }
+            groupCache[cacheKey]
+        }
+        if (hit != null) return hit
+        val result = buildGroups(sec, view)
+        synchronized(groupCacheLock) {
+            if (groupCacheStamp == stamp) groupCache[cacheKey] = result
+        }
+        return result
+    }
+
+    private fun buildGroups(sec: Section, view: String): List<Group> {
         val selected = Bus.library.items.filter { sectionOf(it) == sec }
         val buckets = LinkedHashMap<String, MutableList<AudioItem>>()
         selected.forEach { item ->
@@ -344,7 +373,7 @@ object LibraryManager {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
             var sample = 1
-            while (bounds.outWidth / sample > 512 || bounds.outHeight / sample > 512) sample *= 2
+            while (bounds.outWidth / sample > 256 || bounds.outHeight / sample > 256) sample *= 2
             val opts = BitmapFactory.Options().apply { inSampleSize = sample.coerceAtLeast(1) }
             val bmp = ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
             if (bmp != null) Bus.covers[groupKey] = bmp
@@ -355,15 +384,34 @@ object LibraryManager {
     /** Omot skinut u Fazi 2, keširan po osnovnom folderu / albumu / izvođaču. */
     fun cachedOnlineCover(ctx: Context, groupKey: String): Bitmap? {
         Bus.onlineCovers[groupKey]?.let { return it }
-        val e = Store.artCacheEntry(groupKey) ?: return null
-        val path = e.optString("path").takeIf { it.isNotEmpty() } ?: return null
+        if (Bus.onlineCoverMisses.contains(groupKey)) return null
+        val e = Store.artCacheEntry(groupKey)
+        if (e == null) { Bus.onlineCoverMisses.add(groupKey); return null }
+        val path = e.optString("path").takeIf { it.isNotEmpty() }
+        if (path == null) { Bus.onlineCoverMisses.add(groupKey); return null }
         val f = File(path)
-        if (!f.exists()) return null
+        if (!f.exists()) { Bus.onlineCoverMisses.add(groupKey); return null }
         return try {
-            val bmp = BitmapFactory.decodeFile(f.absolutePath)
-            if (bmp != null) Bus.onlineCovers[groupKey] = bmp
+            val bmp = decodeSampledFile(f.absolutePath, 256)
+            if (bmp != null) {
+                Bus.onlineCovers[groupKey] = bmp
+                Bus.onlineCoverMisses.remove(groupKey)
+            } else Bus.onlineCoverMisses.add(groupKey)
             bmp
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            Bus.onlineCoverMisses.add(groupKey)
+            null
+        }
+    }
+
+    private fun decodeSampledFile(path: String, maxPx: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / sample > maxPx || bounds.outHeight / sample > maxPx) sample *= 2
+        val opts = BitmapFactory.Options().apply { inSampleSize = sample.coerceAtLeast(1) }
+        return BitmapFactory.decodeFile(path, opts)
     }
 
     /** Omot iz samog fajla (ID3/MP4 slika). */

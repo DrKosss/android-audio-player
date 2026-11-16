@@ -217,6 +217,7 @@ object OnlineEnricher {
             o.put("fetchedAt", now); o.put("source", "online"); o.put("ttlMs", TTL_MS)
             Store.setArtCacheEntry(k, o)
             Bus.onlineCovers.remove(k) // sledeći render ponovo čita svež fajl
+            Bus.onlineCoverMisses.remove(k)
         }
     }
 
