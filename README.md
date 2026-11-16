@@ -1,13 +1,26 @@
-# Šaptač — Android v1.1.2
+# Šaptač — Android v1.2.0
 
 Gotov, potpisan i instalabilan APK nalazi se ovde:
 
-**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.517.206 bajtova  
-SHA-256: `4afb90c776672f4d77d9e1c8ff46a8714196acc89fc614cdd5211090badace85`
+**[`dist/Saptac-v1.0.apk`](dist/Saptac-v1.0.apk)** · 2.550.722 bajtova
 
-Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; jedini dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova i virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem (skriveno u `Podešavanjima`); skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
+SHA-256: `b3b5d58f9a206681ef1d2d68aada495f3404a0a2cb12700df9e720e54ac589ea`
 
-## Šta je novo u v1.1.2 — brži prelazak između sekcija
+Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html` (v0.7, 11. 11. 2026), `saptac-ikona-final.html` i `ikone/final/`. UI je na srpskoj latinici, sa tamnom toplom paletom i ikonom iz prototipa. Aplikacija prati prototip u tekstu, rasporedu, veličinama ikonica i tokovima; dodaci su četvrta sekcija „Stand up“, ručna ispravka omota (samo preko olovke), izvoz liste fajlova, virtuelno sređivanje biblioteke sa opcionim internet obogaćivanjem, ručna virtuelna imena, pretraga cele biblioteke i čipovi za sortiranje; skica zaključanog ekrana koja se otvarala na katanac i obe iPhone linije na dnu su uklonjene, a donja navigacija je vidljiva na apsolutno svim ekranima, uključujući plejer i podešavanja.
+
+## Šta je novo u v1.2.0 — ručni metapodaci, pretraga svih fajlova i sortiranje
+
+- **Dugi klik na svaki fajl:** jedan listić prikazuje originalno i normalizovano ime, izvođača, album, žanr, trajanje, folder, sekciju i internet predlog; tu se ime može ručno promeniti, a fajl rasporediti u `Knjige / Emisije / Muzika / Stand up` ili ostaviti neraspoređenim. Ime je isključivo virtuelno: originalni fajl, putanja i URI ostaju netaknuti. Dugi klik radi u svim sekcijama, na pojedinačnim fajlovima i na grupama.
+- **Internet pretraga svih uvezenih fajlova:** dugme `Pretraži sve uvezene fajlove` u `Sređivanju biblioteke` i `Podešavanjima` pokreće obilazak cele biblioteke bez rotacionog limita od 20 upita. Tanka globalna traka ispod statusne linije prikazuje `Internet: 37 / 362`, napredak i `Prekini` na svim ekranima; po završetku se sama sklanja. Wi-Fi je podrazumevan, mobilni i dalje traži `Koristi mobilni internet za ovu proveru?` → `Da / Ne`; i dalje se prave samo predlozi, ništa se ne primenjuje automatski. Upiti su dodatno očišćeni od putanja, URI-ja i imena foldera.
+- **Muzika:** `Folderi / Izvođači / Albumi / Žanr` su sada čipovi u istom vizuelnom jeziku kao `Sve / U toku / Nove / Završene`. Žanr se čita iz MediaStore/ID3 taga uz blagi fallback na ime, a u izvoz je dodat prikaz `zanr`. Uklonjeni su `Nasumično sve`, `Nasumično` i `Ponavljanje`; lista je podignuta odmah ispod čipova. U gornjem toolbaru su mala **Loop** i **Shuffle** dugmad koja rade tačno ono što su radili uklonjeni prekidači.
+- **Emisije i nepoznati fajlovi:** uvoz i `Nepoznati / mešani fajlovi` su podignuti na vrh `Folderi` liste. `Mešani fajlovi` sada prikazuju i neraspoređene fajlove; dodir ili dugi klik otvara podatke i ručno raspoređivanje, bez automatskog premeštanja.
+- **Stand up:** dodat je čip `Izvođač` uz `Naziv`, u istom vizuelnom jeziku kao čipovi za knjige.
+- **Podešavanja i `+`:** ceo `FOLDERI` odeljak je uklonjen. Lista foldera je samo na `+` ekranu i podeljena je na `UVEZENI` / `NEUVEZENI`; već uvezeni folderi ostaju unapred čekirani. `Rasporedi foldere`, `Neraspoređeni i mešani fajlovi` i `Podkast feedovi` su dostupni iz drugih odeljaka podešavanja.
+- **Izvoz:** dodati su `rawStores.manualTitles`, `files[].manualTitle`, `displayTitle`, `genre`, `groups[].originalGroupTitle`, `manualGroupTitle` i `zanr` prikaz; Podcast Index ključ/tajna se i dalje brišu iz izvoza.
+- **Bez promene osnovnog ponašanja:** četiri taba, stalno vidljiva donja navigacija, minimiziranje/`Back`, reprodukcija u pozadini preko obaveštenja, olovka za omot, virtuelno sređivanje, snapshot/`Vrati sve`, originalni engleski naslov uz `S##E##` i sva pravila privatnosti ostaju netaknuta. Faza 3 i dalje nije urađena.
+- **Verzija:** `versionCode 14`, `versionName 1.2.0`; CI `43794563077` (`ASSEMBLE_EXIT=0`, bez `NO APK PRODUCED`, `Verifies`, v2 `true`), artifact commit `9b57a87`.
+
+## Ranije ispravke (v1.1.2) — brži prelazak između sekcija
 
 - **Uzrok usporenja:** pri svakom kliku na `Muzika / Knjige / Emisije / Stand up` se za svaki od 1.341 fajla iznova parsirala velika lokalna `SharedPreferences` JSON baza (folderi, override, normalizacije, pozicije, `done`, nedavne grupe), zatim su se grupe ponovo gradile, a status i omoti su se čitali više puta po redu. `signature()` je uz to svakih 500 ms ponovo čitao ceo JSON feedova.
 - **Jedno parsiranje po ključu:** `Store` sada drži keš parsiranih `JSONObject`/`JSONArray` vrednosti. Upisi rade nad kopijom, pa deljeni keš nikad ne menja neko drugi tok; `Store.epoch()` se menja posle svakog upisa i time odbacuje izvedene keševe.
@@ -111,7 +124,7 @@ Izvorni prototip i specifikacija su `saptac-prototip.html`, `saptac-dizajn.html`
 | | |
 |---|---|
 | Paket | `com.saptac.app` |
-| Verzija | `1.1.2` (`versionCode 13`) |
+| Verzija | `1.2.0` (`versionCode 14`) |
 | Minimum | Android 11 / API 30 |
 | Cilj / compile | Android 17 / API 37 |
 | Potpis | jedan stabilan ključ `signing/saptac.jks`, alias `saptac` |
