@@ -135,7 +135,7 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.9.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 56s
+BUILD SUCCESSFUL in 1m 12s
 1 actionable task: 1 executed
 Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.9.1/userguide/configuration_cache_enabling.html
 ===== ASSEMBLE RELEASE =====
@@ -174,36 +174,36 @@ Daemon will be stopped at the end of the build
 > Task :app:extractProguardFiles
 > Task :app:mergeReleaseJniLibFolders
 > Task :app:mergeReleaseNativeLibs NO-SOURCE
-> Task :app:processReleaseManifestForPackage
 > Task :app:stripReleaseDebugSymbols NO-SOURCE
 > Task :app:extractReleaseNativeSymbolTables NO-SOURCE
 > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:checkReleaseDuplicateClasses
 > Task :app:desugarReleaseFileDependencies
 > Task :app:mergeReleaseStartupProfile
-> Task :app:processReleaseResources
-> Task :app:mergeExtDexRelease
+> Task :app:checkReleaseDuplicateClasses
 > Task :app:mergeReleaseArtProfile
+> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
 > Task :app:mergeReleaseAssets
 > Task :app:compressReleaseAssets
+> Task :app:processReleaseResources
 > Task :app:extractReleaseVersionControlInfo
+> Task :app:mergeExtDexRelease
 > Task :app:collectReleaseDependencies
+> Task :app:optimizeReleaseResources
 > Task :app:sdkReleaseDependencyData
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
-> Task :app:optimizeReleaseResources
 
 > Task :app:compileReleaseKotlin
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:130:52 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:130:96 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:131:16 'var statusBarColor: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:132:16 'var navigationBarColor: Int' is deprecated. Deprecated in Java.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:352:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Please add the '@Deprecated' annotation or suppress the diagnostic.
-w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:359:29 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:136:52 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:136:96 'static field FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:137:16 'var statusBarColor: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:138:16 'var navigationBarColor: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:358:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Please add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/MainActivity.kt:365:29 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/Net.kt:92:20 'val activeNetworkInfo: NetworkInfo?' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/Net.kt:93:18 'val isConnected: Boolean' is deprecated. Deprecated in Java.
 w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/main/java/com/saptac/app/Net.kt:93:35 'val type: Int' is deprecated. Deprecated in Java.
@@ -227,7 +227,7 @@ w: file:///home/runner/work/android-audio-player/android-audio-player/app/src/ma
 > Task :app:lintVitalRelease
 > Task :app:assembleRelease
 
-BUILD SUCCESSFUL in 1m 43s
+BUILD SUCCESSFUL in 2m 5s
 47 actionable tasks: 47 executed
 ASSEMBLE_EXIT=0
 ===== done =====
@@ -250,7 +250,7 @@ Signer #1 public key SHA-256 digest: 5f8d6bae70e6de0c709e55fbd0ffa1065e24438df0a
 Signer #1 public key SHA-1 digest: b4b1ff008a2f4d714b91a77f1578f626561fda61
 Signer #1 public key MD5 digest: 738b8f79c159c9eaba5ac8e9f18867a0
 --- aapt badging ---
-package: name='com.saptac.app' versionCode='13' versionName='1.1.2' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+package: name='com.saptac.app' versionCode='14' versionName='1.2.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
 sdkVersion:'30'
 targetSdkVersion:'37'
 uses-permission: name='android.permission.READ_MEDIA_AUDIO'
@@ -275,6 +275,6 @@ launchable-activity: name='com.saptac.app.MainActivity'  label='' icon=''
 feature-group: label=''
   uses-feature-not-required: name='android.hardware.sensor.accelerometer'
 --- sha256 ---
-4afb90c776672f4d77d9e1c8ff46a8714196acc89fc614cdd5211090badace85  dist/Saptac-v1.0.apk
+b3b5d58f9a206681ef1d2d68aada495f3404a0a2cb12700df9e720e54ac589ea  dist/Saptac-v1.0.apk
 --- size ---
-2517206 bytes
+2550722 bytes
